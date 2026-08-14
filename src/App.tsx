@@ -381,21 +381,23 @@ function App() {
         </header>
 
         <main className="home-content">
-          <section className="hero-card">
-            <div className="hero-glow" />
-            <div className="streak-pill"><Flame size={15} fill="currentColor" /> 连续学习 3 天</div>
-            <p className="eyebrow">BUENOS DÍAS · 早上好</p>
-            <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-            <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。</p>
-            <button className="primary-button" onClick={() => begin(lessons[0])}>
-              继续今日练习 <ArrowRight size={19} />
-            </button>
-          </section>
+          <div className="home-overview">
+            <section className="hero-card">
+              <div className="hero-glow" />
+              <div className="streak-pill"><Flame size={15} fill="currentColor" /> 连续学习 3 天</div>
+              <p className="eyebrow">BUENOS DÍAS · 早上好</p>
+              <h1>让西语从<br /><em>手指</em>进入记忆</h1>
+              <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。</p>
+              <button className="primary-button" onClick={() => begin(lessons[0])}>
+                继续今日练习 <ArrowRight size={19} />
+              </button>
+            </section>
 
-          <section className="daily-row">
-            <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small> / 12 个词</small></strong></div>
-            <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{Math.min(Math.round(todayDone / 12 * 100), 100)}%</span></div>
-          </section>
+            <section className="daily-row">
+              <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small> / 12 个词</small></strong></div>
+              <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{Math.min(Math.round(todayDone / 12 * 100), 100)}%</span></div>
+            </section>
+          </div>
 
           <section className="course-section">
             <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
