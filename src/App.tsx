@@ -908,9 +908,9 @@ function App() {
           <section className="course-section">
             <div className="section-heading"><div><span className="section-kicker">{tr(`开放词库 · ${totalPracticeCards} 张卡`, `OPEN LIBRARY · ${totalPracticeCards} CARDS`)}</span><h2>{tr('按类型、等级与场景选择', 'Choose by type, level and situation')}</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>{tr('重置', 'Reset')}</button></div>
             <div className="course-filters" aria-label={tr('词库筛选', 'Library filters')}>
-              <div><span>{tr('类型', 'Type')}</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{isEnglish ? filterEnglish.kinds[kind] : kind}</button>)}</div>
-              <div><span>{tr('难度', 'Level')}</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{isEnglish && level === '全部' ? 'All' : level}</button>)}</div>
-              <div><span>{tr('场景', 'Situation')}</span>{SCENE_FILTERS.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{isEnglish ? filterEnglish.scenes[scene] : scene}</button>)}</div>
+              <div><span>{tr('类型', 'Type')}</span><div className="filter-options">{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{isEnglish ? filterEnglish.kinds[kind] : kind}</button>)}</div></div>
+              <div><span>{tr('难度', 'Level')}</span><div className="filter-options">{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{isEnglish && level === '全部' ? 'All' : level}</button>)}</div></div>
+              <div><span>{tr('场景', 'Situation')}</span><div className="filter-options">{SCENE_FILTERS.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{isEnglish ? filterEnglish.scenes[scene] : scene}</button>)}</div></div>
             </div>
             <div className="lesson-list">
               {filteredLessons.map((item) => {
