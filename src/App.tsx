@@ -176,6 +176,7 @@ function App() {
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
   const flowTokenRef = useRef(0)
+  const reviewHadErrorRef = useRef(false)
   const sessionStartedAtRef = useRef<number | null>(null)
   const keyAudioRef = useRef<HTMLAudioElement | null>(null)
   const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -273,7 +274,7 @@ function App() {
       kind: '短句',
       eyebrow: '错题库 · 按最近出错排序',
       title: '错题复习',
-      description: '完整打对后自动移出错题库',
+      description: '整组零错误完成后才会清除',
       color: '#b9674f',
       words: entries.map(([reviewKey, record]) => {
         const originalLesson = lessons.find((item) => item.id === record.lessonId)
@@ -334,10 +335,10 @@ function App() {
     }))
   }
 
-  function removeReviewedMistake(reviewKey: string) {
+  function clearReviewedMistakes(reviewKeys: string[]) {
     saveMistakeBank((current) => {
       const nextBank = { ...current }
-      delete nextBank[reviewKey]
+      reviewKeys.forEach((reviewKey) => delete nextBank[reviewKey])
       return nextBank
     })
   }
@@ -393,6 +394,7 @@ function App() {
     setCorrectKeystrokes(0)
     setCompletedWords(0)
     setMistakeWords({})
+    reviewHadErrorRef.current = false
     setFinalElapsedSeconds(0)
     sessionStartedAtRef.current = null
     setTimerNow(Date.now())
@@ -408,8 +410,10 @@ function App() {
     flowTokenRef.current += 1
     setCompletedWords((value) => value + 1)
     recordCompletedWord()
-    if (lesson.id === 'mistake-review' && word.reviewKey) removeReviewedMistake(word.reviewKey)
     if (index === lesson.words.length - 1) {
+      if (lesson.id === 'mistake-review' && !reviewHadErrorRef.current) {
+        clearReviewedMistakes(lesson.words.flatMap((item) => item.reviewKey ? [item.reviewKey] : []))
+      }
       const seconds = sessionStartedAtRef.current ? Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000)) : 0
       setFinalElapsedSeconds(seconds)
       if (lessons.some((item) => item.id === lesson.id)) {
@@ -507,6 +511,7 @@ function App() {
       setStatus('wrong')
       setMistakes((value) => value + 1)
       setMistakeWords((value) => ({ ...value, [word.spanish]: (value[word.spanish] ?? 0) + 1 }))
+      if (lesson.id === 'mistake-review') reviewHadErrorRef.current = true
       recordMistake()
       playEffect('wrong')
       resetTimerRef.current = window.setTimeout(() => {
@@ -591,6 +596,19 @@ function App() {
             </section>
           </div>
 
+          <div className="home-actions">
+            <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
+              <div className="mistake-icon"><RotateCcw size={22} /></div>
+              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3><p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 整组全对后清除` : '输错的词和短句会自动出现在这里。'}</p></div>
+              <button disabled={!mistakeLesson} aria-label="开始错题复习" onClick={() => mistakeLesson && begin(mistakeLesson)}><ArrowRight size={19} /></button>
+            </section>
+            <section className="mode-card">
+              <div className="mode-icon"><Headphones size={23} /></div>
+              <div><span className="section-kicker">听写挑战</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
+              <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
+            </section>
+          </div>
+
           <section className="course-section">
             <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
             <div className="course-filters" aria-label="词库筛选">
@@ -617,18 +635,6 @@ function App() {
             </div>
           </section>
 
-          <div className="home-actions">
-            <section className="mode-card">
-              <div className="mode-icon"><Headphones size={23} /></div>
-              <div><span className="section-kicker">挑战模式</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
-              <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
-            </section>
-            <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
-              <div className="mistake-icon"><RotateCcw size={22} /></div>
-              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3><p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 打对后移出` : '输错的词和短句会自动出现在这里。'}</p></div>
-              <button disabled={!mistakeLesson} aria-label="开始错题复习" onClick={() => mistakeLesson && begin(mistakeLesson)}><ArrowRight size={19} /></button>
-            </section>
-          </div>
           <footer className="project-legal">
             <span>GPL-3.0 开源项目</span>
             <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">基于 Qwerty Learner 修改</a>
@@ -673,6 +679,11 @@ function App() {
           <p className="eyebrow">本组完成</p>
           <h1>{lesson.title}</h1>
           <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
+          {lesson.id === 'mistake-review' && (
+            <p className={`review-result ${mistakes === 0 ? 'clean' : ''}`}>
+              {mistakes === 0 ? '本轮全部答对，这组错题已清除。' : '本轮仍有错误，这组错题会全部保留，请再完整练一轮。'}
+            </p>
+          )}
           <div className="result-grid">
             <div><strong>{completedWords}</strong><span>完成词数</span></div>
             <div><strong>{accuracy}%</strong><span>按键正确率</span></div>

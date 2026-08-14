@@ -80,7 +80,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .lesson-meta small { font-size: 10px; color: var(--muted); }
 .word-source { display: block; margin: 11px 3px 0; color: #8b877f; font-size: 10px; line-height: 1.45; text-decoration: underline; text-underline-offset: 2px; }
 .word-sources { display: flex; flex-wrap: wrap; gap: 0 9px; }
-.home-actions { margin-top: 28px; display: grid; gap: 10px; }
+.home-actions { margin: 13px 0 24px; display: grid; gap: 10px; }
 .mode-card, .mistake-card { border-radius: 22px; padding: 19px 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 13px; align-items: center; }
 .mode-card { background: #dde8e3; }
 .mode-icon { width: 44px; height: 44px; border-radius: 14px; background: var(--green); color: white; display: grid; place-items: center; }
@@ -93,6 +93,8 @@ button { -webkit-tap-highlight-color: transparent; }
 .mistake-card > button { color: #a85d48; }
 .mistake-card > button:disabled { color: #a99d95; opacity: .55; }
 .mistake-card.empty { background: #ebe7df; }
+.review-result { max-width: 520px; margin: 10px auto 18px; padding: 12px 15px; border-radius: 14px; background: #f2e4dd; color: #8b503f; font-size: 14px; font-weight: 700; }
+.review-result.clean { background: #deebe5; color: #34705f; }
 .project-legal { margin: 27px 0 5px; display: flex; justify-content: center; gap: 8px; color: #aaa69e; font-size: 10px; }
 .project-legal a { color: #817d75; text-decoration: underline; text-underline-offset: 2px; }
 
