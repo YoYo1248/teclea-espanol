@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { filterEnglish, lessonEnglishCopy, type DisplayLanguage, type SpeechRate } from './english'
 import { createSyncQr, formatSyncCode, generateSyncCode, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 
 type Screen = 'home' | 'practice' | 'complete'
@@ -35,6 +36,7 @@ type MistakeRecord = {
   lessonId: string
   spanish: string
   chinese: string
+  english?: string
   count: number
   lastWrongAt: number
   lastMode: Mode
@@ -101,6 +103,8 @@ function mergeSnapshots(local: SyncSnapshot, remote: SyncSnapshot): SyncSnapshot
     completed: Array.from(new Set([...local.completed, ...remote.completed])),
     accentMode: remoteIsNewer ? remote.accentMode : local.accentMode,
     soundEnabled: remoteIsNewer ? remote.soundEnabled : local.soundEnabled,
+    displayLanguage: remoteIsNewer ? (remote.displayLanguage ?? local.displayLanguage) : local.displayLanguage,
+    speechRate: remoteIsNewer ? (remote.speechRate ?? local.speechRate) : local.speechRate,
   }
 }
 
@@ -139,7 +143,12 @@ function readMistakeBank(): Record<string, MistakeRecord> {
   try {
     const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, MistakeRecord>
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
-    return Object.fromEntries(Object.entries(stored).filter(([, item]) => item && typeof item.spanish === 'string' && typeof item.chinese === 'string' && typeof item.count === 'number'))
+    return Object.fromEntries(Object.entries(stored)
+      .filter(([, item]) => item && typeof item.spanish === 'string' && typeof item.chinese === 'string' && typeof item.count === 'number')
+      .map(([key, item]) => {
+        const currentWord = lessons.find((lesson) => lesson.id === item.lessonId)?.words.find((word) => word.spanish === item.spanish)
+        return [key, { ...item, english: item.english ?? currentWord?.english }]
+      }))
   } catch {
     return {}
   }
@@ -174,7 +183,7 @@ function spanishVoiceScore(voice: SpeechSynthesisVoice) {
   return score
 }
 
-function speak(text: string, onDone?: () => void) {
+function speak(text: string, rate: SpeechRate, onDone?: () => void) {
   if (!('speechSynthesis' in window)) return false
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text.replace(/[¿?¡!]/g, ''))
@@ -185,7 +194,7 @@ function speak(text: string, onDone?: () => void) {
     .sort((left, right) => spanishVoiceScore(right) - spanishVoiceScore(left))[0]
   if (spanishVoice) utterance.voice = spanishVoice
   utterance.volume = 1
-  utterance.rate = 0.86
+  utterance.rate = rate
   utterance.pitch = 1
   if (onDone) {
     utterance.onend = onDone
@@ -214,6 +223,11 @@ function App() {
   const [isTouchDevice] = useState(() => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)
   const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
+  const [displayLanguage, setDisplayLanguage] = useState<DisplayLanguage>(() => localStorage.getItem('teclea-display-language') === 'en' ? 'en' : 'zh')
+  const [speechRate, setSpeechRate] = useState<SpeechRate>(() => {
+    const stored = Number(localStorage.getItem('teclea-speech-rate'))
+    return stored === 0.7 || stored === 1 ? stored : 0.86
+  })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mistakesOpen, setMistakesOpen] = useState(false)
   const [syncCode, setSyncCode] = useState(initialSyncCode)
@@ -274,6 +288,8 @@ function App() {
     completed,
     accentMode,
     soundEnabled,
+    displayLanguage,
+    speechRate,
   }
 
   useEffect(() => {
@@ -359,8 +375,12 @@ function App() {
   }, [screen])
 
   useEffect(() => {
-    if (screen === 'practice' && mode === 'listen') speak(word.spanish)
-  }, [screen, mode, index, word.spanish])
+    if (screen === 'practice' && mode === 'listen') speak(word.spanish, speechRate)
+  }, [screen, mode, index, word.spanish, speechRate])
+
+  useEffect(() => {
+    document.documentElement.lang = displayLanguage === 'en' ? 'en' : 'zh-CN'
+  }, [displayLanguage])
 
   const todayDone = practiceState.dailyWords[localDateKey()] ?? 0
   const streak = useMemo(() => learningStreak(practiceState.dailyWords), [practiceState.dailyWords])
@@ -391,7 +411,7 @@ function App() {
         const originalWord = originalLesson?.words.find((item) => item.spanish === record.spanish)
         return originalWord
           ? { ...originalWord, reviewKey }
-          : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
+          : { spanish: record.spanish, chinese: record.chinese, english: record.english ?? record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
       }),
     }
   }, [activeMistakeEntries])
@@ -407,6 +427,16 @@ function App() {
   const totalKeystrokes = correctKeystrokes + mistakes
   const accuracy = totalKeystrokes ? Math.round(correctKeystrokes / totalKeystrokes * 100) : 100
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
+  const isEnglish = displayLanguage === 'en'
+  const tr = (chinese: string, english: string) => isEnglish ? english : chinese
+  const wordMeaning = (item: { chinese: string; english?: string }) => isEnglish ? (item.english || item.chinese) : item.chinese
+  const localizedLesson = (item: Lesson) => {
+    if (!isEnglish) return { title: item.title, description: item.description, eyebrow: item.eyebrow }
+    if (item.id === 'mistake-review') return { title: 'Mistake review', description: 'Hard items repeat until you complete two clean rounds', eyebrow: 'Mistakes · priority review' }
+    const tense = item.id.startsWith('conjugation-') ? item.id.split('-')[1] : undefined
+    const group = Number(item.title.match(/\d+/)?.[0] ?? 1)
+    return lessonEnglishCopy(item.id, { title: item.title, description: item.description, level: item.level }, tense, group)
+  }
 
   function playEffect(type: 'key' | 'wrong' | 'complete') {
     if (!soundEnabled) return
@@ -432,11 +462,17 @@ function App() {
     localStorage.setItem('teclea-completed', JSON.stringify(snapshot.completed))
     localStorage.setItem('teclea-accent-mode', snapshot.accentMode)
     localStorage.setItem('teclea-sound-enabled', String(snapshot.soundEnabled))
+    const nextLanguage = snapshot.displayLanguage ?? displayLanguage
+    const nextSpeechRate = snapshot.speechRate ?? speechRate
+    localStorage.setItem('teclea-display-language', nextLanguage)
+    localStorage.setItem('teclea-speech-rate', String(nextSpeechRate))
     setPracticeState(snapshot.practiceState)
     setMistakeBank(snapshot.mistakeBank)
     setCompleted(snapshot.completed)
     setAccentMode(snapshot.accentMode)
     setSoundEnabled(snapshot.soundEnabled)
+    setDisplayLanguage(nextLanguage)
+    setSpeechRate(nextSpeechRate)
     setLesson(lessons.find((item) => item.id === snapshot.practiceState.lastLessonId) ?? lessons[0])
     setMode(snapshot.practiceState.lastMode)
   }
@@ -446,7 +482,7 @@ function App() {
     if (normalized.length !== 20 || syncRunningRef.current || !latestSnapshotRef.current) return
     syncRunningRef.current = true
     setSyncStatus('syncing')
-    setSyncMessage('正在合并两台设备的学习记录…')
+    setSyncMessage(tr('正在合并两台设备的学习记录…', 'Merging learning records from both devices…'))
     try {
       const local = latestSnapshotRef.current
       const remote = await pullSync(normalized)
@@ -458,10 +494,10 @@ function App() {
       localStorage.setItem(SYNC_CODE_KEY, normalized)
       setSyncLastAt(Date.now())
       setSyncStatus('synced')
-      setSyncMessage(remote ? '学习进度已合并并同步。' : '同步空间已创建。')
+      setSyncMessage(remote ? tr('学习进度已合并并同步。', 'Learning progress merged and synced.') : tr('同步空间已创建。', 'Sync space created.'))
     } catch (error) {
       setSyncStatus('error')
-      setSyncMessage(error instanceof Error ? error.message : '同步失败，请稍后再试')
+      setSyncMessage(isEnglish ? 'Sync failed. Please try again.' : error instanceof Error ? error.message : '同步失败，请稍后再试')
     } finally {
       syncRunningRef.current = false
       syncInitializedRef.current = true
@@ -482,7 +518,7 @@ function App() {
     const code = normalizeSyncCode(syncInput)
     if (code.length !== 20) {
       setSyncStatus('error')
-      setSyncMessage('请输入完整的20位同步码。')
+      setSyncMessage(tr('请输入完整的20位同步码。', 'Enter the complete 20-character sync code.'))
       return
     }
     setSyncCode(code)
@@ -500,7 +536,7 @@ function App() {
     syncInitializedRef.current = false
     setSyncCode('')
     setSyncStatus('idle')
-    setSyncMessage('已停止同步；本机学习记录仍会保留。')
+    setSyncMessage(tr('已停止同步；本机学习记录仍会保留。', 'Sync stopped. This device keeps its learning records.'))
     setShowSyncCode(false)
   }
 
@@ -508,9 +544,9 @@ function App() {
     if (!syncCode) return
     try {
       await navigator.clipboard.writeText(formatSyncCode(syncCode))
-      setSyncMessage('同步码已复制。')
+      setSyncMessage(tr('同步码已复制。', 'Sync code copied.'))
     } catch {
-      setSyncMessage('无法自动复制，请长按同步码复制。')
+      setSyncMessage(tr('无法自动复制，请长按同步码复制。', 'Could not copy automatically. Press and hold the code to copy it.'))
     }
   }
 
@@ -540,6 +576,7 @@ function App() {
         lessonId: current[reviewKey]?.lessonId ?? lesson.id,
         spanish: word.spanish,
         chinese: word.chinese,
+        english: word.english,
         count: (current[reviewKey]?.count ?? 0) + 1,
         lastWrongAt: Date.now(),
         lastMode: mode,
@@ -704,6 +741,20 @@ function App() {
     scheduleSync()
   }
 
+  function chooseDisplayLanguage(nextLanguage: DisplayLanguage) {
+    setDisplayLanguage(nextLanguage)
+    localStorage.setItem('teclea-display-language', nextLanguage)
+    document.documentElement.lang = nextLanguage === 'en' ? 'en' : 'zh-CN'
+    scheduleSync()
+  }
+
+  function chooseSpeechRate(nextRate: SpeechRate) {
+    setSpeechRate(nextRate)
+    localStorage.setItem('teclea-speech-rate', String(nextRate))
+    scheduleSync()
+    speak('Hola, ¿cómo estás?', nextRate)
+  }
+
   function handleCharacters(rawValue: string) {
     if (status !== 'idle') return
 
@@ -773,7 +824,7 @@ function App() {
       }
       resetTimerRef.current = window.setTimeout(() => {
         if (flowTokenRef.current !== completionToken) return
-        const started = speak(word.spanish, advance)
+        const started = speak(word.spanish, speechRate, advance)
         resetTimerRef.current = window.setTimeout(advance, started ? 2600 : minimumFeedbackMs)
       }, 130)
     } else if (newlyCorrect) {
@@ -801,25 +852,25 @@ function App() {
       <div className="app-shell">
         <header className="topbar">
           <div className="brand-mark">T</div>
-          <div className="brand-copy"><strong>Teclea Español</strong><span>每天敲进一点西语</span></div>
-          <button className="icon-button" aria-label="设置" onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
+          <div className="brand-copy"><strong>Teclea Español</strong><span>{tr('每天敲进一点西语', 'Type a little Spanish every day')}</span></div>
+          <button className="icon-button" aria-label={tr('设置', 'Settings')} onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
         </header>
 
         <main className="home-content">
           <div className="home-overview">
             <section className="hero-card">
               <div className="hero-glow" />
-              <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
-              <p className="eyebrow">BUENOS DÍAS · 早上好</p>
-              <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-              <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。</p>
+              <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? tr(`连续学习 ${streak} 天`, `${streak}-day learning streak`) : tr('从今天开始连续学习', 'Start your learning streak today')}</div>
+              <p className="eyebrow">BUENOS DÍAS · {tr('早上好', 'GOOD MORNING')}</p>
+              <h1>{isEnglish ? <>Build Spanish<br />into <em>muscle</em> memory</> : <>让西语从<br /><em>手指</em>进入记忆</>}</h1>
+              <p className="hero-subtitle">{tr(`听、看、完整拼写。${totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。`, `Listen, read and type every letter. ${totalPracticeCards} cards cover frequent words, real phrases and verb forms.`)}</p>
               <button className="primary-button" onClick={() => begin(lesson)}>
-                继续今日练习 <ArrowRight size={19} />
+                {tr('继续今日练习', 'Continue today’s practice')} <ArrowRight size={19} />
               </button>
             </section>
 
             <section className="daily-row">
-              <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small> / 12 个词</small></strong></div>
+              <div><span className="section-kicker">{tr('今日进度', 'TODAY')}</span><strong>{todayDone}<small> / 12 {tr('个词', 'items')}</small></strong></div>
               <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{Math.min(Math.round(todayDone / 12 * 100), 100)}%</span></div>
             </section>
           </div>
@@ -827,64 +878,78 @@ function App() {
           <div className="home-actions">
             <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
-              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${activeMistakeCount} 个待复习` : '目前没有待复习错题'}</h3><p>{mistakeAttempts ? `累计错 ${mistakeAttempts} 次 · 已掌握 ${masteredMistakeCount} 个` : '输错的词和短句会自动出现在这里。'}</p></div>
-              <button disabled={!mistakeAttempts} aria-label="查看错题库" onClick={() => setMistakesOpen(true)}><ArrowRight size={19} /></button>
+              <div><span className="section-kicker">{tr('错题库', 'MISTAKES')}</span><h3>{mistakeLesson ? tr(`${activeMistakeCount} 个待复习`, `${activeMistakeCount} to review`) : tr('目前没有待复习错题', 'No mistakes to review')}</h3><p>{mistakeAttempts ? tr(`累计错 ${mistakeAttempts} 次 · 已掌握 ${masteredMistakeCount} 个`, `${mistakeAttempts} total errors · ${masteredMistakeCount} mastered`) : tr('输错的词和短句会自动出现在这里。', 'Words and phrases you mistype will appear here.')}</p></div>
+              <button disabled={!mistakeAttempts} aria-label={tr('查看错题库', 'Open mistake review')} onClick={() => setMistakesOpen(true)}><ArrowRight size={19} /></button>
             </section>
             <section className="mode-card">
               <div className="mode-icon"><Headphones size={23} /></div>
-              <div><span className="section-kicker">听写挑战</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
-              <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
+              <div><span className="section-kicker">{tr('听写挑战', 'LISTENING CHALLENGE')}</span><h3>{tr('只听发音，写出西语', 'Hear it, then type the Spanish')}</h3><p>{tr('把提示藏起来，测试真实记忆。', 'Hide the prompt and test real recall.')}</p></div>
+              <button aria-label={tr('开始听写', 'Start listening challenge')} onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
             </section>
           </div>
 
           <section className="course-section">
-            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
-            <div className="course-filters" aria-label="词库筛选">
-              <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
-              <div><span>难度</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
-              <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
+            <div className="section-heading"><div><span className="section-kicker">{tr(`开放词库 · ${totalPracticeCards} 张卡`, `OPEN LIBRARY · ${totalPracticeCards} CARDS`)}</span><h2>{tr('按类型、等级与场景选择', 'Choose by type, level and situation')}</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>{tr('重置', 'Reset')}</button></div>
+            <div className="course-filters" aria-label={tr('词库筛选', 'Library filters')}>
+              <div><span>{tr('类型', 'Type')}</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{isEnglish ? filterEnglish.kinds[kind] : kind}</button>)}</div>
+              <div><span>{tr('难度', 'Level')}</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{isEnglish && level === '全部' ? 'All' : level}</button>)}</div>
+              <div><span>{tr('场景', 'Situation')}</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{isEnglish ? filterEnglish.scenes[scene] : scene}</button>)}</div>
             </div>
             <div className="lesson-list">
               {filteredLessons.map((item) => {
                 const isDone = completed.includes(item.id)
+                const itemCopy = localizedLesson(item)
                 return (
                   <button className="lesson-card" key={item.id} onClick={() => begin(item)}>
                     <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
-                    <span className="lesson-copy"><small>{item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
-                    <span className="lesson-meta"><b>{item.words.length}</b><small>词</small></span>
+                    <span className="lesson-copy"><small>{itemCopy.eyebrow}</small><strong>{itemCopy.title}</strong><span>{itemCopy.description}</span></span>
+                    <span className="lesson-meta"><b>{item.words.length}</b><small>{tr('词', 'items')}</small></span>
                   </button>
                 )
               })}
             </div>
             <div className="word-sources">
-              <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
-              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形与变位：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
-              <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">生活短句：项目原创；驾考表达参考 DGT · 制作说明</a>
+              <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">{tr('词频排序：', 'Frequency order: ')}{FREQUENCY_SOURCE.name} · {isEnglish ? FREQUENCY_SOURCE.license.replace('（数据）', ' (data)') : FREQUENCY_SOURCE.license}</a>
+              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">{tr('词形与变位：', 'Word forms and conjugations: ')}{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+              <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">{tr('生活短句：项目原创；驾考表达参考 DGT · 制作说明', 'Life phrases: original project content; driving-test language references DGT · Notes')}</a>
             </div>
           </section>
 
           <footer className="project-legal">
-            <span>GPL-3.0 开源项目</span>
-            <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">基于 Qwerty Learner 修改</a>
+            <span>{tr('GPL-3.0 开源项目', 'GPL-3.0 open-source project')}</span>
+            <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">{tr('基于 Qwerty Learner 修改', 'Modified from Qwerty Learner')}</a>
           </footer>
         </main>
 
         {settingsOpen && (
           <div className="modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
-            <section className="settings-sheet" role="dialog" aria-modal="true" aria-label="训练设置" onClick={(event) => event.stopPropagation()}>
+            <section className="settings-sheet" role="dialog" aria-modal="true" aria-label={tr('训练设置', 'Practice settings')} onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
-              <div className="sheet-heading"><div><span className="section-kicker">训练偏好</span><h2>怎么判定“打对”</h2></div><button className="icon-button" onClick={() => setSettingsOpen(false)} aria-label="关闭设置"><X size={20} /></button></div>
+              <div className="sheet-heading"><div><span className="section-kicker">{tr('训练偏好', 'PREFERENCES')}</span><h2>{tr('学习与发音设置', 'Learning and audio')}</h2></div><button className="icon-button" onClick={() => setSettingsOpen(false)} aria-label={tr('关闭设置', 'Close settings')}><X size={20} /></button></div>
+              <div className="setting-choice">
+                <span><strong>{tr('显示语言', 'Display language')}</strong><small>{tr('用中文或英文理解西语', 'Learn Spanish through Chinese or English')}</small></span>
+                <div className="setting-segments" role="group" aria-label={tr('显示语言', 'Display language')}>
+                  <button className={displayLanguage === 'zh' ? 'active' : ''} onClick={() => chooseDisplayLanguage('zh')}>中文</button>
+                  <button className={displayLanguage === 'en' ? 'active' : ''} onClick={() => chooseDisplayLanguage('en')}>English</button>
+                </div>
+              </div>
+              <div className="setting-choice">
+                <span><strong>{tr('西语语速', 'Spanish speech speed')}</strong><small>{tr('选择后会播放一条试听', 'A sample plays when you choose')}</small></span>
+                <div className="setting-segments rate" role="group" aria-label={tr('西语语速', 'Spanish speech speed')}>
+                  {([0.7, 0.86, 1] as SpeechRate[]).map((rate) => <button key={rate} className={speechRate === rate ? 'active' : ''} onClick={() => chooseSpeechRate(rate)}>{rate === 0.7 ? tr('慢速', 'Slow') : rate === 0.86 ? tr('标准', 'Standard') : tr('原速', 'Natural')}</button>)}
+                </div>
+              </div>
               <button className="setting-row" onClick={toggleAccentMode}>
-                <span><strong>重音判定</strong><small>ñ、ü 始终作为独立字母</small></span>
-                <b>{accentMode === 'strict' ? '严格拼写' : '忽略 á é í ó ú'}</b>
+                <span><strong>{tr('重音判定', 'Accent checking')}</strong><small>{tr('ñ、ü 始终作为独立字母', 'ñ and ü always remain distinct letters')}</small></span>
+                <b>{accentMode === 'strict' ? tr('严格拼写', 'Strict') : tr('忽略 á é í ó ú', 'Ignore á é í ó ú')}</b>
               </button>
               <button className="setting-row" onClick={toggleSound}>
-                <span><strong>打字音效</strong><small>正确按键、错误和完成提示</small></span>
-                <b>{soundEnabled ? '已开启' : '已关闭'}</b>
+                <span><strong>{tr('打字音效', 'Typing sounds')}</strong><small>{tr('正确按键、错误和完成提示', 'Feedback for keys, errors and completion')}</small></span>
+                <b>{soundEnabled ? tr('已开启', 'On') : tr('已关闭', 'Off')}</b>
               </button>
-              <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
+              <p className="settings-note">{isEnglish ? <>When accents are ignored, <b>camion</b> is accepted for <b>camión</b>; but <b>n</b> cannot replace <b>ñ</b>.</> : <>忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</>}</p>
               <div className="sync-box">
-                <div className="sync-heading"><span><Cloud size={18} /><strong>跨设备同步</strong></span><small>{syncCode ? '无需账号' : '手机与电脑共享进度'}</small></div>
+                <div className="sync-heading"><span><Cloud size={18} /><strong>{tr('跨设备同步', 'Cross-device sync')}</strong></span><small>{syncCode ? tr('无需账号', 'No account') : tr('手机与电脑共享进度', 'Share progress across devices')}</small></div>
                 {syncCode ? (
                   <>
                     <button className="sync-code-toggle" onClick={() => setShowSyncCode((value) => !value)}>
@@ -893,34 +958,34 @@ function App() {
                     </button>
                     {showSyncCode && (
                       <div className="sync-secret">
-                        {syncQr && <img src={syncQr} alt="跨设备同步二维码" />}
-                        <p>在另一台设备扫码，或输入上面的同步码。拿到同步码的人可以读取并修改这份学习进度，请不要公开分享。</p>
+                        {syncQr && <img src={syncQr} alt={tr('跨设备同步二维码', 'Cross-device sync QR code')} />}
+                        <p>{tr('在另一台设备扫码，或输入上面的同步码。拿到同步码的人可以读取并修改这份学习进度，请不要公开分享。', 'Scan on another device or enter the code above. Anyone with this code can read and change this learning record, so keep it private.')}</p>
                       </div>
                     )}
                     <div className="sync-actions">
-                      <button onClick={copySyncCode}><Copy size={15} />复制同步码</button>
-                      <button onClick={() => void syncNow()} disabled={syncStatus === 'syncing'}><RotateCcw size={15} />立即同步</button>
-                      <button className="danger" onClick={stopSync}>停止</button>
+                      <button onClick={copySyncCode}><Copy size={15} />{tr('复制同步码', 'Copy code')}</button>
+                      <button onClick={() => void syncNow()} disabled={syncStatus === 'syncing'}><RotateCcw size={15} />{tr('立即同步', 'Sync now')}</button>
+                      <button className="danger" onClick={stopSync}>{tr('停止', 'Stop')}</button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <button className="sync-create" onClick={createSyncSpace}>创建我的同步空间</button>
+                    <button className="sync-create" onClick={createSyncSpace}>{tr('创建我的同步空间', 'Create my sync space')}</button>
                     <div className="sync-connect">
-                      <input value={syncInput} onChange={(event) => setSyncInput(formatSyncCode(event.target.value))} placeholder="输入另一台设备的同步码" inputMode="text" autoCapitalize="characters" />
-                      <button onClick={connectSyncSpace}>连接</button>
+                      <input value={syncInput} onChange={(event) => setSyncInput(formatSyncCode(event.target.value))} placeholder={tr('输入另一台设备的同步码', 'Enter a sync code')} inputMode="text" autoCapitalize="characters" />
+                      <button onClick={connectSyncSpace}>{tr('连接', 'Connect')}</button>
                     </div>
                   </>
                 )}
                 {syncMessage && <p className={`sync-message ${syncStatus}`}>{syncMessage}{syncLastAt && syncStatus === 'synced' ? ` · ${new Date(syncLastAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>}
               </div>
               <div className="legal-box">
-                <strong>开源与修改声明</strong>
-                <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>
+                <strong>{tr('开源与修改声明', 'Open-source notice')}</strong>
+                <p>{tr('本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。', 'This mobile-first Spanish adaptation uses the Qwerty Learner training mechanism. Modified since 14 August 2026 and released under GPL-3.0, without warranty.')}</p>
                 <div className="legal-links">
-                  <a href="https://github.com/YoYo1248/teclea-espanol" target="_blank" rel="noreferrer">本项目源代码</a>
-                  <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">上游项目</a>
-                  <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
+                  <a href="https://github.com/YoYo1248/teclea-espanol" target="_blank" rel="noreferrer">{tr('本项目源代码', 'Project source')}</a>
+                  <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">{tr('上游项目', 'Upstream project')}</a>
+                  <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">{tr('词库许可', 'Word-list licences')}</a>
                 </div>
               </div>
             </section>
@@ -929,23 +994,23 @@ function App() {
 
         {mistakesOpen && (
           <div className="modal-backdrop" role="presentation" onClick={() => setMistakesOpen(false)}>
-            <section className="mistake-sheet" role="dialog" aria-modal="true" aria-label="错题库" onClick={(event) => event.stopPropagation()}>
+            <section className="mistake-sheet" role="dialog" aria-modal="true" aria-label={tr('错题库', 'Mistake review')} onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
-              <div className="sheet-heading"><div><span className="section-kicker">累计错误记录</span><h2>错题库</h2></div><button className="icon-button" onClick={() => setMistakesOpen(false)} aria-label="关闭错题库"><X size={20} /></button></div>
+              <div className="sheet-heading"><div><span className="section-kicker">{tr('累计错误记录', 'CUMULATIVE ERRORS')}</span><h2>{tr('错题库', 'Mistake review')}</h2></div><button className="icon-button" onClick={() => setMistakesOpen(false)} aria-label={tr('关闭错题库', 'Close mistake review')}><X size={20} /></button></div>
               <div className="mistake-strategy">
-                <strong>怎么安排复习</strong>
-                <p>每次错误都会累计。错3次以上会在一轮中出现2次，错6次以上出现3次；按错误次数优先，再看最近出错时间。连续两轮复习零错误后标记为已掌握，再次出错会自动回来。</p>
+                <strong>{tr('怎么安排复习', 'How review is scheduled')}</strong>
+                <p>{tr('每次错误都会累计。错3次以上会在一轮中出现2次，错6次以上出现3次；按错误次数优先，再看最近出错时间。连续两轮复习零错误后标记为已掌握，再次出错会自动回来。', 'Every error counts. Items with 3+ errors appear twice per round; 6+ errors appear three times. More frequent and recent errors come first. Two clean rounds mark an item mastered, and a later error brings it back.')}</p>
               </div>
-              <div className="mistake-bank-stats"><span><b>{activeMistakeCount}</b>待复习</span><span><b>{mistakeAttempts}</b>累计错误</span><span><b>{masteredMistakeCount}</b>已掌握</span></div>
+              <div className="mistake-bank-stats"><span><b>{activeMistakeCount}</b>{tr('待复习', 'to review')}</span><span><b>{mistakeAttempts}</b>{tr('累计错误', 'total errors')}</span><span><b>{masteredMistakeCount}</b>{tr('已掌握', 'mastered')}</span></div>
               <div className="mistake-bank-list">
                 {activeMistakeEntries.length ? activeMistakeEntries.slice(0, 30).map(([key, record]) => (
                   <div className="mistake-bank-row" key={key}>
-                    <div><strong>{record.spanish}</strong><span>{record.chinese}</span></div>
-                    <small>错 {record.count} 次<br />掌握 {record.cleanRounds ?? 0}/2</small>
+                    <div><strong>{record.spanish}</strong><span>{wordMeaning(record)}</span></div>
+                    <small>{tr(`错 ${record.count} 次`, `${record.count} errors`)}<br />{tr('掌握', 'mastery')} {record.cleanRounds ?? 0}/2</small>
                   </div>
-                )) : <p className="mistake-empty">当前错题都已掌握。以后再次输错时会自动回到这里。</p>}
+                )) : <p className="mistake-empty">{tr('当前错题都已掌握。以后再次输错时会自动回到这里。', 'All current mistakes are mastered. Any item you mistype later will return here.')}</p>}
               </div>
-              <button className="primary-button mistake-start" disabled={!mistakeLesson} onClick={() => { setMistakesOpen(false); if (mistakeLesson) begin(mistakeLesson) }}>开始错题复习 <ArrowRight size={18} /></button>
+              <button className="primary-button mistake-start" disabled={!mistakeLesson} onClick={() => { setMistakesOpen(false); if (mistakeLesson) begin(mistakeLesson) }}>{tr('开始错题复习', 'Start mistake review')} <ArrowRight size={18} /></button>
             </section>
           </div>
         )}
@@ -958,32 +1023,32 @@ function App() {
       <div className="app-shell completion-screen">
         <main>
           <div className="completion-burst"><span>¡Muy bien!</span><Check size={44} strokeWidth={2.5} /></div>
-          <p className="eyebrow">本组完成</p>
-          <h1>{lesson.title}</h1>
-          <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
+          <p className="eyebrow">{tr('本组完成', 'SET COMPLETE')}</p>
+          <h1>{localizedLesson(lesson).title}</h1>
+          <p>{tr(`你完成了 ${lesson.words.length} 个表达，出现 ${mistakes} 次重试。`, `You completed ${lesson.words.length} expressions with ${mistakes} retries.`)}</p>
           {lesson.id === 'mistake-review' && (
             <p className={`review-result ${reviewOutcome && !reviewOutcome.hadErrors ? 'clean' : ''}`}>
               {reviewOutcome?.hadErrors
-                ? '本轮有表达再次出错，相关词的连续正确进度已重置。'
+                ? tr('本轮有表达再次出错，相关词的连续正确进度已重置。', 'Some items were missed again, so their clean-round progress was reset.')
                 : reviewOutcome?.mastered
-                  ? `${reviewOutcome.mastered} 个表达已连续两轮零错误，标记为已掌握。`
-                  : '本轮全部正确；再保持一轮零错误即可掌握。'}
+                  ? tr(`${reviewOutcome.mastered} 个表达已连续两轮零错误，标记为已掌握。`, `${reviewOutcome.mastered} items completed two clean rounds and are now mastered.`)
+                  : tr('本轮全部正确；再保持一轮零错误即可掌握。', 'A clean round. Complete one more clean round to master these items.')}
             </p>
           )}
           <div className="result-grid">
-            <div><strong>{completedWords}</strong><span>完成词数</span></div>
-            <div><strong>{accuracy}%</strong><span>按键正确率</span></div>
+            <div><strong>{completedWords}</strong><span>{tr('完成词数', 'Items completed')}</span></div>
+            <div><strong>{accuracy}%</strong><span>{tr('按键正确率', 'Key accuracy')}</span></div>
             <div><strong>{wpm}</strong><span>WPM</span></div>
-            <div><strong>{formatTime(elapsedSeconds)}</strong><span>总用时</span></div>
+            <div><strong>{formatTime(elapsedSeconds)}</strong><span>{tr('总用时', 'Total time')}</span></div>
           </div>
           {Object.keys(mistakeWords).length > 0 && (
             <div className="mistake-summary">
-              <span>需要再练</span>
-              {Object.entries(mistakeWords).map(([name, count]) => <b key={name}>{name}<small>{count} 次</small></b>)}
+              <span>{tr('需要再练', 'Practise again')}</span>
+              {Object.entries(mistakeWords).map(([name, count]) => <b key={name}>{name}<small>{count} {tr('次', 'times')}</small></b>)}
             </div>
           )}
-          <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
-          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> 用听写再来一遍</button>}
+          <button className="primary-button" onClick={() => setScreen('home')}>{tr('回到今天', 'Back to today')} <Home size={19} /></button>
+          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> {tr('用听写再来一遍', 'Repeat as a listening challenge')}</button>}
         </main>
       </div>
     )
@@ -997,42 +1062,42 @@ function App() {
   return (
     <div className={`app-shell practice-screen ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="practice-header">
-        <button className="icon-button" onClick={() => setScreen('home')} aria-label="退出练习"><ArrowLeft size={22} /></button>
+        <button className="icon-button" onClick={() => setScreen('home')} aria-label={tr('退出练习', 'Exit practice')}><ArrowLeft size={22} /></button>
         <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
         <span className="counter">{index + 1}/{lesson.words.length}</span>
       </header>
 
       <main className="practice-main">
-        <div className="mode-switch" role="group" aria-label="练习模式">
-          <button className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
-          <button aria-label="看中文写西语" className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
-          <button className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
+        <div className="mode-switch" role="group" aria-label={tr('练习模式', 'Practice mode')}>
+          <button className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />{tr('跟打', 'Copy')}</button>
+          <button aria-label={tr('看中文写西语', 'Recall Spanish from the meaning')} className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />{tr('看中文写', 'Recall')}</button>
+          <button className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />{tr('听写', 'Listen')}</button>
         </div>
 
-        <div className="live-stats" aria-label="实时训练数据">
-          <span><Timer size={14} /><b>{formatTime(elapsedSeconds)}</b><small>用时</small></span>
+        <div className="live-stats" aria-label={tr('实时训练数据', 'Live practice statistics')}>
+          <span><Timer size={14} /><b>{formatTime(elapsedSeconds)}</b><small>{tr('用时', 'Time')}</small></span>
           <span><Gauge size={14} /><b>{wpm}</b><small>WPM</small></span>
-          <span><Check size={14} /><b>{accuracy}%</b><small>正确率</small></span>
-          <span><X size={14} /><b>{mistakes}</b><small>错误</small></span>
+          <span><Check size={14} /><b>{accuracy}%</b><small>{tr('正确率', 'Accuracy')}</small></span>
+          <span><X size={14} /><b>{mistakes}</b><small>{tr('错误', 'Errors')}</small></span>
         </div>
 
         <div className="spelling-rule">
-          <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
-          <div className="rule-options" role="group" aria-label="重音判定规则">
-            <button aria-label="严格拼写" className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格</button>
-            <button aria-label="忽略重音符号" className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
+          <div className="rule-heading"><span>{tr('重音', 'Accents')}</span><small>{tr('判定规则', 'Rule')}</small></div>
+          <div className="rule-options" role="group" aria-label={tr('重音判定规则', 'Accent checking rule')}>
+            <button aria-label={tr('严格拼写', 'Strict spelling')} className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>{tr('严格', 'Strict')}</button>
+            <button aria-label={tr('忽略重音符号', 'Ignore accent marks')} className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>{tr('忽略重音', 'Ignore')}</button>
           </div>
-          <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'}>
+          <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? tr('关闭打字音效', 'Turn typing sounds off') : tr('开启打字音效', 'Turn typing sounds on')}>
             {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
         </div>
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
-          <span className="word-label">{mode === 'copy' ? '逐字母输入' : mode === 'recall' ? '根据中文拼写' : '仅凭发音拼写'}</span>
-          {mode === 'recall' && <p className="recall-prompt">{word.chinese}</p>}
+          <span className="word-label">{mode === 'copy' ? tr('逐字母输入', 'TYPE EVERY LETTER') : mode === 'recall' ? tr('根据中文拼写', 'RECALL FROM THE MEANING') : tr('仅凭发音拼写', 'SPELL FROM AUDIO ONLY')}</span>
+          {mode === 'recall' && <p className="recall-prompt">{wordMeaning(word)}</p>}
           <div
             className="letter-word"
-            aria-label={hideSpanish ? `${targetLetters.length} 个字符` : word.spanish}
+            aria-label={hideSpanish ? tr(`${targetLetters.length} 个字符`, `${targetLetters.length} characters`) : word.spanish}
             onPointerDown={startTouchReveal}
             onPointerUp={stopTouchReveal}
             onPointerCancel={stopTouchReveal}
@@ -1100,23 +1165,23 @@ function App() {
             spellCheck={false}
             inputMode="text"
             autoFocus
-            aria-label="逐字母输入"
+            aria-label={tr('逐字母输入', 'Type every letter')}
           />
-          <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish); inputRef.current?.focus() }} aria-label="播放西语发音"><Volume2 size={20} /> <span>ES</span></button>
+          <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish, speechRate); inputRef.current?.focus() }} aria-label={tr('播放西语发音', 'Play Spanish pronunciation')}><Volume2 size={20} /> <span>ES</span></button>
           {(mode === 'copy' || status === 'correct') && (
             <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
-              {status === 'correct' && mode !== 'copy' && <span>意思</span>}
-              {word.chinese}
+              {status === 'correct' && mode !== 'copy' && <span>{tr('意思', 'MEANING')}</span>}
+              {wordMeaning(word)}
             </p>
           )}
 
-          <div className="accent-strip" aria-label="西语特殊字符">
+          <div className="accent-strip" aria-label={tr('西语特殊字符', 'Special Spanish characters')}>
             {ACCENTS.map((character) => <button type="button" key={character} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAccent(character)}>{character}</button>)}
           </div>
           <div className="typing-feedback" aria-live="polite">
-            {status === 'wrong' && <><X size={16} /><strong>这个字母错了，整词重来</strong></>}
-            {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · 已显示词义</strong></>}
-            {status === 'idle' && <span>{hideSpanish ? isTouchDevice ? '长按字符槽查看拼写' : '按住 Tab 查看拼写' : '越快、越准，成绩越高'}</span>}
+            {status === 'wrong' && <><X size={16} /><strong>{tr('这个字母错了，整词重来', 'Wrong letter — restart the whole item')}</strong></>}
+            {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · {tr('已显示词义', 'meaning shown')}</strong></>}
+            {status === 'idle' && <span>{hideSpanish ? isTouchDevice ? tr('长按字符槽查看拼写', 'Press and hold the letter slots to peek') : tr('按住 Tab 查看拼写', 'Hold Tab to peek at the spelling') : tr('越快、越准，成绩越高', 'Faster and more accurate earns a better score')}</span>}
           </div>
         </section>
       </main>
@@ -1124,7 +1189,7 @@ function App() {
       <footer className="practice-footer">
         <button className="keyboard-prompt" onClick={() => inputRef.current?.focus()}>
           <Keyboard size={18} />
-          <span>{status === 'wrong' ? '正在重置…' : status === 'correct' ? '正确，查看词义后进入下一个…' : inputFocused ? '键盘已就绪，直接输入' : '键盘未出现？点一下继续'}</span>
+          <span>{status === 'wrong' ? tr('正在重置…', 'Resetting…') : status === 'correct' ? tr('正确，查看词义后进入下一个…', 'Correct — review the meaning, then continue…') : inputFocused ? tr('键盘已就绪，直接输入', 'Keyboard ready — start typing') : tr('键盘未出现？点一下继续', 'No keyboard? Tap here to continue')}</span>
         </button>
       </footer>
     </div>

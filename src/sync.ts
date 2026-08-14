@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import type { DisplayLanguage, SpeechRate } from './english'
 
 export type SyncSnapshot = {
   version: 1
@@ -12,6 +13,7 @@ export type SyncSnapshot = {
     lessonId: string
     spanish: string
     chinese: string
+    english?: string
     count: number
     lastWrongAt: number
     lastMode: 'copy' | 'recall' | 'listen'
@@ -22,6 +24,8 @@ export type SyncSnapshot = {
   completed: string[]
   accentMode: 'strict' | 'lenient'
   soundEnabled: boolean
+  displayLanguage?: DisplayLanguage
+  speechRate?: SpeechRate
 }
 
 export const SYNC_CODE_KEY = 'teclea-sync-code'

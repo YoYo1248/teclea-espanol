@@ -14,7 +14,7 @@
 
 - 高频教学顺序参考 wordfreq 的西语频率数据；
 - 西语词形、重音、冠词与变位以 Kaikki 的 English Wiktionary 结构化西语数据核对；
-- 中文释义和例句由本项目自行编写，不复制商业词典或教材；
+- 中文与英文学习释义和例句由本项目自行编写或编辑，不复制商业词典或教材；
 - A1/A2 和场景标签是本项目的教学编辑判断，不是 Kaikki 自带等级；
 - 尚未经过西语教师或专业语言编辑逐条审核，因此仍是候选学习词库。
 
@@ -76,6 +76,7 @@ Tatoeba 自身不保证所有句子或翻译经过专业审核，因此导入后
 {
   spanish: string
   chinese: string
+  english: string
   article?: string
   example?: string
   exampleChinese?: string

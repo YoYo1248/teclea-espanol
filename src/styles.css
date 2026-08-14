@@ -311,6 +311,14 @@ button { -webkit-tap-highlight-color: transparent; }
 .setting-row strong { font-size: 15px; }
 .setting-row small { color: var(--muted); font-size: 11px; }
 .setting-row b { max-width: 134px; padding: 7px 10px; border-radius: 10px; background: #ece8df; color: #625f58; font-size: 12px; text-align: center; }
+.setting-choice { width: 100%; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); padding: 13px 14px; margin-top: 8px; display: grid; gap: 11px; }
+.setting-choice > span { display: flex; flex-direction: column; gap: 4px; }
+.setting-choice strong { font-size: 15px; }
+.setting-choice small { color: var(--muted); font-size: 11px; }
+.setting-segments { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 4px; border-radius: 12px; background: #ece8df; }
+.setting-segments.rate { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.setting-segments button { min-height: 34px; border: 0; border-radius: 9px; background: transparent; color: #6d6961; font-size: 12px; font-weight: 750; }
+.setting-segments button.active { background: white; color: var(--coral); box-shadow: 0 2px 8px rgba(48,45,40,.09); }
 .settings-note { margin: 15px 4px 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
 .settings-note b { color: var(--ink); }
 .sync-box { margin-top: 14px; padding: 14px; border: 1px solid #d9d6ce; border-radius: 17px; background: rgba(255,255,255,.55); }

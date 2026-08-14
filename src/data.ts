@@ -1,5 +1,6 @@
 import conjugations from './generated/conjugations.json'
 import { commonDecks } from './commonWords'
+import { conjugationMeaning, englishMeaning } from './english'
 
 export type LessonLevel = 'A1' | 'A2'
 export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '驾考' | '语法'
@@ -8,6 +9,7 @@ export type LessonKind = '对话' | '短句' | '高频' | '变位'
 export type LessonWord = {
   spanish: string
   chinese: string
+  english: string
   reviewKey?: string
   article?: string
   example?: string
@@ -68,15 +70,15 @@ function word(
   exampleChinese: string,
   options: { article?: string; note?: string } = {},
 ): LessonWord {
-  return { spanish, chinese, example, exampleChinese, ...options, source: { ...WORD_SOURCE } }
+  return { spanish, chinese, english: englishMeaning(spanish), example, exampleChinese, ...options, source: { ...WORD_SOURCE } }
 }
 
 function phrase(spanish: string, chinese: string, note?: string): LessonWord {
-  return { spanish, chinese, note, source: { ...PHRASE_SOURCE } }
+  return { spanish, chinese, english: englishMeaning(spanish), note, source: { ...PHRASE_SOURCE } }
 }
 
 function drivingPhrase(spanish: string, chinese: string, note?: string): LessonWord {
-  return { spanish, chinese, note, source: { ...DRIVING_SOURCE } }
+  return { spanish, chinese, english: englishMeaning(spanish), note, source: { ...DRIVING_SOURCE } }
 }
 
 const dialogueLessons: Lesson[] = [
@@ -282,7 +284,7 @@ const commonLessons: Lesson[] = commonDecks.map((deck, index) => ({
   kind: '高频',
   eyebrow: `${deck.level} · 高频 · ${deck.scene}`,
   color: ['#d46d4f', '#437e6d', '#516fa6', '#936a91'][index % 4],
-  words: deck.words.map(([spanish, chinese]) => ({ spanish, chinese, source: { ...FREQUENCY_SOURCE } })),
+  words: deck.words.map(([spanish, chinese]) => ({ spanish, chinese, english: englishMeaning(spanish), source: { ...FREQUENCY_SOURCE } })),
 }))
 
 const tenseNames: Record<string, string> = {
@@ -314,6 +316,7 @@ const conjugationLessons: Lesson[] = Object.entries(conjugationGroups).map(([key
     words: batch.map((item) => ({
       spanish: item.spanish,
       chinese: item.chinese,
+      english: conjugationMeaning(item.lemma, item.tense, item.person),
       source: { ...WORD_SOURCE },
     })),
   }
