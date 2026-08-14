@@ -22,9 +22,46 @@ import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, tot
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
 type AccentMode = 'strict' | 'lenient'
+type PracticeState = {
+  lastMode: Mode
+  lastLessonId: string
+  dailyWords: Record<string, number>
+}
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
+const PRACTICE_STATE_KEY = 'teclea-practice-state'
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function readPracticeState(): PracticeState {
+  const fallback: PracticeState = { lastMode: 'copy', lastLessonId: lessons[0].id, dailyWords: {} }
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRACTICE_STATE_KEY) || '{}') as Partial<PracticeState>
+    const lastMode = stored.lastMode === 'recall' || stored.lastMode === 'listen' ? stored.lastMode : 'copy'
+    const lastLessonId = lessons.some((item) => item.id === stored.lastLessonId) ? stored.lastLessonId! : fallback.lastLessonId
+    const dailyWords = stored.dailyWords && typeof stored.dailyWords === 'object' ? stored.dailyWords : {}
+    return { lastMode, lastLessonId, dailyWords }
+  } catch {
+    return fallback
+  }
+}
+
+function learningStreak(dailyWords: Record<string, number>) {
+  const cursor = new Date()
+  if (!(dailyWords[localDateKey(cursor)] > 0)) cursor.setDate(cursor.getDate() - 1)
+  let count = 0
+  while (dailyWords[localDateKey(cursor)] > 0) {
+    count += 1
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return count
+}
 
 function normalize(value: string) {
   return value.toLocaleLowerCase('es-ES').normalize('NFC')
@@ -68,9 +105,13 @@ function speak(text: string, onDone?: () => void) {
 }
 
 function App() {
+  const initialPracticeStateRef = useRef<PracticeState | null>(null)
+  if (initialPracticeStateRef.current === null) initialPracticeStateRef.current = readPracticeState()
+  const initialPracticeState = initialPracticeStateRef.current
   const [screen, setScreen] = useState<Screen>('home')
-  const [lesson, setLesson] = useState<Lesson>(lessons[0])
-  const [mode, setMode] = useState<Mode>('copy')
+  const [practiceState, setPracticeState] = useState<PracticeState>(initialPracticeState)
+  const [lesson, setLesson] = useState<Lesson>(() => lessons.find((item) => item.id === initialPracticeState.lastLessonId) ?? lessons[0])
+  const [mode, setMode] = useState<Mode>(initialPracticeState.lastMode)
   const [index, setIndex] = useState(0)
   const [typed, setTyped] = useState('')
   const [inputDraft, setInputDraft] = useState('')
@@ -87,6 +128,7 @@ function App() {
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
   const [inputEpoch, setInputEpoch] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
@@ -109,6 +151,7 @@ function App() {
   const keyAudioRef = useRef<HTMLAudioElement | null>(null)
   const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
   const completeAudioRef = useRef<HTMLAudioElement | null>(null)
+  const fullViewportHeightRef = useRef(window.visualViewport?.height ?? window.innerHeight)
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
@@ -116,6 +159,30 @@ function App() {
   useEffect(() => {
     if (screen === 'practice') setTimeout(() => inputRef.current?.focus(), 120)
   }, [screen, index])
+
+  useEffect(() => {
+    if (screen !== 'practice') {
+      setKeyboardOpen(false)
+      return
+    }
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const updateKeyboardState = () => {
+      const visibleHeight = viewport.height
+      if (!inputFocused) fullViewportHeightRef.current = Math.max(fullViewportHeightRef.current, visibleHeight)
+      const layoutGap = Math.max(0, window.innerHeight - visibleHeight - viewport.offsetTop)
+      const heightLoss = Math.max(layoutGap, fullViewportHeightRef.current - visibleHeight)
+      setKeyboardOpen(inputFocused && heightLoss > 120)
+      document.documentElement.style.setProperty('--visible-viewport-height', `${visibleHeight}px`)
+    }
+    updateKeyboardState()
+    viewport.addEventListener('resize', updateKeyboardState)
+    viewport.addEventListener('scroll', updateKeyboardState)
+    return () => {
+      viewport.removeEventListener('resize', updateKeyboardState)
+      viewport.removeEventListener('scroll', updateKeyboardState)
+    }
+  }, [screen, inputFocused])
 
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
@@ -161,10 +228,8 @@ function App() {
     if (screen === 'practice' && mode === 'listen') speak(word.spanish)
   }, [screen, mode, index, word.spanish])
 
-  const todayDone = useMemo(
-    () => lessons.filter((item) => completed.includes(item.id)).reduce((total, item) => total + item.words.length, 0),
-    [completed],
-  )
+  const todayDone = practiceState.dailyWords[localDateKey()] ?? 0
+  const streak = useMemo(() => learningStreak(practiceState.dailyWords), [practiceState.dailyWords])
   const filteredLessons = useMemo(
     () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
     [levelFilter, kindFilter, sceneFilter],
@@ -185,6 +250,22 @@ function App() {
     if (!audio) return
     audio.currentTime = 0
     void audio.play().catch(() => undefined)
+  }
+
+  function savePracticeState(update: (current: PracticeState) => PracticeState) {
+    setPracticeState((current) => {
+      const nextState = update(current)
+      localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(nextState))
+      return nextState
+    })
+  }
+
+  function recordCompletedWord() {
+    const today = localDateKey()
+    savePracticeState((current) => ({
+      ...current,
+      dailyWords: { ...current.dailyWords, [today]: (current.dailyWords[today] ?? 0) + 1 },
+    }))
   }
 
   function chooseLevelFilter(nextLevel: '全部' | LessonLevel) {
@@ -211,13 +292,14 @@ function App() {
     }
   }
 
-  function begin(nextLesson: Lesson, nextMode: Mode = 'copy') {
+  function begin(nextLesson: Lesson, nextMode: Mode = mode) {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     isComposingRef.current = false
     compositionCommittedValueRef.current = null
     setLesson(nextLesson)
     setMode(nextMode)
+    savePracticeState((current) => ({ ...current, lastLessonId: nextLesson.id, lastMode: nextMode }))
     setIndex(0)
     setTyped('')
     setInputDraft('')
@@ -239,6 +321,7 @@ function App() {
   function next() {
     flowTokenRef.current += 1
     setCompletedWords((value) => value + 1)
+    recordCompletedWord()
     if (index === lesson.words.length - 1) {
       const seconds = sessionStartedAtRef.current ? Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000)) : 0
       setFinalElapsedSeconds(seconds)
@@ -263,6 +346,7 @@ function App() {
     compositionCommittedValueRef.current = null
     inputRef.current?.blur()
     setMode(nextMode)
+    savePracticeState((current) => ({ ...current, lastMode: nextMode }))
     setTyped('')
     setInputDraft('')
     setStatus('idle')
@@ -400,11 +484,11 @@ function App() {
           <div className="home-overview">
             <section className="hero-card">
               <div className="hero-glow" />
-              <div className="streak-pill"><Flame size={15} fill="currentColor" /> 连续学习 3 天</div>
+              <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
               <p className="eyebrow">BUENOS DÍAS · 早上好</p>
               <h1>让西语从<br /><em>手指</em>进入记忆</h1>
               <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。</p>
-              <button className="primary-button" onClick={() => begin(lessons[0])}>
+              <button className="primary-button" onClick={() => begin(lesson)}>
                 继续今日练习 <ArrowRight size={19} />
               </button>
             </section>
@@ -517,7 +601,7 @@ function App() {
   const targetLetters = Array.from(getTypingTarget(word.spanish))
   const typedLength = Array.from(typed).length
   return (
-    <div className="app-shell practice-screen">
+    <div className={`app-shell practice-screen ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="practice-header">
         <button className="icon-button" onClick={() => setScreen('home')} aria-label="退出练习"><ArrowLeft size={22} /></button>
         <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
@@ -539,10 +623,10 @@ function App() {
         </div>
 
         <div className="spelling-rule">
-          <div className="rule-heading"><span>重音判定</span><small>可随时切换</small></div>
+          <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
           <div className="rule-options" role="group" aria-label="重音判定规则">
-            <button className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格拼写</button>
-            <button className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略 á é í ó ú</button>
+            <button aria-label="严格拼写" className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格</button>
+            <button aria-label="忽略重音符号" className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
           </div>
           <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'}>
             {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
