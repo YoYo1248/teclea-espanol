@@ -1,6 +1,6 @@
 # Word data licensing
 
-The bundled learning library contains 708 practice cards: 48 edited dialogue cards, 300 common-word/expression cards, and 360 conjugation cards.
+The bundled learning library contains 780 practice cards: 72 original everyday-phrase cards (including 24 Spanish practical-driving-test instruction cards), 48 edited dialogue cards, 300 common-word/expression cards, and 360 conjugation cards.
 
 Frequency ordering for the common-word teaching selection was informed by `wordfreq`:
 
@@ -16,6 +16,6 @@ Spanish lexical forms and conjugations were checked against the Kaikki machine-r
 - Relevant upstream terms: CC BY-SA 4.0 and GFDL
 - Verification date recorded in the data: 2026-08-14
 
-Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for Teclea Español. CEFR labels are learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki or their contributors.
+The 72 everyday phrases, Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for Teclea Español. The everyday phrases are original project content released under GPL-3.0; names, dates and addresses are teaching examples rather than user data. The scope of the 24 driving-test cards was informed by public DGT practical-test materials, but their bilingual teaching text is original and is not represented as a fixed nationwide examiner script. CEFR labels are learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki, DGT or their contributors.
 
 The application code remains available under GPL-3.0 as stated in `LICENSE`. This notice preserves the attribution and licensing information for the lexical-data portion.

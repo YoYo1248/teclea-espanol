@@ -2,8 +2,10 @@
 
 ## 当前版本的真实状态（2026-08-14）
 
-当前共有 33 组、708 张 A1–A2 练习卡：
+当前共有 39 组、780 张 A1–A2 练习卡：
 
+- 48 张原创生活短句卡，覆盖自我介绍、电话生日、住址快递和沟通求助；
+- 24 张原创西班牙路考指令卡，覆盖路线、变道、停车、掉头和确认指令；
 - 48 张精编场景对话卡；
 - 300 张高频基础词与短表达卡；
 - 360 张变位卡（20 个动词 × 3 个时态 × 6 个人称）。
@@ -15,6 +17,15 @@
 - 中文释义和例句由本项目自行编写，不复制商业词典或教材；
 - A1/A2 和场景标签是本项目的教学编辑判断，不是 Kaikki 自带等级；
 - 尚未经过西语教师或专业语言编辑逐条审核，因此仍是候选学习词库。
+
+### 原创生活短句
+
+新增的 72 张生活短句由 Teclea Español 项目自行编写，没有复制商业教材或词典例句，并随本项目以 GPL-3.0 发布。句型中的姓名、日期、楼层和门牌是帮助理解结构的示例，不代表用户的真实资料。个性化表达生成功能尚未实现。
+
+驾考短句的训练范围参考西班牙 DGT 的公开路考说明、公开评分项目和常见西班牙驾校用语。DGT 资料用于确认路考包含道路指示、停车、车辆控制和遵循考官指令等项目；应用中的中西双语教学句由本项目重新编写，不声称是全国所有考官的固定逐字话术。驾驶人应只在合法、安全且条件允许时执行指令。
+
+- DGT 路考说明：https://www.dgt.es/nuestros-servicios/permisos-de-conducir/obtener-un-nuevo-permiso-de-conducir/examen-practico/
+- 西班牙《驾驶员通则》相关考试要求：https://boe.es/buscar/act.php?id=BOE-A-2009-9481
 
 ## 已采用的开放来源
 
@@ -66,8 +77,9 @@ Tatoeba 自身不保证所有句子或翻译经过专业审核，因此导入后
   spanish: string
   chinese: string
   article?: string
-  example: string
-  exampleChinese: string
+  example?: string
+  exampleChinese?: string
+  note?: string
   source: {
     name: string
     url: string

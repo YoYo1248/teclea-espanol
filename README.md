@@ -20,8 +20,8 @@
 - 关闭浏览器自动纠错与自动大写
 - 错误后整词重输，正确后展示例句与语言提示
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 33 组 A1–A2 练习，共 708 张卡：48 张精编对话、300 张高频词与短表达、360 张常用动词变位
-- 可按“对话 / 高频 / 变位”、学习等级和生活场景筛选
+- 39 组 A1–A2 练习，共 780 张卡：72 张生活短句（含 24 张西班牙路考指令）、48 张精编对话、300 张高频词与短表达、360 张常用动词变位
+- 可按“短句 / 对话 / 高频 / 变位”、学习等级和生活场景筛选
 - 高频顺序参考 wordfreq；词形与变位以 Kaikki / English Wiktionary 结构化数据核对
 - 本地保存课程完成状态
 - 手机安全区、窄屏、电脑宽屏和低高度布局适配
@@ -43,4 +43,4 @@ npm run build
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目编辑，仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
+词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。生活短句、中文学习标签、例句、分级与场景分类由本项目原创或编辑；路考练习范围参考西班牙 DGT 公开资料。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。

@@ -16,7 +16,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -520,6 +520,7 @@ function App() {
             <div className="word-sources">
               <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
               <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形与变位：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+              <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">生活短句：项目原创；驾考表达参考 DGT · 制作说明</a>
             </div>
           </section>
 
@@ -592,7 +593,9 @@ function App() {
   }
 
   const hideSpanish = mode !== 'copy'
-  const targetLetters = Array.from(getTypingTarget(word.spanish))
+  const targetText = getTypingTarget(word.spanish)
+  const targetLetters = Array.from(targetText)
+  const targetTokens = targetText.split(' ')
   const typedLength = Array.from(typed).length
   return (
     <div className={`app-shell practice-screen ${keyboardOpen ? 'keyboard-open' : ''}`}>
@@ -627,7 +630,7 @@ function App() {
           </button>
         </div>
 
-        <section className={`typing-stage ${status}`} onClick={() => inputRef.current?.focus()}>
+        <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
           <span className="word-label">{mode === 'copy' ? '逐字母输入' : mode === 'recall' ? '根据中文拼写' : '仅凭发音拼写'}</span>
           {mode === 'recall' && <p className="recall-prompt">{word.chinese}</p>}
           <div
@@ -638,17 +641,26 @@ function App() {
             onPointerCancel={stopTouchReveal}
             onPointerLeave={stopTouchReveal}
           >
-            {targetLetters.map((letter, letterIndex) => {
-              const isSpace = letter === ' '
-              const isCorrect = letterIndex < typedLength
-              const isWrong = status === 'wrong' && wrongAt === letterIndex
-              const isVisible = !hideSpanish || isCorrect || revealAnswer
+            {targetTokens.map((token, tokenIndex) => {
+              const tokenStart = targetTokens.slice(0, tokenIndex).reduce((total, item) => total + Array.from(item).length + 1, 0)
+              const tokenLetters = [...Array.from(token), ...(tokenIndex < targetTokens.length - 1 ? [' '] : [])]
               return (
-                <span
-                  key={`${letter}-${letterIndex}`}
-                  className={`letter-slot ${isSpace ? 'space' : ''} ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''} ${letterIndex === typedLength && status === 'idle' ? 'current' : ''}`}
-                >
-                  {isSpace ? '·' : isVisible ? letter : '_'}
+                <span className="letter-token" key={`${token}-${tokenIndex}`}>
+                  {tokenLetters.map((letter, localIndex) => {
+                    const letterIndex = tokenStart + localIndex
+                    const isSpace = letter === ' '
+                    const isCorrect = letterIndex < typedLength
+                    const isWrong = status === 'wrong' && wrongAt === letterIndex
+                    const isVisible = !hideSpanish || isCorrect || revealAnswer
+                    return (
+                      <span
+                        key={`${letter}-${letterIndex}`}
+                        className={`letter-slot ${isSpace ? 'space' : ''} ${isCorrect ? 'correct' : ''} ${isWrong ? 'wrong' : ''} ${letterIndex === typedLength && status === 'idle' ? 'current' : ''}`}
+                      >
+                        {isSpace ? '·' : isVisible ? letter : '_'}
+                      </span>
+                    )
+                  })}
                 </span>
               )
             })}

@@ -183,6 +183,7 @@ button { -webkit-tap-highlight-color: transparent; }
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+.letter-token { display: inline-flex; flex: 0 0 auto; }
 .letter-slot {
   position: relative;
   min-width: .61em;
@@ -192,6 +193,7 @@ button { -webkit-tap-highlight-color: transparent; }
   line-height: 1;
   transition: color .08s ease, transform .08s ease;
 }
+.typing-stage.long-target .letter-slot { font-size: clamp(27px, 7.6vw, 38px); }
 .letter-slot.space { width: .52em; min-width: .52em; color: #c7c1b7; }
 .letter-slot.correct { color: var(--green); transform: translateY(-1px); }
 .letter-slot.wrong { color: #d24935; }

@@ -2,8 +2,8 @@ import conjugations from './generated/conjugations.json'
 import { commonDecks } from './commonWords'
 
 export type LessonLevel = 'A1' | 'A2'
-export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '语法'
-export type LessonKind = '对话' | '高频' | '变位'
+export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '驾考' | '语法'
+export type LessonKind = '对话' | '短句' | '高频' | '变位'
 
 export type LessonWord = {
   spanish: string
@@ -46,6 +46,20 @@ export const FREQUENCY_SOURCE = {
   checkedAt: '2026-08-14',
 } as const
 
+export const PHRASE_SOURCE = {
+  name: 'Teclea Español 生活表达教学编辑',
+  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/WORDLIST_SOURCES.md',
+  license: 'GPL-3.0（原创教学内容）',
+  checkedAt: '2026-08-14',
+} as const
+
+export const DRIVING_SOURCE = {
+  name: 'DGT 路考项目参考 + Teclea Español 教学编辑',
+  url: 'https://www.dgt.es/nuestros-servicios/permisos-de-conducir/obtener-un-nuevo-permiso-de-conducir/examen-practico/',
+  license: '官方资料参考；原创教学表达 GPL-3.0',
+  checkedAt: '2026-08-14',
+} as const
+
 function word(
   spanish: string,
   chinese: string,
@@ -54,6 +68,14 @@ function word(
   options: { article?: string; note?: string } = {},
 ): LessonWord {
   return { spanish, chinese, example, exampleChinese, ...options, source: { ...WORD_SOURCE } }
+}
+
+function phrase(spanish: string, chinese: string, note?: string): LessonWord {
+  return { spanish, chinese, note, source: { ...PHRASE_SOURCE } }
+}
+
+function drivingPhrase(spanish: string, chinese: string, note?: string): LessonWord {
+  return { spanish, chinese, note, source: { ...DRIVING_SOURCE } }
 }
 
 const dialogueLessons: Lesson[] = [
@@ -143,6 +165,117 @@ const dialogueLessons: Lesson[] = [
   },
 ]
 
+const phraseLessons: Lesson[] = [
+  {
+    id: 'frases-presentarse', level: 'A1', scene: '基础', kind: '短句', eyebrow: 'A1 · 短句 · 基础', title: '介绍自己',
+    description: '姓名、国籍、住处和语言情况', color: '#d85f4b',
+    words: [
+      phrase('Me llamo Ana.', '我叫安娜。'),
+      phrase('Mi apellido es Li.', '我姓李。'),
+      phrase('Soy de China.', '我来自中国。'),
+      phrase('Vivo en Madrid.', '我住在马德里。'),
+      phrase('Tengo treinta años.', '我三十岁。'),
+      phrase('¿Cómo te llamas?', '你叫什么名字？'),
+      phrase('¿Cuál es tu apellido?', '你姓什么？'),
+      phrase('¿De dónde eres?', '你来自哪里？'),
+      phrase('¿Dónde vives?', '你住在哪里？'),
+      phrase('¿Cómo se escribe?', '这个怎么拼写？'),
+      phrase('¿Puedes repetirlo?', '你可以再说一遍吗？'),
+      phrase('Estoy aprendiendo español.', '我正在学习西班牙语。'),
+    ],
+  },
+  {
+    id: 'frases-contacto-fechas', level: 'A1', scene: '时间', kind: '短句', eyebrow: 'A1 · 短句 · 时间', title: '电话、生日与约时间',
+    description: '交换联系方式，说日期和约见面', color: '#4d806f',
+    words: [
+      phrase('¿Cuál es tu número de teléfono?', '你的电话号码是多少？'),
+      phrase('Mi número de teléfono es...', '我的电话号码是……', '练熟句型后，把结尾换成自己的号码'),
+      phrase('¿Me das tu número?', '可以把你的号码给我吗？'),
+      phrase('Te mando un mensaje.', '我给你发一条消息。'),
+      phrase('¿Cuál es tu correo electrónico?', '你的电子邮箱是什么？'),
+      phrase('Mi correo es...', '我的邮箱是……'),
+      phrase('¿Cuándo es tu cumpleaños?', '你的生日是什么时候？'),
+      phrase('Mi cumpleaños es el cinco de mayo.', '我的生日是五月五日。', '把日期换成自己的生日'),
+      phrase('Nací el cinco de mayo.', '我出生于五月五日。'),
+      phrase('Hoy es catorce de agosto.', '今天是八月十四日。'),
+      phrase('Son las tres y media.', '现在三点半。'),
+      phrase('Quedamos a las seis.', '我们六点见。'),
+    ],
+  },
+  {
+    id: 'frases-direccion-entrega', level: 'A2', scene: '住宿', kind: '短句', eyebrow: 'A2 · 短句 · 住宿', title: '住址与收快递',
+    description: '说楼层、门牌，和快递员沟通', color: '#5575a5',
+    words: [
+      phrase('¿Cuál es la dirección?', '地址是什么？'),
+      phrase('La dirección es correcta.', '地址是正确的。'),
+      phrase('Vivo en el quinto piso.', '我住在五楼。'),
+      phrase('Es el portal cinco.', '是五号楼门。', '在西班牙，portal 常指楼栋入口或单元门'),
+      phrase('Es el quinto C.', '是五楼 C 户。'),
+      phrase('Toca el timbre del quinto C.', '请按五楼 C 户的门铃。'),
+      phrase('Estoy en casa.', '我在家。'),
+      phrase('Ahora bajo.', '我现在下楼。'),
+      phrase('¿Puedes subir?', '你可以上楼吗？'),
+      phrase('Déjalo en la puerta.', '请把它放在门口。'),
+      phrase('Llama cuando llegues.', '到了以后请打电话。'),
+      phrase('No encuentro la entrada.', '我找不到入口。'),
+    ],
+  },
+  {
+    id: 'frases-supervivencia', level: 'A1', scene: '日常', kind: '短句', eyebrow: 'A1 · 短句 · 日常', title: '没听懂时怎么说',
+    description: '请求重复、放慢速度和解决眼前需求', color: '#9b6b91',
+    words: [
+      phrase('No entiendo.', '我不明白。'),
+      phrase('Más despacio, por favor.', '请说慢一点。'),
+      phrase('¿Puede repetirlo?', '您可以再说一遍吗？'),
+      phrase('¿Cómo se dice esto?', '这个怎么说？'),
+      phrase('¿Qué significa?', '这是什么意思？'),
+      phrase('Necesito ayuda.', '我需要帮助。'),
+      phrase('Busco esta dirección.', '我在找这个地址。'),
+      phrase('Quiero pedir una cita.', '我想预约。'),
+      phrase('Tengo una reserva.', '我有预订。'),
+      phrase('Pago con tarjeta.', '我用银行卡付款。'),
+      phrase('¿Dónde está el baño?', '洗手间在哪里？'),
+      phrase('Un momento, por favor.', '请稍等。'),
+    ],
+  },
+  {
+    id: 'frases-examen-conducir-ruta', level: 'A2', scene: '驾考', kind: '短句', eyebrow: 'A2 · 短句 · 驾考', title: '路考指令：方向与路线',
+    description: '听懂考官让你直行、转弯、出环岛和变道', color: '#3f6f86',
+    words: [
+      drivingPhrase('Cuando pueda, inicie la marcha.', '可以安全起步时，请起步。', 'cuando pueda 表示在合法、安全且条件允许时操作'),
+      drivingPhrase('Siga de frente.', '继续直行。'),
+      drivingPhrase('Gire a la derecha.', '向右转。'),
+      drivingPhrase('Gire a la izquierda.', '向左转。'),
+      drivingPhrase('Tome la primera calle a la derecha.', '进入右边第一条街。'),
+      drivingPhrase('Tome la segunda calle a la izquierda.', '进入左边第二条街。'),
+      drivingPhrase('En la rotonda, tome la primera salida.', '在环岛走第一个出口。'),
+      drivingPhrase('En la rotonda, tome la tercera salida.', '在环岛走第三个出口。'),
+      drivingPhrase('Cambie al carril de la izquierda.', '变到左侧车道。'),
+      drivingPhrase('Cambie al carril de la derecha.', '变到右侧车道。'),
+      drivingPhrase('Incorpórese a la autovía.', '驶入高速公路。'),
+      drivingPhrase('Tome la próxima salida.', '走下一个出口。'),
+    ],
+  },
+  {
+    id: 'frases-examen-conducir-maniobras', level: 'A2', scene: '驾考', kind: '短句', eyebrow: 'A2 · 短句 · 驾考', title: '路考指令：操作与确认',
+    description: '停车、掉头、重新起步，以及没听清时确认', color: '#79669b',
+    words: [
+      drivingPhrase('Cuando pueda, estacione.', '条件允许时，请停车入位。', 'estacionar 指停车停放，不等同于临时停一下'),
+      drivingPhrase('Estacione detrás de ese vehículo.', '停在那辆车后面。'),
+      drivingPhrase('Pare junto al bordillo.', '靠路缘停车。'),
+      drivingPhrase('Realice un cambio de sentido cuando pueda.', '条件允许时，请掉头。'),
+      drivingPhrase('Reanude la marcha.', '重新起步，继续行驶。'),
+      drivingPhrase('Siga las indicaciones de las señales.', '按照交通标志指示行驶。'),
+      drivingPhrase('Encienda las luces de cruce.', '打开近光灯。'),
+      drivingPhrase('Active el limpiaparabrisas.', '打开雨刷器。'),
+      drivingPhrase('¿Ha dicho la primera salida?', '您说的是第一个出口吗？'),
+      drivingPhrase('¿Puede repetir la indicación?', '您可以重复一下指令吗？'),
+      drivingPhrase('¿Giro en esta calle?', '是在这条街转弯吗？'),
+      drivingPhrase('¿Sigo de frente?', '我要继续直行吗？'),
+    ],
+  },
+]
+
 const commonLessons: Lesson[] = commonDecks.map((deck, index) => ({
   ...deck,
   kind: '高频',
@@ -185,8 +318,8 @@ const conjugationLessons: Lesson[] = Object.entries(conjugationGroups).map(([key
   }
 })
 
-export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...conjugationLessons]
+export const lessons: Lesson[] = [...phraseLessons, ...dialogueLessons, ...commonLessons, ...conjugationLessons]
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2']
-export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '对话', '高频', '变位']
-export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '语法']
+export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '短句', '对话', '高频', '变位']
+export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '驾考', '语法']
