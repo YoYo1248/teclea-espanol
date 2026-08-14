@@ -1,12 +1,16 @@
+import conjugations from './generated/conjugations.json'
+import { commonDecks } from './commonWords'
+
 export type LessonLevel = 'A1' | 'A2'
-export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿'
+export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '语法'
+export type LessonKind = '对话' | '高频' | '变位'
 
 export type LessonWord = {
   spanish: string
   chinese: string
   article?: string
-  example: string
-  exampleChinese: string
+  example?: string
+  exampleChinese?: string
   note?: string
   source: {
     name: string
@@ -20,6 +24,7 @@ export type Lesson = {
   id: string
   level: LessonLevel
   scene: LessonScene
+  kind: LessonKind
   eyebrow: string
   title: string
   description: string
@@ -34,6 +39,13 @@ export const WORD_SOURCE = {
   checkedAt: '2026-08-14',
 } as const
 
+export const FREQUENCY_SOURCE = {
+  name: 'wordfreq + Kaikki / Wiktionary',
+  url: 'https://github.com/rspeer/wordfreq',
+  license: 'CC BY-SA 4.0（数据）',
+  checkedAt: '2026-08-14',
+} as const
+
 function word(
   spanish: string,
   chinese: string,
@@ -44,9 +56,9 @@ function word(
   return { spanish, chinese, example, exampleChinese, ...options, source: { ...WORD_SOURCE } }
 }
 
-export const lessons: Lesson[] = [
+const dialogueLessons: Lesson[] = [
   {
-    id: 'primeros-pasos', level: 'A1', scene: '基础', eyebrow: 'A1 · 基础', title: '初次见面',
+    id: 'primeros-pasos', level: 'A1', scene: '基础', kind: '对话', eyebrow: 'A1 · 对话 · 基础', title: '初次见面',
     description: '问候、感谢和最常用的开场白', color: '#ef6a4c',
     words: [
       word('hola', '你好', 'Hola, ¿cómo estás?', '你好，你怎么样？'),
@@ -60,7 +72,7 @@ export const lessons: Lesson[] = [
     ],
   },
   {
-    id: 'cada-dia', level: 'A1', scene: '日常', eyebrow: 'A1 · 日常', title: '每天都用',
+    id: 'cada-dia', level: 'A1', scene: '日常', kind: '对话', eyebrow: 'A1 · 对话 · 日常', title: '每天都用',
     description: '家、工作和生活里的高频动作', color: '#3d7b69',
     words: [
       word('la casa', '家 / 房子', 'Mi casa está cerca.', '我家在附近。', { article: 'la', note: '连同冠词一起记忆名词性别' }),
@@ -74,7 +86,7 @@ export const lessons: Lesson[] = [
     ],
   },
   {
-    id: 'en-el-restaurante', level: 'A1', scene: '餐厅', eyebrow: 'A1 · 餐厅', title: '点餐吃饭',
+    id: 'en-el-restaurante', level: 'A1', scene: '餐厅', kind: '对话', eyebrow: 'A1 · 对话 · 餐厅', title: '点餐吃饭',
     description: '看菜单、点饮料和结账', color: '#bd7653',
     words: [
       word('el menú', '菜单', '¿Me trae el menú, por favor?', '请把菜单给我好吗？', { article: 'el' }),
@@ -88,7 +100,7 @@ export const lessons: Lesson[] = [
     ],
   },
   {
-    id: 'de-viaje', level: 'A2', scene: '旅行', eyebrow: 'A2 · 旅行', title: '交通与问路',
+    id: 'de-viaje', level: 'A2', scene: '旅行', kind: '对话', eyebrow: 'A2 · 对话 · 旅行', title: '交通与问路',
     description: '车站、方向和旅途中的需求', color: '#4f6fae',
     words: [
       word('dónde', '在哪里', '¿Dónde está la estación?', '车站在哪里？', { note: '单词训练不考句子两端的 ¿ ?；例句仍保留' }),
@@ -102,7 +114,7 @@ export const lessons: Lesson[] = [
     ],
   },
   {
-    id: 'de-compras', level: 'A2', scene: '购物', eyebrow: 'A2 · 购物', title: '购物付款',
+    id: 'de-compras', level: 'A2', scene: '购物', kind: '对话', eyebrow: 'A2 · 对话 · 购物', title: '购物付款',
     description: '价格、尺寸、试穿和付款', color: '#9a6a9e',
     words: [
       word('cuánto cuesta', '多少钱', '¿Cuánto cuesta esta camisa?', '这件衬衫多少钱？'),
@@ -116,7 +128,7 @@ export const lessons: Lesson[] = [
     ],
   },
   {
-    id: 'en-el-hotel', level: 'A2', scene: '住宿', eyebrow: 'A2 · 住宿', title: '酒店入住',
+    id: 'en-el-hotel', level: 'A2', scene: '住宿', kind: '对话', eyebrow: 'A2 · 对话 · 住宿', title: '酒店入住',
     description: '预订、入住和客房需求', color: '#337b85',
     words: [
       word('la reserva', '预订', 'Tengo una reserva a nombre de Li.', '我用李的名字订了房。', { article: 'la' }),
@@ -131,5 +143,50 @@ export const lessons: Lesson[] = [
   },
 ]
 
+const commonLessons: Lesson[] = commonDecks.map((deck, index) => ({
+  ...deck,
+  kind: '高频',
+  eyebrow: `${deck.level} · 高频 · ${deck.scene}`,
+  color: ['#d46d4f', '#437e6d', '#516fa6', '#936a91'][index % 4],
+  words: deck.words.map(([spanish, chinese]) => ({ spanish, chinese, source: { ...FREQUENCY_SOURCE } })),
+}))
+
+const tenseNames: Record<string, string> = {
+  present: '现在时',
+  preterite: '简单过去时',
+  imperfect: '过去未完成时',
+}
+
+const conjugationGroups = conjugations.reduce<Record<string, typeof conjugations>>((groups, item) => {
+  const tenseIndex = conjugations.filter((candidate) => candidate.tense === item.tense).indexOf(item)
+  const key = `${item.tense}-${Math.floor(tenseIndex / 30)}`
+  ;(groups[key] ??= []).push(item)
+  return groups
+}, {})
+
+const conjugationLessons: Lesson[] = Object.entries(conjugationGroups).map(([key, batch], index) => {
+  const first = batch[0]
+  const verbs = Array.from(new Set(batch.map((item) => item.lemma)))
+  const tenseName = tenseNames[first.tense]
+  return {
+    id: `conjugation-${key}`,
+    level: first.level as LessonLevel,
+    scene: '语法',
+    kind: '变位',
+    eyebrow: `${first.level} · 变位 · ${tenseName}`,
+    title: `${tenseName} ${Math.floor(index % 4) + 1}`,
+    description: `${verbs.join('、')}：六个人称逐字练习`,
+    color: ['#6f5b9b', '#456e9f', '#a15e70', '#5f7b55'][index % 4],
+    words: batch.map((item) => ({
+      spanish: item.spanish,
+      chinese: item.chinese,
+      source: { ...WORD_SOURCE },
+    })),
+  }
+})
+
+export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...conjugationLessons]
+export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2']
-export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '餐厅', '旅行', '购物', '住宿']
+export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '对话', '高频', '变位']
+export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '语法']

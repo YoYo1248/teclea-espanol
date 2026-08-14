@@ -17,7 +17,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { lessonLevels, lessonScenes, lessons, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
+import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -76,6 +76,7 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>('全部')
+  const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>('全部')
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
   const [inputEpoch, setInputEpoch] = useState(0)
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
@@ -157,8 +158,8 @@ function App() {
     [completed],
   )
   const filteredLessons = useMemo(
-    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
-    [levelFilter, sceneFilter],
+    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
+    [levelFilter, kindFilter, sceneFilter],
   )
 
   const elapsedSeconds = screen === 'complete'
@@ -185,10 +186,20 @@ function App() {
     }
   }
 
+  function chooseKindFilter(nextKind: '全部' | LessonKind) {
+    setKindFilter(nextKind)
+    if (nextKind !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.kind === nextKind && item.scene === sceneFilter)) {
+      setSceneFilter('全部')
+    }
+  }
+
   function chooseSceneFilter(nextScene: '全部' | LessonScene) {
     setSceneFilter(nextScene)
     if (nextScene !== '全部' && levelFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.level === levelFilter)) {
       setLevelFilter('全部')
+    }
+    if (nextScene !== '全部' && kindFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.kind === kindFilter)) {
+      setKindFilter('全部')
     }
   }
 
@@ -375,7 +386,7 @@ function App() {
             <div className="streak-pill"><Flame size={15} fill="currentColor" /> 连续学习 3 天</div>
             <p className="eyebrow">BUENOS DÍAS · 早上好</p>
             <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-            <p className="hero-subtitle">听、看、完整拼写。每天 5 分钟，练对重音和真实表达。</p>
+            <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张高频、对话与变位练习卡，练对重音和真实表达。</p>
             <button className="primary-button" onClick={() => begin(lessons[0])}>
               继续今日练习 <ArrowRight size={19} />
             </button>
@@ -387,8 +398,9 @@ function App() {
           </section>
 
           <section className="course-section">
-            <div className="section-heading"><div><span className="section-kicker">开放词库</span><h2>按等级与场景选择</h2></div><button onClick={() => { setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
+            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
             <div className="course-filters" aria-label="词库筛选">
+              <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
               <div><span>难度</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
               <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
             </div>
@@ -404,7 +416,10 @@ function App() {
                 )
               })}
             </div>
-            <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形核对：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+            <div className="word-sources">
+              <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
+              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形与变位：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+            </div>
           </section>
 
           <section className="mode-card">
@@ -439,8 +454,12 @@ function App() {
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
               <div className="legal-box">
                 <strong>开源与修改声明</strong>
-                <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；你可以查看、复制和修改源代码。</p>
-                <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">查看上游项目</a>
+                <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>
+                <div className="legal-links">
+                  <a href="https://github.com/YoYo1248/teclea-espanol" target="_blank" rel="noreferrer">本项目源代码</a>
+                  <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">上游项目</a>
+                  <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
+                </div>
               </div>
             </section>
           </div>

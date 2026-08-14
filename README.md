@@ -20,8 +20,9 @@
 - 关闭浏览器自动纠错与自动大写
 - 错误后整词重输，正确后展示例句与语言提示
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 6 组 A1–A2 生活词汇，共 48 个表达，可按等级与场景筛选
-- 词形以 Kaikki / English Wiktionary 结构化西语数据核对；等级、中文释义与例句由本项目编辑
+- 33 组 A1–A2 练习，共 708 张卡：48 张精编对话、300 张高频词与短表达、360 张常用动词变位
+- 可按“对话 / 高频 / 变位”、学习等级和生活场景筛选
+- 高频顺序参考 wordfreq；词形与变位以 Kaikki / English Wiktionary 结构化数据核对
 - 本地保存课程完成状态
 - 手机安全区、窄屏、电脑宽屏和低高度布局适配
 
@@ -42,4 +43,4 @@ npm run build
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-当前 48 个词条的词形使用 Kaikki / English Wiktionary 数据核对，相关条目内容依 CC BY-SA 4.0 / GFDL 提供；项目自行编写的中文释义、例句、CEFR 分级与场景分类仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
+词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目编辑，仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
