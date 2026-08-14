@@ -9,7 +9,7 @@
 ## 已实现
 
 - 三种练习模式：跟打、释义回忆、听写
-- 中文 / English 两套完整学习界面与 780 张卡片释义，可在设置中切换
+- 中文 / English 两套完整学习界面与 844 张卡片释义，可在设置中切换
 - 西语发音支持慢速、标准、原速三档，并记住上次选择
 - 逐字母即时判定；任意字符错误后整词自动重置
 - 严格重音 / 忽略 `á é í ó ú` 两种判定规则
@@ -22,7 +22,7 @@
 - 关闭浏览器自动纠错与自动大写
 - 错误后整词重输，正确后展示例句与语言提示
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 39 组 A1–A2 练习，共 780 张卡：72 张生活短句（含 24 张西班牙路考指令）、48 张精编对话、300 张高频词与短表达、360 张常用动词变位
+- 43 组 A1–A2 练习，共 844 张卡：72 张生活短句（含 24 张西班牙路考指令）、64 张板式网球与网球词句、48 张精编对话、300 张高频词与短表达、360 张常用动词变位
 - 可按“短句 / 对话 / 高频 / 变位”、学习等级和生活场景筛选
 - 高频顺序参考 wordfreq；词形与变位以 Kaikki / English Wiktionary 结构化数据核对
 - 本地保存课程完成状态
@@ -58,4 +58,4 @@ Vercel Marketplace 某些版本也会注入 `KV_REST_API_URL` 与 `KV_REST_API_T
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。生活短句、中英学习标签与释义、例句、分级和场景分类由本项目原创或编辑；路考练习范围参考西班牙 DGT 公开资料。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
+词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。生活短句、中英学习标签与释义、例句、分级和场景分类由本项目原创或编辑；路考练习范围参考西班牙 DGT，板式网球与网球术语分别参考 FIP / FEP 和 RFET 的公开规则。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。

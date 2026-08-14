@@ -2,10 +2,11 @@
 
 ## 当前版本的真实状态（2026-08-14）
 
-当前共有 39 组、780 张 A1–A2 练习卡：
+当前共有 43 组、844 张 A1–A2 练习卡：
 
 - 48 张原创生活短句卡，覆盖自我介绍、电话生日、住址快递和沟通求助；
 - 24 张原创西班牙路考指令卡，覆盖路线、变道、停车、掉头和确认指令；
+- 64 张原创球类运动卡，覆盖板式网球（pádel）与网球的基础词汇和球场交流；
 - 48 张精编场景对话卡；
 - 300 张高频基础词与短表达卡；
 - 360 张变位卡（20 个动词 × 3 个时态 × 6 个人称）。
@@ -26,6 +27,20 @@
 
 - DGT 路考说明：https://www.dgt.es/nuestros-servicios/permisos-de-conducir/obtener-un-nuevo-permiso-de-conducir/examen-practico/
 - 西班牙《驾驶员通则》相关考试要求：https://boe.es/buscar/act.php?id=BOE-A-2009-9481
+
+### 球类运动词库
+
+板式网球与网球各包含 20 张基础词汇卡和 12 张球场短句卡，共 64 张。中英释义、分级和短句由 Teclea Español 编辑并随项目以 GPL-3.0 发布。
+
+- 板式网球的场地、球拍、发球、接发、计分、`let` 与场地墙面等术语，以 FIP / FEP 公开的 2026 年比赛规则核对；`bandeja`、`víbora`、`salida de pared` 等为西班牙球场常见击球名称，不代表规则中的封闭术语表。
+- 网球的发球、发球区、单打双打、平分、占先与 `let` 等术语，以 RFET 发布的网球规则和裁判 FAQ 核对。
+- 教学短句是项目原创的日常球场表达，并非逐句摘录规则文本。
+
+参考：
+
+- FEP 2026 年板式网球规则：https://www.padelfederacion.es/reglamentos
+- FIP 规则文件目录：https://www.padelfip.com/es/documents/
+- RFET 网球规则与裁判 FAQ：https://www.rfet.es/index.php?Idioma=&Page=arbitros-faqs
 
 ## 已采用的开放来源
 

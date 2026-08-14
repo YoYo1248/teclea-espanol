@@ -20,7 +20,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, SPORTS_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
 import { filterEnglish, lessonEnglishCopy, type DisplayLanguage, type SpeechRate } from './english'
 import { createSyncQr, formatSyncCode, generateSyncCode, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 
@@ -912,6 +912,7 @@ function App() {
               <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">{tr('词频排序：', 'Frequency order: ')}{FREQUENCY_SOURCE.name} · {isEnglish ? FREQUENCY_SOURCE.license.replace('（数据）', ' (data)') : FREQUENCY_SOURCE.license}</a>
               <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">{tr('词形与变位：', 'Word forms and conjugations: ')}{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
               <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">{tr('生活短句：项目原创；驾考表达参考 DGT · 制作说明', 'Life phrases: original project content; driving-test language references DGT · Notes')}</a>
+              <a className="word-source" href={SPORTS_SOURCE.url} target="_blank" rel="noreferrer">{tr('球类运动：板式网球参考 FIP / FEP；网球参考 RFET · 制作说明', 'Ball sports: padel references FIP / FEP; tennis references RFET · Notes')}</a>
             </div>
           </section>
 

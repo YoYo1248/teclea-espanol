@@ -3,7 +3,7 @@ import { commonDecks } from './commonWords'
 import { conjugationMeaning, englishMeaning } from './english'
 
 export type LessonLevel = 'A1' | 'A2'
-export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '驾考' | '语法'
+export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '驾考' | '球类' | '语法'
 export type LessonKind = '对话' | '短句' | '高频' | '变位'
 
 export type LessonWord = {
@@ -63,6 +63,13 @@ export const DRIVING_SOURCE = {
   checkedAt: '2026-08-14',
 } as const
 
+export const SPORTS_SOURCE = {
+  name: 'FIP / FEP pádel rules + RFET tennis rules · Teclea Español teaching edit',
+  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/WORDLIST_SOURCES.md#球类运动词库',
+  license: '官方规则术语参考；原创教学内容 GPL-3.0',
+  checkedAt: '2026-08-14',
+} as const
+
 function word(
   spanish: string,
   chinese: string,
@@ -79,6 +86,10 @@ function phrase(spanish: string, chinese: string, note?: string): LessonWord {
 
 function drivingPhrase(spanish: string, chinese: string, note?: string): LessonWord {
   return { spanish, chinese, english: englishMeaning(spanish), note, source: { ...DRIVING_SOURCE } }
+}
+
+function sportsItem(spanish: string, chinese: string, english: string, note?: string): LessonWord {
+  return { spanish, chinese, english, note, source: { ...SPORTS_SOURCE } }
 }
 
 const dialogueLessons: Lesson[] = [
@@ -279,6 +290,77 @@ const phraseLessons: Lesson[] = [
   },
 ]
 
+const sportsLessons: Lesson[] = [
+  {
+    id: 'padel-vocabulario', level: 'A1', scene: '球类', kind: '高频', eyebrow: 'A1 · 高频 · 球类', title: '板式网球基础词',
+    description: '球拍、场地、墙面、计分和常见击球', color: '#3e806f',
+    words: [
+      sportsItem('el pádel', '板式网球', 'padel'), sportsItem('la pala', '板式网球拍', 'padel racket'),
+      sportsItem('la pista', '球场', 'court'), sportsItem('la red', '球网', 'net'),
+      sportsItem('la pared', '墙面', 'wall'), sportsItem('el cristal', '玻璃墙', 'glass wall'),
+      sportsItem('la pelota', '球', 'ball'), sportsItem('la pareja', '双打搭档 / 一对选手', 'partner / pair'),
+      sportsItem('el saque', '发球', 'serve'), sportsItem('el resto', '接发球', 'return of serve'),
+      sportsItem('la volea', '截击', 'volley'), sportsItem('la bandeja', '切削高压球', 'bandeja overhead'),
+      sportsItem('la víbora', '侧旋高压球', 'víbora overhead'), sportsItem('el globo', '挑高球', 'lob'),
+      sportsItem('el remate', '扣杀 / 高压球', 'smash'), sportsItem('el rebote', '反弹', 'rebound'),
+      sportsItem('la salida de pared', '墙后回球', 'shot after the wall'), sportsItem('el punto de oro', '金分 / 决胜分', 'golden point'),
+      sportsItem('el tie-break', '抢七局', 'tie-break'), sportsItem('fuera', '出界', 'out'),
+    ],
+  },
+  {
+    id: 'padel-frases', level: 'A2', scene: '球类', kind: '短句', eyebrow: 'A2 · 短句 · 球类', title: '打板式网球怎么说',
+    description: '约球、站位、配合和球场即时交流', color: '#4d719e',
+    words: [
+      sportsItem('¿Jugamos un partido de pádel?', '我们打一场板式网球吗？', 'Shall we play a padel match?'),
+      sportsItem('¿Tienes pista reservada?', '你订球场了吗？', 'Have you booked a court?'),
+      sportsItem('¿A qué hora jugamos?', '我们几点打？', 'What time are we playing?'),
+      sportsItem('¿Prefieres jugar en la derecha o en el revés?', '你更喜欢打右区还是反手区？', 'Do you prefer the right or backhand side?'),
+      sportsItem('Yo juego en el lado del revés.', '我打反手区。', 'I play on the backhand side.'),
+      sportsItem('Saca tú primero.', '你先发球。', 'You serve first.'),
+      sportsItem('Déjala botar.', '让球先落地反弹。', 'Let it bounce.'),
+      sportsItem('Sube a la red.', '上网。', 'Move up to the net.'),
+      sportsItem('La pelota ha tocado el cristal.', '球碰到玻璃墙了。', 'The ball touched the glass.'),
+      sportsItem('Buena bandeja.', '这个 bandeja 打得好。', 'Good bandeja.'),
+      sportsItem('Ha sido fuera.', '这个球出界了。', 'That was out.'),
+      sportsItem('Vamos iguales.', '我们现在平分。', 'We are level.'),
+    ],
+  },
+  {
+    id: 'tenis-vocabulario', level: 'A1', scene: '球类', kind: '高频', eyebrow: 'A1 · 高频 · 球类', title: '网球基础词',
+    description: '装备、场地区域、击球方式和计分', color: '#a06b55',
+    words: [
+      sportsItem('el tenis', '网球', 'tennis'), sportsItem('la raqueta', '网球拍', 'tennis racket'),
+      sportsItem('la pista', '球场', 'court'), sportsItem('la red', '球网', 'net'),
+      sportsItem('la pelota', '球', 'ball'), sportsItem('el saque', '发球', 'serve'),
+      sportsItem('la devolución', '接发球 / 回球', 'return'), sportsItem('la derecha', '正手', 'forehand'),
+      sportsItem('el revés', '反手', 'backhand'), sportsItem('la volea', '截击', 'volley'),
+      sportsItem('la dejada', '放短球', 'drop shot'), sportsItem('el globo', '挑高球', 'lob'),
+      sportsItem('el remate', '高压扣杀', 'smash'), sportsItem('la línea de fondo', '底线', 'baseline'),
+      sportsItem('el cuadro de saque', '发球区', 'service box'), sportsItem('los dobles', '双打', 'doubles'),
+      sportsItem('los individuales', '单打', 'singles'), sportsItem('la ventaja', '占先', 'advantage'),
+      sportsItem('iguales', '平分', 'deuce / level'), sportsItem('el let', '重赛 / 发球擦网重发', 'let'),
+    ],
+  },
+  {
+    id: 'tenis-frases', level: 'A2', scene: '球类', kind: '短句', eyebrow: 'A2 · 短句 · 球类', title: '打网球怎么说',
+    description: '约球、发球、单打双打和报比分', color: '#886895',
+    words: [
+      sportsItem('¿Quieres jugar al tenis?', '你想打网球吗？', 'Would you like to play tennis?'),
+      sportsItem('He reservado una pista.', '我订了一个球场。', 'I have booked a court.'),
+      sportsItem('¿Jugamos individuales o dobles?', '我们打单打还是双打？', 'Are we playing singles or doubles?'),
+      sportsItem('¿Quién saca primero?', '谁先发球？', 'Who serves first?'),
+      sportsItem('Es tu saque.', '轮到你发球。', 'It is your serve.'),
+      sportsItem('Primer servicio.', '第一次发球。', 'First serve.'),
+      sportsItem('Segundo servicio.', '第二次发球。', 'Second serve.'),
+      sportsItem('La pelota ha entrado.', '球在界内。', 'The ball was in.'),
+      sportsItem('La pelota ha salido.', '球出界了。', 'The ball was out.'),
+      sportsItem('Ha sido let; se repite el saque.', '这是 let，重新发球。', 'It was a let; replay the serve.'),
+      sportsItem('Cuarenta iguales.', '四十平。', 'Deuce.'),
+      sportsItem('Ventaja para ti.', '你占先。', 'Advantage to you.'),
+    ],
+  },
+]
+
 const commonLessons: Lesson[] = commonDecks.map((deck, index) => ({
   ...deck,
   kind: '高频',
@@ -322,8 +404,8 @@ const conjugationLessons: Lesson[] = Object.entries(conjugationGroups).map(([key
   }
 })
 
-export const lessons: Lesson[] = [...phraseLessons, ...dialogueLessons, ...commonLessons, ...conjugationLessons]
+export const lessons: Lesson[] = [...phraseLessons, ...dialogueLessons, ...sportsLessons, ...commonLessons, ...conjugationLessons]
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2']
 export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '短句', '对话', '高频', '变位']
-export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '驾考', '语法']
+export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '驾考', '球类', '语法']

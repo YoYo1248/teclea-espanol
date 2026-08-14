@@ -129,6 +129,10 @@ const lessonEnglish: Record<string, { title: string; description: string; scene:
   'de-viaje': { title: 'Transport and directions', description: 'Stations, directions and travel needs', scene: 'Travel', kind: 'Dialogue' },
   'de-compras': { title: 'Shopping and paying', description: 'Prices, sizes, trying things on and payment', scene: 'Shopping', kind: 'Dialogue' },
   'en-el-hotel': { title: 'Checking into a hotel', description: 'Reservations, check-in and room requests', scene: 'Accommodation', kind: 'Dialogue' },
+  'padel-vocabulario': { title: 'Padel essentials', description: 'Rackets, court, walls, scoring and common shots', scene: 'Ball sports', kind: 'High frequency' },
+  'padel-frases': { title: 'Spanish on a padel court', description: 'Arrange a match, choose sides and communicate with your partner', scene: 'Ball sports', kind: 'Phrases' },
+  'tenis-vocabulario': { title: 'Tennis essentials', description: 'Equipment, court areas, shots and scoring', scene: 'Ball sports', kind: 'High frequency' },
+  'tenis-frases': { title: 'Spanish on a tennis court', description: 'Arrange a match, serve, choose singles or doubles and call the score', scene: 'Ball sports', kind: 'Phrases' },
   'common-connectors': { title: 'Connectors and questions', description: 'Small words that build basic sentences', scene: 'Basics', kind: 'High frequency' },
   'common-time': { title: 'Time and dates', description: 'Dates, meetings and the rhythm of a day', scene: 'Time', kind: 'High frequency' },
   'common-numbers': { title: 'Numbers and quantity', description: 'Essential for prices, time and people', scene: 'Basics', kind: 'High frequency' },
@@ -162,5 +166,5 @@ export function lessonEnglishCopy(id: string, fallback: { title: string; descrip
 
 export const filterEnglish = {
   kinds: { '全部': 'All', '短句': 'Phrases', '对话': 'Dialogue', '高频': 'High frequency', '变位': 'Conjugation' } as Record<string, string>,
-  scenes: { '全部': 'All', '基础': 'Basics', '日常': 'Daily life', '时间': 'Time', '家庭': 'Family', '餐厅': 'Restaurant', '城市': 'City', '旅行': 'Travel', '购物': 'Shopping', '住宿': 'Accommodation', '健康': 'Health', '学习': 'Study', '工作': 'Work', '驾考': 'Driving test', '语法': 'Grammar' } as Record<string, string>,
+  scenes: { '全部': 'All', '基础': 'Basics', '日常': 'Daily life', '时间': 'Time', '家庭': 'Family', '餐厅': 'Restaurant', '城市': 'City', '旅行': 'Travel', '购物': 'Shopping', '住宿': 'Accommodation', '健康': 'Health', '学习': 'Study', '工作': 'Work', '驾考': 'Driving test', '球类': 'Ball sports', '语法': 'Grammar' } as Record<string, string>,
 }
