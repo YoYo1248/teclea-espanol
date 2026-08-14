@@ -67,6 +67,13 @@ function matchesSceneFilter(scene: LessonScene, filter: SceneFilter) {
   return filter === '全部' || SCENES_BY_FILTER[filter].includes(scene)
 }
 
+function initialDisplayLanguage(): DisplayLanguage {
+  const stored = localStorage.getItem('teclea-display-language')
+  if (stored === 'zh' || stored === 'en') return stored
+  const deviceLanguage = (navigator.languages?.[0] ?? navigator.language ?? '').toLowerCase()
+  return deviceLanguage.startsWith('zh') ? 'zh' : 'en'
+}
+
 function initialSyncCode() {
   const hashCode = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('sync')
   const code = normalizeSyncCode(hashCode ?? localStorage.getItem(SYNC_CODE_KEY) ?? '')
@@ -238,7 +245,7 @@ function App() {
   const [isTouchDevice] = useState(() => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)
   const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
-  const [displayLanguage, setDisplayLanguage] = useState<DisplayLanguage>(() => localStorage.getItem('teclea-display-language') === 'en' ? 'en' : 'zh')
+  const [displayLanguage, setDisplayLanguage] = useState<DisplayLanguage>(initialDisplayLanguage)
   const [speechRate, setSpeechRate] = useState<SpeechRate>(() => {
     const stored = Number(localStorage.getItem('teclea-speech-rate'))
     return stored === 0.7 || stored === 1 ? stored : 0.86
