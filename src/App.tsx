@@ -878,13 +878,8 @@ function App() {
           <div className="home-actions">
             <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
-              <div><span className="section-kicker">{tr('错题库', 'MISTAKES')}</span><h3>{mistakeLesson ? tr(`${activeMistakeCount} 个待复习`, `${activeMistakeCount} to review`) : tr('目前没有待复习错题', 'No mistakes to review')}</h3><p>{mistakeAttempts ? tr(`累计错 ${mistakeAttempts} 次 · 已掌握 ${masteredMistakeCount} 个`, `${mistakeAttempts} total errors · ${masteredMistakeCount} mastered`) : tr('输错的词和短句会自动出现在这里。', 'Words and phrases you mistype will appear here.')}</p></div>
+              <div><span className="section-kicker">{tr('重点复习 · 错题本', 'PRIORITY REVIEW · MISTAKES')}</span><h3>{mistakeLesson ? tr(`${activeMistakeCount} 个待复习`, `${activeMistakeCount} to review`) : tr('目前没有待复习错题', 'No mistakes to review')}</h3><p>{mistakeAttempts ? tr(`按错误次数优先练习 · 累计错 ${mistakeAttempts} 次 · 已掌握 ${masteredMistakeCount} 个`, `Prioritised by error count · ${mistakeAttempts} total errors · ${masteredMistakeCount} mastered`) : tr('输错的词和短句会自动进入这里，集中重复练习。', 'Mistyped words and phrases appear here automatically for focused review.')}</p></div>
               <button disabled={!mistakeAttempts} aria-label={tr('查看错题库', 'Open mistake review')} onClick={() => setMistakesOpen(true)}><ArrowRight size={19} /></button>
-            </section>
-            <section className="mode-card">
-              <div className="mode-icon"><Headphones size={23} /></div>
-              <div><span className="section-kicker">{tr('听写挑战', 'LISTENING CHALLENGE')}</span><h3>{tr('只听发音，写出西语', 'Hear it, then type the Spanish')}</h3><p>{tr('把提示藏起来，测试真实记忆。', 'Hide the prompt and test real recall.')}</p></div>
-              <button aria-label={tr('开始听写', 'Start listening challenge')} onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
             </section>
           </div>
 
@@ -1049,7 +1044,7 @@ function App() {
             </div>
           )}
           <button className="primary-button" onClick={() => setScreen('home')}>{tr('回到今天', 'Back to today')} <Home size={19} /></button>
-          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> {tr('用听写再来一遍', 'Repeat as a listening challenge')}</button>}
+          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> {tr('切换听写再练一遍', 'Repeat in listening mode')}</button>}
         </main>
       </div>
     )

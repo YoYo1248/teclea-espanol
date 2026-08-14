@@ -81,15 +81,13 @@ button { -webkit-tap-highlight-color: transparent; }
 .word-source { display: block; margin: 11px 3px 0; color: #8b877f; font-size: 10px; line-height: 1.45; text-decoration: underline; text-underline-offset: 2px; }
 .word-sources { display: flex; flex-wrap: wrap; gap: 0 9px; }
 .home-actions { margin: 13px 0 24px; display: grid; gap: 10px; }
-.mode-card, .mistake-card { border-radius: 22px; padding: 19px 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 13px; align-items: center; }
-.mode-card { background: #dde8e3; }
-.mode-icon { width: 44px; height: 44px; border-radius: 14px; background: var(--green); color: white; display: grid; place-items: center; }
+.mistake-card { border-radius: 22px; padding: 19px 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 13px; align-items: center; }
 .mistake-card { background: #eee2d8; }
 .mistake-icon { width: 44px; height: 44px; border-radius: 14px; background: #a85d48; color: white; display: grid; place-items: center; }
-.mode-card h3, .mistake-card h3 { margin: 4px 0; font-size: 16px; }
-.mode-card p, .mistake-card p { margin: 0; color: #65706a; font-size: 12px; }
+.mistake-card h3 { margin: 4px 0; font-size: 16px; }
+.mistake-card p { margin: 0; color: #65706a; font-size: 12px; }
 .mistake-card p { color: #796a61; }
-.mode-card > button, .mistake-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--green); }
+.mistake-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); }
 .mistake-card > button { color: #a85d48; }
 .mistake-card > button:disabled { color: #a99d95; opacity: .55; }
 .mistake-card.empty { background: #ebe7df; }
@@ -428,10 +426,10 @@ button { -webkit-tap-highlight-color: transparent; }
   .lesson-number { flex-basis: 54px; height: 58px; }
   .lesson-copy strong { font-size: 18px; }
   .lesson-copy > span { font-size: 11px; }
-  .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .home-actions .mode-card, .home-actions .mistake-card { min-height: 82px; padding: 17px 16px; }
-  .mode-card h3, .mistake-card h3 { font-size: 16px; }
-  .mode-card p, .mistake-card p { font-size: 11px; }
+  .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: 1fr; }
+  .home-actions .mistake-card { min-height: 82px; padding: 17px 16px; }
+  .mistake-card h3 { font-size: 16px; }
+  .mistake-card p { font-size: 11px; }
   .project-legal { grid-column: 1 / -1; grid-row: 4; margin: 2px 0 0; font-size: 9px; }
   .practice-header { width: min(940px, calc(100% - 64px)); margin: 0 auto; padding: 25px 0 14px; }
   .practice-main {
@@ -490,8 +488,8 @@ button { -webkit-tap-highlight-color: transparent; }
   .lesson-card { min-height: 68px; padding: 9px 12px; }
   .lesson-number { flex-basis: 43px; height: 47px; }
   .lesson-copy strong { font-size: 15px; }
-  .home-actions .mode-card, .home-actions .mistake-card { min-height: 66px; padding: 10px 12px; }
-  .mode-card p, .mistake-card p { display: none; }
+  .home-actions .mistake-card { min-height: 66px; padding: 10px 12px; }
+  .mistake-card p { display: none; }
   .project-legal { display: none; }
   .practice-header { padding-top: 13px; }
   .practice-main { padding-top: 4px; padding-bottom: 94px; }
@@ -606,11 +604,11 @@ button { -webkit-tap-highlight-color: transparent; }
     grid-column: 2;
     grid-row: 2;
     margin: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
-  .home-actions .mode-card, .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
-  .mode-card h3, .mistake-card h3 { font-size: 19px; }
-  .mode-card p, .mistake-card p { display: block; font-size: 13px; }
+  .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
+  .mistake-card h3 { font-size: 19px; }
+  .mistake-card p { display: block; font-size: 13px; }
   .project-legal { grid-column: 2; grid-row: 3; margin: 0; min-height: 12px; font-size: 10px; }
   .modal-backdrop { width: min(1400px, calc(100% - 40px)); }
 
@@ -652,7 +650,7 @@ button { -webkit-tap-highlight-color: transparent; }
   .lesson-list { min-height: 186px; gap: 7px; }
   .lesson-card { min-height: 82px; padding: 9px 12px; }
   .lesson-number { flex-basis: 48px; height: 50px; }
-  .home-actions .mode-card, .home-actions .mistake-card { min-height: 74px; padding: 10px 12px; }
+  .home-actions .mistake-card { min-height: 74px; padding: 10px 12px; }
 }
 
 @media (max-width: 819px) {
