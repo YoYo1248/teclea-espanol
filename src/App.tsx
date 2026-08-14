@@ -375,7 +375,7 @@ function App() {
   }, [screen])
 
   useEffect(() => {
-    if (screen === 'practice' && mode === 'listen') speak(word.spanish, speechRate)
+    if (screen === 'practice' && mode !== 'copy') speak(word.spanish, speechRate)
   }, [screen, mode, index, word.spanish, speechRate])
 
   useEffect(() => {
