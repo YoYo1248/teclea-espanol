@@ -51,11 +51,18 @@ function speak(text: string, onDone?: () => void) {
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text.replace(/[¿?¡!]/g, ''))
   utterance.lang = 'es-ES'
-  utterance.rate = 0.82
+  const voices = window.speechSynthesis.getVoices()
+  const spanishVoice = voices.find((voice) => voice.lang.toLowerCase() === 'es-es')
+    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('es'))
+  if (spanishVoice) utterance.voice = spanishVoice
+  utterance.volume = 1
+  utterance.rate = 0.76
+  utterance.pitch = 1
   if (onDone) {
     utterance.onend = onDone
     utterance.onerror = onDone
   }
+  window.speechSynthesis.resume()
   window.speechSynthesis.speak(utterance)
   return true
 }
@@ -79,6 +86,7 @@ function App() {
   const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>('全部')
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
   const [inputEpoch, setInputEpoch] = useState(0)
+  const [inputFocused, setInputFocused] = useState(false)
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
@@ -224,6 +232,7 @@ function App() {
     setWrongAt(null)
     setRevealAnswer(false)
     setInputEpoch((value) => value + 1)
+    setInputFocused(false)
     setScreen('practice')
   }
 
@@ -341,15 +350,22 @@ function App() {
       setStatus('correct')
       playEffect('complete')
       const completionToken = ++flowTokenRef.current
+      const completedAt = Date.now()
+      const minimumFeedbackMs = 1400
       const advance = () => {
         if (flowTokenRef.current !== completionToken) return
+        const remainingFeedbackMs = minimumFeedbackMs - (Date.now() - completedAt)
+        if (remainingFeedbackMs > 0) {
+          resetTimerRef.current = window.setTimeout(advance, remainingFeedbackMs)
+          return
+        }
         window.clearTimeout(resetTimerRef.current)
         next()
       }
       resetTimerRef.current = window.setTimeout(() => {
         if (flowTokenRef.current !== completionToken) return
         const started = speak(word.spanish, advance)
-        resetTimerRef.current = window.setTimeout(advance, started ? 2400 : 650)
+        resetTimerRef.current = window.setTimeout(advance, started ? 2600 : minimumFeedbackMs)
       }, 130)
     } else if (newlyCorrect) {
       playEffect('key')
@@ -560,7 +576,7 @@ function App() {
             })}
           </div>
           <input
-            key={`${lesson.id}-${index}-${mode}-${inputEpoch}`}
+            key={`${lesson.id}-${mode}-${inputEpoch}`}
             ref={inputRef}
             id="typing-input"
             className="keyboard-capture"
@@ -587,24 +603,32 @@ function App() {
             onBlur={() => {
               isComposingRef.current = false
               compositionCommittedValueRef.current = null
+              setInputFocused(false)
             }}
+            onFocus={() => setInputFocused(true)}
             onKeyDown={(event) => { if (event.key === 'Backspace') event.preventDefault() }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
             inputMode="text"
+            autoFocus
             aria-label="逐字母输入"
           />
           <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish); inputRef.current?.focus() }} aria-label="播放西语发音"><Volume2 size={20} /> <span>ES</span></button>
-          {mode === 'copy' && <p className="translation">{word.chinese}</p>}
+          {(mode === 'copy' || status === 'correct') && (
+            <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
+              {status === 'correct' && mode !== 'copy' && <span>意思</span>}
+              {word.chinese}
+            </p>
+          )}
 
           <div className="accent-strip" aria-label="西语特殊字符">
             {ACCENTS.map((character) => <button type="button" key={character} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAccent(character)}>{character}</button>)}
           </div>
           <div className="typing-feedback" aria-live="polite">
             {status === 'wrong' && <><X size={16} /><strong>这个字母错了，整词重来</strong></>}
-            {status === 'correct' && <><Check size={16} /><strong>¡Perfecto!</strong></>}
+            {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · 已显示词义</strong></>}
             {status === 'idle' && <span>{hideSpanish ? isTouchDevice ? '长按字符槽查看拼写' : '按住 Tab 查看拼写' : '越快、越准，成绩越高'}</span>}
           </div>
         </section>
@@ -613,7 +637,7 @@ function App() {
       <footer className="practice-footer">
         <button className="keyboard-prompt" onClick={() => inputRef.current?.focus()}>
           <Keyboard size={18} />
-          <span>{status === 'wrong' ? '正在重置…' : status === 'correct' ? '正确，进入下一个…' : '点这里唤起键盘并开始'}</span>
+          <span>{status === 'wrong' ? '正在重置…' : status === 'correct' ? '正确，查看词义后进入下一个…' : inputFocused ? '键盘已就绪，直接输入' : '键盘未出现？点一下继续'}</span>
         </button>
       </footer>
     </div>

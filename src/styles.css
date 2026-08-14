@@ -223,6 +223,18 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 .typing-stage .sound-button { margin-bottom: 11px; }
 .typing-stage .translation { margin: 0 0 13px; }
+.typing-stage .translation.revealed-meaning {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 13px;
+  padding: 8px 13px;
+  border-radius: 11px;
+  background: #e7f1ed;
+  color: #2e6e5d;
+  font-weight: 700;
+  animation: meaning-in .2s ease-out;
+}
+.typing-stage .translation.revealed-meaning span { margin-right: 7px; color: #83a399; font-size: 9px; letter-spacing: .08em; }
 .typing-stage .accent-strip { justify-content: center; border-top: 1px solid var(--line); margin-top: 5px; padding-top: 14px; }
 .typing-feedback {
   min-height: 27px;
@@ -262,6 +274,7 @@ button { -webkit-tap-highlight-color: transparent; }
   70% { transform: translateX(5px); }
 }
 @keyframes cursor-pulse { 50% { opacity: .25; } }
+@keyframes meaning-in { from { opacity: 0; transform: translateY(4px); } }
 
 .completion-screen { min-height: 100svh; display: grid; place-items: center; padding: 30px 24px; text-align: center; }
 .completion-screen main { width: 100%; }
