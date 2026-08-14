@@ -11,7 +11,6 @@ import {
   Gauge,
   RotateCcw,
   Settings2,
-  Sparkles,
   Timer,
   VolumeX,
   Volume2,
@@ -535,11 +534,6 @@ function App() {
           </footer>
         </main>
 
-        <nav className="bottom-nav" aria-label="主导航">
-          <button className="active"><Home size={21} /><span>今天</span></button>
-          <button><BookOpen size={21} /><span>词库</span></button>
-          <button><Sparkles size={21} /><span>复习</span></button>
-        </nav>
         {settingsOpen && (
           <div className="modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
             <section className="settings-sheet" role="dialog" aria-modal="true" aria-label="训练设置" onClick={(event) => event.stopPropagation()}>

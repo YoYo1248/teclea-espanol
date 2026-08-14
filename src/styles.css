@@ -37,7 +37,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .brand-copy span { font-size: 12px; color: var(--muted); margin-top: 5px; letter-spacing: .04em; }
 .icon-button { margin-left: auto; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.55); display: grid; place-items: center; color: var(--ink); }
 
-.home-content { padding: 6px 18px 110px; }
+.home-content { padding: 6px 18px max(30px, env(safe-area-inset-bottom)); }
 .hero-card { min-height: 390px; border-radius: 30px; padding: 26px 24px; color: #fffaf4; background: #242823; position: relative; overflow: hidden; }
 .hero-card::after { content: 'ñ'; position: absolute; right: -14px; bottom: -70px; font: italic 220px/1 'Playfair Display', serif; color: rgba(255,255,255,.045); transform: rotate(-10deg); }
 .hero-glow { position: absolute; width: 230px; height: 230px; border-radius: 50%; background: var(--red); filter: blur(80px); opacity: .18; right: -100px; top: -80px; }
@@ -87,10 +87,6 @@ button { -webkit-tap-highlight-color: transparent; }
 .mode-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--green); }
 .project-legal { margin: 27px 0 5px; display: flex; justify-content: center; gap: 8px; color: #aaa69e; font-size: 10px; }
 .project-legal a { color: #817d75; text-decoration: underline; text-underline-offset: 2px; }
-
-.bottom-nav { position: fixed; width: min(100%, 480px); bottom: 0; z-index: 5; background: rgba(247,244,238,.92); backdrop-filter: blur(18px); border-top: 1px solid var(--line); padding: 10px 48px max(10px, env(safe-area-inset-bottom)); display: flex; justify-content: space-between; }
-.bottom-nav button { border: 0; background: none; color: #9a978f; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; }
-.bottom-nav button.active { color: var(--red); }
 
 .practice-screen { display: flex; flex-direction: column; min-height: 100svh; }
 .practice-header { padding: max(15px, env(safe-area-inset-top)) 17px 10px; display: flex; align-items: center; gap: 13px; }
@@ -314,7 +310,7 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (min-width: 600px) {
   body { padding: 30px 0; }
   .app-shell { min-height: calc(100vh - 60px); border-radius: 34px; }
-  .bottom-nav, .practice-footer { bottom: 30px; border-radius: 0 0 34px 34px; }
+  .practice-footer { bottom: 30px; border-radius: 0 0 34px 34px; }
 }
 
 @media (max-height: 700px) {
@@ -347,7 +343,7 @@ button { -webkit-tap-highlight-color: transparent; }
   .brand-copy strong { font-size: 18px; }
   .brand-copy span { font-size: 11px; }
   .home-content {
-    padding: 12px 34px 116px;
+    padding: 12px 34px 32px;
     display: grid;
     grid-template-columns: minmax(360px, .92fr) minmax(430px, 1.08fr);
     grid-template-rows: auto 1fr auto auto;
@@ -381,15 +377,6 @@ button { -webkit-tap-highlight-color: transparent; }
   .mode-card h3 { font-size: 16px; }
   .mode-card p { font-size: 11px; }
   .project-legal { grid-column: 1 / -1; grid-row: 4; margin: 2px 0 0; font-size: 9px; }
-  .bottom-nav {
-    width: min(1180px, calc(100% - 48px));
-    bottom: 24px;
-    padding-left: max(48px, calc((100% - 500px) / 2));
-    padding-right: max(48px, calc((100% - 500px) / 2));
-    border-radius: 0 0 32px 32px;
-  }
-  .bottom-nav button { font-size: 10px; }
-
   .practice-header { width: min(940px, calc(100% - 64px)); margin: 0 auto; padding: 25px 0 14px; }
   .practice-main {
     width: min(900px, calc(100% - 64px));
@@ -432,7 +419,7 @@ button { -webkit-tap-highlight-color: transparent; }
   body { padding: 12px 0; }
   .app-shell { min-height: calc(100vh - 24px); }
   .topbar { height: 72px; padding: 15px 28px 10px; }
-  .home-content { padding: 5px 28px 88px; gap: 12px 24px; }
+  .home-content { padding: 5px 28px 20px; gap: 12px 24px; }
   .hero-card { min-height: 420px; padding: 26px 30px; }
   .hero-card .eyebrow { margin-top: 28px; }
   .hero-card h1 { font-size: clamp(43px, 4.5vw, 58px); }
@@ -450,7 +437,6 @@ button { -webkit-tap-highlight-color: transparent; }
   .mode-card { min-height: 66px; padding: 10px 15px; }
   .mode-card p { display: none; }
   .project-legal { display: none; }
-  .bottom-nav { bottom: 12px; padding-top: 8px; padding-bottom: 8px; }
   .practice-header { padding-top: 13px; }
   .practice-main { padding-top: 4px; padding-bottom: 94px; }
   .typing-stage { min-height: 340px; margin-top: 0; padding-top: 22px; }
@@ -571,7 +557,6 @@ button { -webkit-tap-highlight-color: transparent; }
   .mode-card h3 { font-size: 19px; }
   .mode-card p { display: block; font-size: 13px; }
   .project-legal { grid-column: 2; grid-row: 3; margin: 0; min-height: 12px; font-size: 10px; }
-  .bottom-nav { display: none; }
   .modal-backdrop { width: min(1400px, calc(100% - 40px)); }
 
   .counter { font-size: 14px; }
