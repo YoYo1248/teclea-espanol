@@ -101,17 +101,27 @@ function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds}`
 }
 
+function spanishVoiceScore(voice: SpeechSynthesisVoice) {
+  const language = voice.lang.toLowerCase()
+  const name = voice.name.toLowerCase()
+  let score = language === 'es-es' ? 100 : language.startsWith('es') ? 60 : 0
+  if (/(mónica|monica|jorge|paulina|natural|premium|enhanced|siri|google español)/i.test(name)) score += 35
+  if (voice.localService) score += 5
+  return score
+}
+
 function speak(text: string, onDone?: () => void) {
   if (!('speechSynthesis' in window)) return false
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text.replace(/[¿?¡!]/g, ''))
   utterance.lang = 'es-ES'
   const voices = window.speechSynthesis.getVoices()
-  const spanishVoice = voices.find((voice) => voice.lang.toLowerCase() === 'es-es')
-    ?? voices.find((voice) => voice.lang.toLowerCase().startsWith('es'))
+  const spanishVoice = voices
+    .filter((voice) => voice.lang.toLowerCase().startsWith('es'))
+    .sort((left, right) => spanishVoiceScore(right) - spanishVoiceScore(left))[0]
   if (spanishVoice) utterance.voice = spanishVoice
   utterance.volume = 1
-  utterance.rate = 0.76
+  utterance.rate = 0.86
   utterance.pitch = 1
   if (onDone) {
     utterance.onend = onDone
@@ -470,26 +480,28 @@ function App() {
       setTimerNow(Date.now())
     }
 
-    const target = getTypingTarget(word.spanish)
-    const current = normalize(typed)
+    const targetCharacters = Array.from(getTypingTarget(word.spanish))
+    const currentCharacters = Array.from(normalize(typed))
     const incomingValue = rawValue.toLocaleLowerCase('es-ES').normalize('NFC')
-    if (!incomingValue.startsWith(current) || incomingValue.length <= current.length) return
-    setInputDraft(incomingValue)
+    const incomingCharacters = Array.from(incomingValue)
+    if (incomingCharacters.length <= currentCharacters.length) return
 
-    const incoming = incomingValue.slice(current.length)
-    let correctPrefix = current
+    const incoming = incomingCharacters.slice(currentCharacters.length)
+    const correctPrefix = [...currentCharacters]
+    let acceptedRawLength = currentCharacters.length
     let newlyCorrect = 0
 
     for (const character of incoming) {
-      const expected = target[correctPrefix.length]
+      const expected = targetCharacters[correctPrefix.length]
       if (charactersMatch(character, expected, accentMode)) {
-        correctPrefix += expected
+        correctPrefix.push(expected)
+        acceptedRawLength += 1
         newlyCorrect += 1
         continue
       }
 
-      setTyped(correctPrefix)
-      setInputDraft(correctPrefix)
+      setTyped(correctPrefix.join(''))
+      setInputDraft(incomingCharacters.slice(0, acceptedRawLength).join(''))
       if (newlyCorrect) setCorrectKeystrokes((value) => value + newlyCorrect)
       setWrongAt(correctPrefix.length)
       setStatus('wrong')
@@ -507,10 +519,10 @@ function App() {
       return
     }
 
-    setTyped(correctPrefix)
-    setInputDraft(correctPrefix)
+    setTyped(correctPrefix.join(''))
+    setInputDraft(incomingCharacters.slice(0, acceptedRawLength).join(''))
     if (newlyCorrect) setCorrectKeystrokes((value) => value + newlyCorrect)
-    if (correctPrefix.length === target.length) {
+    if (correctPrefix.length === targetCharacters.length) {
       setStatus('correct')
       playEffect('complete')
       const completionToken = ++flowTokenRef.current
@@ -696,7 +708,7 @@ function App() {
       <main className="practice-main">
         <div className="mode-switch" role="group" aria-label="练习模式">
           <button className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
-          <button className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />回忆</button>
+          <button aria-label="看中文写西语" className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
           <button className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
         </div>
 
