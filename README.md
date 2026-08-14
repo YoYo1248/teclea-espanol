@@ -20,7 +20,8 @@
 - 关闭浏览器自动纠错与自动大写
 - 错误后整词重输，正确后展示例句与语言提示
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 3 组 A1 生活词汇，共 18 个表达
+- 6 组 A1–A2 生活词汇，共 48 个表达，可按等级与场景筛选
+- 词形以 Kaikki / English Wiktionary 结构化西语数据核对；等级、中文释义与例句由本项目编辑
 - 本地保存课程完成状态
 - 手机安全区、窄屏、电脑宽屏和低高度布局适配
 
@@ -41,4 +42,4 @@ npm run build
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-当前 18 个词条是 MVP 阶段人工编写的演示内容，不是从正式词典导入，也未经过专业语言编辑审核。正式词库的数据来源、许可和审核流程见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md)。
+当前 48 个词条的词形使用 Kaikki / English Wiktionary 数据核对，相关条目内容依 CC BY-SA 4.0 / GFDL 提供；项目自行编写的中文释义、例句、CEFR 分级与场景分类仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。

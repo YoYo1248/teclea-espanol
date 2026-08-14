@@ -1,21 +1,21 @@
-# 词库来源与制作计划
+# 词库来源与制作说明
 
-## 当前版本的真实状态
+## 当前版本的真实状态（2026-08-14）
 
-`src/data.ts` 中现有 18 个 A1 词条由项目开发阶段人工编写，用于验证交互、重音、冠词、短语空格和听写流程。
+`src/data.ts` 现有 6 组、48 个 A1–A2 词条，覆盖基础、日常、餐厅、旅行、购物和住宿。
 
 这些内容：
 
-- 不是从 Qwerty Learner 词库复制；
-- 不是从 RAE、教材或商业词典摘录；
-- 尚未经过西语教师或专业语言编辑逐条审核；
-- 只能标记为“演示词库”，不能作为正式完整 A1 课程发布。
+- 西语词形、重音、冠词以 Kaikki 的 English Wiktionary 结构化西语数据核对；
+- 中文释义和例句由本项目自行编写，不复制商业词典或教材；
+- A1/A2 和场景标签是本项目的教学编辑判断，不是 Kaikki 自带等级；
+- 尚未经过西语教师或专业语言编辑逐条审核，因此仍是候选学习词库。
 
-## 正式词库拟采用的来源
+## 已采用的开放来源
 
 ### 1. 词形、词性、变位和发音信息
 
-优先使用 Wiktionary 的结构化提取数据（Wiktextract / Kaikki）。数据需要保留来源条目、提取日期和 CC BY-SA 许可信息。
+使用 Wiktionary 的结构化提取数据（Wiktextract / Kaikki），并在每个词条中保留来源、核对日期和许可字段。
 
 用途：
 
@@ -24,9 +24,9 @@
 - 获取名词性别和常见变位；
 - 筛选可用的发音文件。
 
-### 2. 西语例句及中西翻译配对
+### 2. 未来可选的西语例句及中西翻译配对
 
-候选来源为 Tatoeba 下载数据。Tatoeba 文本下载默认以 CC BY 2.0 FR 发布，但必须逐句保留作者和句子 ID，不能只在应用底部笼统写一次来源。
+如果未来导入 Tatoeba，其下载文本默认以 CC BY 2.0 FR 发布，必须逐句保留作者和句子 ID，不能只在应用底部笼统写一次来源。当前版本没有使用 Tatoeba 句子。
 
 用途：
 
@@ -36,7 +36,7 @@
 
 Tatoeba 自身不保证所有句子或翻译经过专业审核，因此导入后仍需人工复核。
 
-### 3. 难度与教学顺序
+### 3. 难度与教学顺序（项目编辑）
 
 不直接复制受版权保护的教材词表。项目自行建立分级规则：
 
@@ -46,27 +46,25 @@ Tatoeba 自身不保证所有句子或翻译经过专业审核，因此导入后
 - 词频与现实使用价值；
 - 每组 8–12 个词或短语，避免孤立堆词。
 
-## 每个正式词条必须保留的字段
+## 当前数据保留的关键字段
 
 ```ts
 {
   spanish: string
   chinese: string
   article?: string
-  partOfSpeech: string
   example: string
   exampleChinese: string
-  level: 'A1' | 'A2' | 'B1' | 'B2'
   source: {
-    spelling: string
-    example?: string
+    name: string
+    url: string
     license: string
-    attribution?: string
+    checkedAt: string
   }
-  reviewedBy?: string
-  reviewedAt?: string
 }
 ```
+
+`level` 与 `scene` 保存在课程组级别。后续专业复核时再增加 `reviewedBy` 与 `reviewedAt`。
 
 ## 发布门槛
 

@@ -17,7 +17,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { lessons, type Lesson } from './data'
+import { lessonLevels, lessonScenes, lessons, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -46,13 +46,18 @@ function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds}`
 }
 
-function speak(text: string) {
-  if (!('speechSynthesis' in window)) return
+function speak(text: string, onDone?: () => void) {
+  if (!('speechSynthesis' in window)) return false
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text.replace(/[¿?¡!]/g, ''))
   utterance.lang = 'es-ES'
   utterance.rate = 0.82
+  if (onDone) {
+    utterance.onend = onDone
+    utterance.onerror = onDone
+  }
   window.speechSynthesis.speak(utterance)
+  return true
 }
 
 function App() {
@@ -70,6 +75,9 @@ function App() {
   const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>('全部')
+  const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
+  const [inputEpoch, setInputEpoch] = useState(0)
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
@@ -86,6 +94,8 @@ function App() {
   const resetTimerRef = useRef<number | undefined>(undefined)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
+  const compositionCommittedValueRef = useRef<string | null>(null)
+  const flowTokenRef = useRef(0)
   const sessionStartedAtRef = useRef<number | null>(null)
   const keyAudioRef = useRef<HTMLAudioElement | null>(null)
   const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -146,6 +156,10 @@ function App() {
     () => lessons.filter((item) => completed.includes(item.id)).reduce((total, item) => total + item.words.length, 0),
     [completed],
   )
+  const filteredLessons = useMemo(
+    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
+    [levelFilter, sceneFilter],
+  )
 
   const elapsedSeconds = screen === 'complete'
     ? finalElapsedSeconds
@@ -164,7 +178,25 @@ function App() {
     void audio.play().catch(() => undefined)
   }
 
+  function chooseLevelFilter(nextLevel: '全部' | LessonLevel) {
+    setLevelFilter(nextLevel)
+    if (nextLevel !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.level === nextLevel && item.scene === sceneFilter)) {
+      setSceneFilter('全部')
+    }
+  }
+
+  function chooseSceneFilter(nextScene: '全部' | LessonScene) {
+    setSceneFilter(nextScene)
+    if (nextScene !== '全部' && levelFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.level === levelFilter)) {
+      setLevelFilter('全部')
+    }
+  }
+
   function begin(nextLesson: Lesson, nextMode: Mode = 'copy') {
+    flowTokenRef.current += 1
+    window.clearTimeout(resetTimerRef.current)
+    isComposingRef.current = false
+    compositionCommittedValueRef.current = null
     setLesson(nextLesson)
     setMode(nextMode)
     setIndex(0)
@@ -180,10 +212,12 @@ function App() {
     setStatus('idle')
     setWrongAt(null)
     setRevealAnswer(false)
+    setInputEpoch((value) => value + 1)
     setScreen('practice')
   }
 
   function next() {
+    flowTokenRef.current += 1
     setCompletedWords((value) => value + 1)
     if (index === lesson.words.length - 1) {
       const seconds = sessionStartedAtRef.current ? Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000)) : 0
@@ -202,25 +236,37 @@ function App() {
   }
 
   function changeMode(nextMode: Mode) {
+    if (nextMode === mode) return
+    flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
+    isComposingRef.current = false
+    compositionCommittedValueRef.current = null
+    inputRef.current?.blur()
     setMode(nextMode)
     setTyped('')
     setInputDraft('')
     setStatus('idle')
     setWrongAt(null)
     setRevealAnswer(false)
-    requestAnimationFrame(() => inputRef.current?.focus())
+    setInputEpoch((value) => value + 1)
+    window.setTimeout(() => inputRef.current?.focus(), 80)
   }
 
   function chooseAccentMode(nextMode: AccentMode) {
     if (nextMode === accentMode) return
+    flowTokenRef.current += 1
+    window.clearTimeout(resetTimerRef.current)
+    isComposingRef.current = false
+    compositionCommittedValueRef.current = null
+    inputRef.current?.blur()
     setAccentMode(nextMode)
     localStorage.setItem('teclea-accent-mode', nextMode)
     setTyped('')
     setInputDraft('')
     setStatus('idle')
     setWrongAt(null)
-    requestAnimationFrame(() => inputRef.current?.focus())
+    setInputEpoch((value) => value + 1)
+    window.setTimeout(() => inputRef.current?.focus(), 80)
   }
 
   function toggleAccentMode() {
@@ -283,7 +329,17 @@ function App() {
     if (correctPrefix.length === target.length) {
       setStatus('correct')
       playEffect('complete')
-      resetTimerRef.current = window.setTimeout(next, 520)
+      const completionToken = ++flowTokenRef.current
+      const advance = () => {
+        if (flowTokenRef.current !== completionToken) return
+        window.clearTimeout(resetTimerRef.current)
+        next()
+      }
+      resetTimerRef.current = window.setTimeout(() => {
+        if (flowTokenRef.current !== completionToken) return
+        const started = speak(word.spanish, advance)
+        resetTimerRef.current = window.setTimeout(advance, started ? 2400 : 650)
+      }, 130)
     } else if (newlyCorrect) {
       playEffect('key')
     }
@@ -331,25 +387,30 @@ function App() {
           </section>
 
           <section className="course-section">
-            <div className="section-heading"><div><span className="section-kicker">你的课程</span><h2>从真实生活开始</h2></div><button>全部</button></div>
+            <div className="section-heading"><div><span className="section-kicker">开放词库</span><h2>按等级与场景选择</h2></div><button onClick={() => { setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
+            <div className="course-filters" aria-label="词库筛选">
+              <div><span>难度</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
+              <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
+            </div>
             <div className="lesson-list">
-              {lessons.map((item, lessonIndex) => {
+              {filteredLessons.map((item) => {
                 const isDone = completed.includes(item.id)
                 return (
                   <button className="lesson-card" key={item.id} onClick={() => begin(item)}>
-                    <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : String(lessonIndex + 1).padStart(2, '0')}</span>
+                    <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
                     <span className="lesson-copy"><small>{item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
                     <span className="lesson-meta"><b>{item.words.length}</b><small>词</small></span>
                   </button>
                 )
               })}
             </div>
+            <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形核对：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
           </section>
 
           <section className="mode-card">
             <div className="mode-icon"><Headphones size={23} /></div>
             <div><span className="section-kicker">挑战模式</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
-            <button aria-label="开始听写" onClick={() => begin(lessons[0], 'listen')}><ArrowRight size={19} /></button>
+            <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
           </section>
           <footer className="project-legal">
             <span>GPL-3.0 开源项目</span>
@@ -478,18 +539,33 @@ function App() {
             })}
           </div>
           <input
+            key={`${lesson.id}-${index}-${mode}-${inputEpoch}`}
             ref={inputRef}
             id="typing-input"
             className="keyboard-capture"
             value={inputDraft}
             onChange={(event) => {
               setInputDraft(event.target.value)
-              if (!isComposingRef.current) handleCharacters(event.target.value)
+              if (isComposingRef.current || (event.nativeEvent as InputEvent).isComposing) return
+              if (compositionCommittedValueRef.current === event.target.value) {
+                compositionCommittedValueRef.current = null
+                return
+              }
+              compositionCommittedValueRef.current = null
+              handleCharacters(event.target.value)
             }}
-            onCompositionStart={() => { isComposingRef.current = true }}
+            onCompositionStart={() => {
+              isComposingRef.current = true
+              compositionCommittedValueRef.current = null
+            }}
             onCompositionEnd={(event) => {
               isComposingRef.current = false
+              compositionCommittedValueRef.current = event.currentTarget.value
               handleCharacters(event.currentTarget.value)
+            }}
+            onBlur={() => {
+              isComposingRef.current = false
+              compositionCommittedValueRef.current = null
             }}
             onKeyDown={(event) => { if (event.key === 'Backspace') event.preventDefault() }}
             autoComplete="off"
