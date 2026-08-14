@@ -166,5 +166,5 @@ export function lessonEnglishCopy(id: string, fallback: { title: string; descrip
 
 export const filterEnglish = {
   kinds: { '全部': 'All', '短句': 'Phrases', '对话': 'Dialogue', '高频': 'High frequency', '变位': 'Conjugation' } as Record<string, string>,
-  scenes: { '全部': 'All', '基础': 'Basics', '日常': 'Daily life', '时间': 'Time', '家庭': 'Family', '餐厅': 'Restaurant', '城市': 'City', '旅行': 'Travel', '购物': 'Shopping', '住宿': 'Accommodation', '健康': 'Health', '学习': 'Study', '工作': 'Work', '驾考': 'Driving test', '球类': 'Ball sports', '语法': 'Grammar' } as Record<string, string>,
+  scenes: { '全部': 'All', '日常交流': 'Daily communication', '生活办事': 'Everyday errands', '出行旅游': 'Travel & transport', '学习工作': 'Study & work', '驾考': 'Driving test', '球类': 'Ball sports', '语法': 'Grammar' } as Record<string, string>,
 }

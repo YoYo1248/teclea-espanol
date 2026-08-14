@@ -408,4 +408,3 @@ export const lessons: Lesson[] = [...phraseLessons, ...dialogueLessons, ...sport
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2']
 export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '短句', '对话', '高频', '变位']
-export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '驾考', '球类', '语法']

@@ -20,7 +20,7 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, SPORTS_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessons, PHRASE_SOURCE, SPORTS_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
 import { filterEnglish, lessonEnglishCopy, type DisplayLanguage, type SpeechRate } from './english'
 import { createSyncQr, formatSyncCode, generateSyncCode, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 
@@ -45,12 +45,27 @@ type MistakeRecord = {
   masteredAt?: number
 }
 type ReviewOutcome = { mastered: number; remaining: number; hadErrors: boolean }
+type SceneFilter = '全部' | '日常交流' | '生活办事' | '出行旅游' | '学习工作' | '驾考' | '球类' | '语法'
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
+const SCENE_FILTERS: SceneFilter[] = ['全部', '日常交流', '生活办事', '出行旅游', '学习工作', '驾考', '球类', '语法']
+const SCENES_BY_FILTER: Record<Exclude<SceneFilter, '全部'>, LessonScene[]> = {
+  日常交流: ['基础', '日常', '时间', '家庭'],
+  生活办事: ['餐厅', '购物', '住宿', '健康'],
+  出行旅游: ['城市', '旅行'],
+  学习工作: ['学习', '工作'],
+  驾考: ['驾考'],
+  球类: ['球类'],
+  语法: ['语法'],
+}
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 const LOCAL_UPDATED_KEY = 'teclea-local-updated-at'
+
+function matchesSceneFilter(scene: LessonScene, filter: SceneFilter) {
+  return filter === '全部' || SCENES_BY_FILTER[filter].includes(scene)
+}
 
 function initialSyncCode() {
   const hashCode = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('sync')
@@ -239,7 +254,7 @@ function App() {
   const [syncLastAt, setSyncLastAt] = useState<number | null>(null)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>('全部')
   const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>('全部')
-  const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
+  const [sceneFilter, setSceneFilter] = useState<SceneFilter>('全部')
   const [inputEpoch, setInputEpoch] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
@@ -385,7 +400,7 @@ function App() {
   const todayDone = practiceState.dailyWords[localDateKey()] ?? 0
   const streak = useMemo(() => learningStreak(practiceState.dailyWords), [practiceState.dailyWords])
   const filteredLessons = useMemo(
-    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
+    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && matchesSceneFilter(item.scene, sceneFilter)),
     [levelFilter, kindFilter, sceneFilter],
   )
   const activeMistakeEntries = useMemo(
@@ -616,24 +631,24 @@ function App() {
 
   function chooseLevelFilter(nextLevel: '全部' | LessonLevel) {
     setLevelFilter(nextLevel)
-    if (nextLevel !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.level === nextLevel && item.scene === sceneFilter)) {
+    if (nextLevel !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.level === nextLevel && matchesSceneFilter(item.scene, sceneFilter))) {
       setSceneFilter('全部')
     }
   }
 
   function chooseKindFilter(nextKind: '全部' | LessonKind) {
     setKindFilter(nextKind)
-    if (nextKind !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.kind === nextKind && item.scene === sceneFilter)) {
+    if (nextKind !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.kind === nextKind && matchesSceneFilter(item.scene, sceneFilter))) {
       setSceneFilter('全部')
     }
   }
 
-  function chooseSceneFilter(nextScene: '全部' | LessonScene) {
+  function chooseSceneFilter(nextScene: SceneFilter) {
     setSceneFilter(nextScene)
-    if (nextScene !== '全部' && levelFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.level === levelFilter)) {
+    if (nextScene !== '全部' && levelFilter !== '全部' && !lessons.some((item) => matchesSceneFilter(item.scene, nextScene) && item.level === levelFilter)) {
       setLevelFilter('全部')
     }
-    if (nextScene !== '全部' && kindFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.kind === kindFilter)) {
+    if (nextScene !== '全部' && kindFilter !== '全部' && !lessons.some((item) => matchesSceneFilter(item.scene, nextScene) && item.kind === kindFilter)) {
       setKindFilter('全部')
     }
   }
@@ -888,7 +903,7 @@ function App() {
             <div className="course-filters" aria-label={tr('词库筛选', 'Library filters')}>
               <div><span>{tr('类型', 'Type')}</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{isEnglish ? filterEnglish.kinds[kind] : kind}</button>)}</div>
               <div><span>{tr('难度', 'Level')}</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{isEnglish && level === '全部' ? 'All' : level}</button>)}</div>
-              <div><span>{tr('场景', 'Situation')}</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{isEnglish ? filterEnglish.scenes[scene] : scene}</button>)}</div>
+              <div><span>{tr('场景', 'Situation')}</span>{SCENE_FILTERS.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{isEnglish ? filterEnglish.scenes[scene] : scene}</button>)}</div>
             </div>
             <div className="lesson-list">
               {filteredLessons.map((item) => {
