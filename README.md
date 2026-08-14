@@ -24,6 +24,8 @@
 - 可按“短句 / 对话 / 高频 / 变位”、学习等级和生活场景筛选
 - 高频顺序参考 wordfreq；词形与变位以 Kaikki / English Wiktionary 结构化数据核对
 - 本地保存课程完成状态
+- 无账号跨设备同步：20位同步码、二维码配对、浏览器端 AES-GCM 加密
+- 错题累计错误次数，高错词在复习轮次中重复出现；连续两轮零错误后标记掌握
 - 手机安全区、窄屏、电脑宽屏和低高度布局适配
 
 ## 本地运行
@@ -38,6 +40,17 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## 启用云同步
+
+前端会继续优先保存在浏览器本地；云同步需要为 Vercel 项目连接一个 Upstash Redis 数据库，并配置下面两项环境变量：
+
+```bash
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
+
+Vercel Marketplace 某些版本也会注入 `KV_REST_API_URL` 与 `KV_REST_API_TOKEN`，项目同样支持。连接数据库后重新部署即可。详细的数据结构、安全模型和合并规则见 [`docs/SYNC.md`](docs/SYNC.md)。
 
 ## 许可说明
 

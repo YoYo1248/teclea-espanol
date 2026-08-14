@@ -4,6 +4,10 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  Cloud,
+  Copy,
+  Eye,
+  EyeOff,
   Flame,
   Headphones,
   Home,
@@ -17,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { FREQUENCY_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { createSyncQr, formatSyncCode, generateSyncCode, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -33,12 +38,71 @@ type MistakeRecord = {
   count: number
   lastWrongAt: number
   lastMode: Mode
+  cleanRounds?: number
+  lastReviewedAt?: number
+  masteredAt?: number
 }
+type ReviewOutcome = { mastered: number; remaining: number; hadErrors: boolean }
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
+const LOCAL_UPDATED_KEY = 'teclea-local-updated-at'
+
+function initialSyncCode() {
+  const hashCode = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('sync')
+  const code = normalizeSyncCode(hashCode ?? localStorage.getItem(SYNC_CODE_KEY) ?? '')
+  if (hashCode) history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+  return code.length === 20 ? code : ''
+}
+
+function initialLocalUpdatedAt() {
+  const stored = Number(localStorage.getItem(LOCAL_UPDATED_KEY))
+  if (stored > 0) return stored
+  const hasLegacyProgress = [PRACTICE_STATE_KEY, MISTAKE_BANK_KEY, 'teclea-completed'].some((key) => localStorage.getItem(key) !== null)
+  return hasLegacyProgress ? Date.now() : 0
+}
+
+function mergeDailyWords(local: Record<string, number>, remote: Record<string, number>) {
+  const merged = { ...local }
+  Object.entries(remote).forEach(([date, count]) => { merged[date] = Math.max(merged[date] ?? 0, count) })
+  return merged
+}
+
+function recordActivity(record: MistakeRecord) {
+  return Math.max(record.lastWrongAt, record.lastReviewedAt ?? 0, record.masteredAt ?? 0)
+}
+
+function mergeMistakeBanks(local: Record<string, MistakeRecord>, remote: Record<string, MistakeRecord>) {
+  const merged = { ...local }
+  Object.entries(remote).forEach(([key, remoteRecord]) => {
+    const localRecord = merged[key]
+    if (!localRecord) {
+      merged[key] = remoteRecord
+      return
+    }
+    const newest = recordActivity(remoteRecord) > recordActivity(localRecord) ? remoteRecord : localRecord
+    merged[key] = { ...newest, count: Math.max(localRecord.count, remoteRecord.count), lastWrongAt: Math.max(localRecord.lastWrongAt, remoteRecord.lastWrongAt) }
+  })
+  return merged
+}
+
+function mergeSnapshots(local: SyncSnapshot, remote: SyncSnapshot): SyncSnapshot {
+  const remoteIsNewer = remote.updatedAt > local.updatedAt
+  return {
+    version: 1,
+    updatedAt: Math.max(local.updatedAt, remote.updatedAt, Date.now()),
+    practiceState: {
+      ...(remoteIsNewer ? remote.practiceState : local.practiceState),
+      dailyWords: mergeDailyWords(local.practiceState.dailyWords, remote.practiceState.dailyWords),
+    },
+    mistakeBank: mergeMistakeBanks(local.mistakeBank, remote.mistakeBank),
+    completed: Array.from(new Set([...local.completed, ...remote.completed])),
+    accentMode: remoteIsNewer ? remote.accentMode : local.accentMode,
+    soundEnabled: remoteIsNewer ? remote.soundEnabled : local.soundEnabled,
+  }
+}
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -151,6 +215,14 @@ function App() {
   const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [mistakesOpen, setMistakesOpen] = useState(false)
+  const [syncCode, setSyncCode] = useState(initialSyncCode)
+  const [syncInput, setSyncInput] = useState('')
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle')
+  const [syncMessage, setSyncMessage] = useState('')
+  const [syncQr, setSyncQr] = useState('')
+  const [showSyncCode, setShowSyncCode] = useState(false)
+  const [syncLastAt, setSyncLastAt] = useState<number | null>(null)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>('全部')
   const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>('全部')
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
@@ -160,6 +232,7 @@ function App() {
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
+  const [reviewOutcome, setReviewOutcome] = useState<ReviewOutcome | null>(null)
   const [mistakeBank, setMistakeBank] = useState<Record<string, MistakeRecord>>(readMistakeBank)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(0)
@@ -176,7 +249,13 @@ function App() {
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
   const flowTokenRef = useRef(0)
-  const reviewHadErrorRef = useRef(false)
+  const reviewErrorsRef = useRef<Set<string>>(new Set())
+  const localUpdatedAtRef = useRef(initialLocalUpdatedAt())
+  const syncCodeRef = useRef(syncCode)
+  const latestSnapshotRef = useRef<SyncSnapshot | null>(null)
+  const syncTimerRef = useRef<number | undefined>(undefined)
+  const syncRunningRef = useRef(false)
+  const syncInitializedRef = useRef(false)
   const sessionStartedAtRef = useRef<number | null>(null)
   const keyAudioRef = useRef<HTMLAudioElement | null>(null)
   const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -185,6 +264,17 @@ function App() {
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
+
+  syncCodeRef.current = syncCode
+  latestSnapshotRef.current = {
+    version: 1,
+    updatedAt: localUpdatedAtRef.current,
+    practiceState,
+    mistakeBank,
+    completed,
+    accentMode,
+    soundEnabled,
+  }
 
   useEffect(() => {
     if (screen === 'practice') setTimeout(() => inputRef.current?.focus(), 120)
@@ -217,7 +307,21 @@ function App() {
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
     window.clearTimeout(revealTimerRef.current)
+    window.clearTimeout(syncTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!syncCodeRef.current) return
+    void syncNow(syncCodeRef.current, true)
+  }, [])
+
+  useEffect(() => {
+    if (!showSyncCode || !syncCode) {
+      setSyncQr('')
+      return
+    }
+    void createSyncQr(syncCode).then(setSyncQr).catch(() => setSyncQr(''))
+  }, [showSyncCode, syncCode])
 
   useEffect(() => {
     if (screen !== 'practice') return
@@ -264,19 +368,25 @@ function App() {
     () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
     [levelFilter, kindFilter, sceneFilter],
   )
+  const activeMistakeEntries = useMemo(
+    () => Object.entries(mistakeBank)
+      .filter(([, record]) => !record.masteredAt)
+      .sort(([, left], [, right]) => right.count - left.count || right.lastWrongAt - left.lastWrongAt),
+    [mistakeBank],
+  )
   const mistakeLesson = useMemo<Lesson | null>(() => {
-    const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
-    if (!entries.length) return null
+    if (!activeMistakeEntries.length) return null
+    const reviewQueue = [0, 1, 2].flatMap((round) => activeMistakeEntries.filter(([, record]) => round < (record.count >= 6 ? 3 : record.count >= 3 ? 2 : 1)))
     return {
       id: 'mistake-review',
       level: 'A1',
       scene: '基础',
       kind: '短句',
-      eyebrow: '错题库 · 按最近出错排序',
+      eyebrow: '错题库 · 按错误次数与最近出错排序',
       title: '错题复习',
-      description: '整组零错误完成后才会清除',
+      description: '高错词重复出现，连续两轮零错误后掌握',
       color: '#b9674f',
-      words: entries.map(([reviewKey, record]) => {
+      words: reviewQueue.map(([reviewKey, record]) => {
         const originalLesson = lessons.find((item) => item.id === record.lessonId)
         const originalWord = originalLesson?.words.find((item) => item.spanish === record.spanish)
         return originalWord
@@ -284,7 +394,9 @@ function App() {
           : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
       }),
     }
-  }, [mistakeBank])
+  }, [activeMistakeEntries])
+  const activeMistakeCount = activeMistakeEntries.length
+  const masteredMistakeCount = useMemo(() => Object.values(mistakeBank).filter((item) => item.masteredAt).length, [mistakeBank])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
 
   const elapsedSeconds = screen === 'complete'
@@ -304,7 +416,106 @@ function App() {
     void audio.play().catch(() => undefined)
   }
 
+  function scheduleSync() {
+    localUpdatedAtRef.current = Date.now()
+    localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
+    if (!syncCodeRef.current || !syncInitializedRef.current) return
+    window.clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = window.setTimeout(() => void syncNow(syncCodeRef.current), 1400)
+  }
+
+  function applySyncSnapshot(snapshot: SyncSnapshot) {
+    localUpdatedAtRef.current = snapshot.updatedAt
+    localStorage.setItem(LOCAL_UPDATED_KEY, String(snapshot.updatedAt))
+    localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(snapshot.practiceState))
+    localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(snapshot.mistakeBank))
+    localStorage.setItem('teclea-completed', JSON.stringify(snapshot.completed))
+    localStorage.setItem('teclea-accent-mode', snapshot.accentMode)
+    localStorage.setItem('teclea-sound-enabled', String(snapshot.soundEnabled))
+    setPracticeState(snapshot.practiceState)
+    setMistakeBank(snapshot.mistakeBank)
+    setCompleted(snapshot.completed)
+    setAccentMode(snapshot.accentMode)
+    setSoundEnabled(snapshot.soundEnabled)
+    setLesson(lessons.find((item) => item.id === snapshot.practiceState.lastLessonId) ?? lessons[0])
+    setMode(snapshot.practiceState.lastMode)
+  }
+
+  async function syncNow(code = syncCodeRef.current, initial = false) {
+    const normalized = normalizeSyncCode(code)
+    if (normalized.length !== 20 || syncRunningRef.current || !latestSnapshotRef.current) return
+    syncRunningRef.current = true
+    setSyncStatus('syncing')
+    setSyncMessage('正在合并两台设备的学习记录…')
+    try {
+      const local = latestSnapshotRef.current
+      const remote = await pullSync(normalized)
+      const merged = remote ? mergeSnapshots(local, remote) : { ...local, updatedAt: Math.max(local.updatedAt, Date.now()) }
+      applySyncSnapshot(merged)
+      await pushSync(normalized, merged)
+      setSyncCode(normalized)
+      syncCodeRef.current = normalized
+      localStorage.setItem(SYNC_CODE_KEY, normalized)
+      setSyncLastAt(Date.now())
+      setSyncStatus('synced')
+      setSyncMessage(remote ? '学习进度已合并并同步。' : '同步空间已创建。')
+    } catch (error) {
+      setSyncStatus('error')
+      setSyncMessage(error instanceof Error ? error.message : '同步失败，请稍后再试')
+    } finally {
+      syncRunningRef.current = false
+      syncInitializedRef.current = true
+      if (initial && !localStorage.getItem(SYNC_CODE_KEY)) setSyncCode('')
+    }
+  }
+
+  function createSyncSpace() {
+    const code = generateSyncCode()
+    setSyncCode(code)
+    syncCodeRef.current = code
+    localStorage.setItem(SYNC_CODE_KEY, code)
+    setShowSyncCode(true)
+    void syncNow(code)
+  }
+
+  function connectSyncSpace() {
+    const code = normalizeSyncCode(syncInput)
+    if (code.length !== 20) {
+      setSyncStatus('error')
+      setSyncMessage('请输入完整的20位同步码。')
+      return
+    }
+    setSyncCode(code)
+    syncCodeRef.current = code
+    localStorage.setItem(SYNC_CODE_KEY, code)
+    setSyncInput('')
+    setShowSyncCode(false)
+    void syncNow(code)
+  }
+
+  function stopSync() {
+    window.clearTimeout(syncTimerRef.current)
+    localStorage.removeItem(SYNC_CODE_KEY)
+    syncCodeRef.current = ''
+    syncInitializedRef.current = false
+    setSyncCode('')
+    setSyncStatus('idle')
+    setSyncMessage('已停止同步；本机学习记录仍会保留。')
+    setShowSyncCode(false)
+  }
+
+  async function copySyncCode() {
+    if (!syncCode) return
+    try {
+      await navigator.clipboard.writeText(formatSyncCode(syncCode))
+      setSyncMessage('同步码已复制。')
+    } catch {
+      setSyncMessage('无法自动复制，请长按同步码复制。')
+    }
+  }
+
   function savePracticeState(update: (current: PracticeState) => PracticeState) {
+    scheduleSync()
     setPracticeState((current) => {
       const nextState = update(current)
       localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(nextState))
@@ -313,6 +524,7 @@ function App() {
   }
 
   function saveMistakeBank(update: (current: Record<string, MistakeRecord>) => Record<string, MistakeRecord>) {
+    scheduleSync()
     setMistakeBank((current) => {
       const nextBank = update(current)
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(nextBank))
@@ -331,16 +543,30 @@ function App() {
         count: (current[reviewKey]?.count ?? 0) + 1,
         lastWrongAt: Date.now(),
         lastMode: mode,
+        cleanRounds: 0,
+        masteredAt: undefined,
       },
     }))
   }
 
-  function clearReviewedMistakes(reviewKeys: string[]) {
-    saveMistakeBank((current) => {
-      const nextBank = { ...current }
-      reviewKeys.forEach((reviewKey) => delete nextBank[reviewKey])
-      return nextBank
+  function finishMistakeReview() {
+    const reviewedKeys = Array.from(new Set(lesson.words.flatMap((item) => item.reviewKey ? [item.reviewKey] : [])))
+    const errorKeys = reviewErrorsRef.current
+    const now = Date.now()
+    let mastered = 0
+    let remaining = 0
+    const next = { ...mistakeBank }
+    reviewedKeys.forEach((reviewKey) => {
+      const record = next[reviewKey]
+      if (!record) return
+      const cleanRounds = errorKeys.has(reviewKey) ? 0 : (record.cleanRounds ?? 0) + 1
+      const masteredAt = cleanRounds >= 2 ? now : undefined
+      if (masteredAt) mastered += 1
+      else remaining += 1
+      next[reviewKey] = { ...record, cleanRounds, lastReviewedAt: now, masteredAt }
     })
+    saveMistakeBank(() => next)
+    setReviewOutcome({ mastered, remaining, hadErrors: errorKeys.size > 0 })
   }
 
   function recordCompletedWord() {
@@ -394,7 +620,8 @@ function App() {
     setCorrectKeystrokes(0)
     setCompletedWords(0)
     setMistakeWords({})
-    reviewHadErrorRef.current = false
+    setReviewOutcome(null)
+    reviewErrorsRef.current = new Set()
     setFinalElapsedSeconds(0)
     sessionStartedAtRef.current = null
     setTimerNow(Date.now())
@@ -411,15 +638,14 @@ function App() {
     setCompletedWords((value) => value + 1)
     recordCompletedWord()
     if (index === lesson.words.length - 1) {
-      if (lesson.id === 'mistake-review' && !reviewHadErrorRef.current) {
-        clearReviewedMistakes(lesson.words.flatMap((item) => item.reviewKey ? [item.reviewKey] : []))
-      }
+      if (lesson.id === 'mistake-review') finishMistakeReview()
       const seconds = sessionStartedAtRef.current ? Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000)) : 0
       setFinalElapsedSeconds(seconds)
       if (lessons.some((item) => item.id === lesson.id)) {
         const nextCompleted = Array.from(new Set([...completed, lesson.id]))
         setCompleted(nextCompleted)
         localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+        scheduleSync()
       }
       setScreen('complete')
       return
@@ -458,6 +684,7 @@ function App() {
     inputRef.current?.blur()
     setAccentMode(nextMode)
     localStorage.setItem('teclea-accent-mode', nextMode)
+    scheduleSync()
     setTyped('')
     setInputDraft('')
     setStatus('idle')
@@ -474,6 +701,7 @@ function App() {
     const nextValue = !soundEnabled
     setSoundEnabled(nextValue)
     localStorage.setItem('teclea-sound-enabled', String(nextValue))
+    scheduleSync()
   }
 
   function handleCharacters(rawValue: string) {
@@ -511,7 +739,7 @@ function App() {
       setStatus('wrong')
       setMistakes((value) => value + 1)
       setMistakeWords((value) => ({ ...value, [word.spanish]: (value[word.spanish] ?? 0) + 1 }))
-      if (lesson.id === 'mistake-review') reviewHadErrorRef.current = true
+      if (lesson.id === 'mistake-review' && word.reviewKey) reviewErrorsRef.current.add(word.reviewKey)
       recordMistake()
       playEffect('wrong')
       resetTimerRef.current = window.setTimeout(() => {
@@ -599,8 +827,8 @@ function App() {
           <div className="home-actions">
             <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
-              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3><p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 整组全对后清除` : '输错的词和短句会自动出现在这里。'}</p></div>
-              <button disabled={!mistakeLesson} aria-label="开始错题复习" onClick={() => mistakeLesson && begin(mistakeLesson)}><ArrowRight size={19} /></button>
+              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${activeMistakeCount} 个待复习` : '目前没有待复习错题'}</h3><p>{mistakeAttempts ? `累计错 ${mistakeAttempts} 次 · 已掌握 ${masteredMistakeCount} 个` : '输错的词和短句会自动出现在这里。'}</p></div>
+              <button disabled={!mistakeAttempts} aria-label="查看错题库" onClick={() => setMistakesOpen(true)}><ArrowRight size={19} /></button>
             </section>
             <section className="mode-card">
               <div className="mode-icon"><Headphones size={23} /></div>
@@ -655,6 +883,37 @@ function App() {
                 <b>{soundEnabled ? '已开启' : '已关闭'}</b>
               </button>
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
+              <div className="sync-box">
+                <div className="sync-heading"><span><Cloud size={18} /><strong>跨设备同步</strong></span><small>{syncCode ? '无需账号' : '手机与电脑共享进度'}</small></div>
+                {syncCode ? (
+                  <>
+                    <button className="sync-code-toggle" onClick={() => setShowSyncCode((value) => !value)}>
+                      <span>{showSyncCode ? formatSyncCode(syncCode) : '•••••-•••••-•••••-•••••'}</span>
+                      {showSyncCode ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                    {showSyncCode && (
+                      <div className="sync-secret">
+                        {syncQr && <img src={syncQr} alt="跨设备同步二维码" />}
+                        <p>在另一台设备扫码，或输入上面的同步码。拿到同步码的人可以读取并修改这份学习进度，请不要公开分享。</p>
+                      </div>
+                    )}
+                    <div className="sync-actions">
+                      <button onClick={copySyncCode}><Copy size={15} />复制同步码</button>
+                      <button onClick={() => void syncNow()} disabled={syncStatus === 'syncing'}><RotateCcw size={15} />立即同步</button>
+                      <button className="danger" onClick={stopSync}>停止</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button className="sync-create" onClick={createSyncSpace}>创建我的同步空间</button>
+                    <div className="sync-connect">
+                      <input value={syncInput} onChange={(event) => setSyncInput(formatSyncCode(event.target.value))} placeholder="输入另一台设备的同步码" inputMode="text" autoCapitalize="characters" />
+                      <button onClick={connectSyncSpace}>连接</button>
+                    </div>
+                  </>
+                )}
+                {syncMessage && <p className={`sync-message ${syncStatus}`}>{syncMessage}{syncLastAt && syncStatus === 'synced' ? ` · ${new Date(syncLastAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>}
+              </div>
               <div className="legal-box">
                 <strong>开源与修改声明</strong>
                 <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>
@@ -664,6 +923,29 @@ function App() {
                   <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
                 </div>
               </div>
+            </section>
+          </div>
+        )}
+
+        {mistakesOpen && (
+          <div className="modal-backdrop" role="presentation" onClick={() => setMistakesOpen(false)}>
+            <section className="mistake-sheet" role="dialog" aria-modal="true" aria-label="错题库" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+              <div className="sheet-heading"><div><span className="section-kicker">累计错误记录</span><h2>错题库</h2></div><button className="icon-button" onClick={() => setMistakesOpen(false)} aria-label="关闭错题库"><X size={20} /></button></div>
+              <div className="mistake-strategy">
+                <strong>怎么安排复习</strong>
+                <p>每次错误都会累计。错3次以上会在一轮中出现2次，错6次以上出现3次；按错误次数优先，再看最近出错时间。连续两轮复习零错误后标记为已掌握，再次出错会自动回来。</p>
+              </div>
+              <div className="mistake-bank-stats"><span><b>{activeMistakeCount}</b>待复习</span><span><b>{mistakeAttempts}</b>累计错误</span><span><b>{masteredMistakeCount}</b>已掌握</span></div>
+              <div className="mistake-bank-list">
+                {activeMistakeEntries.length ? activeMistakeEntries.slice(0, 30).map(([key, record]) => (
+                  <div className="mistake-bank-row" key={key}>
+                    <div><strong>{record.spanish}</strong><span>{record.chinese}</span></div>
+                    <small>错 {record.count} 次<br />掌握 {record.cleanRounds ?? 0}/2</small>
+                  </div>
+                )) : <p className="mistake-empty">当前错题都已掌握。以后再次输错时会自动回到这里。</p>}
+              </div>
+              <button className="primary-button mistake-start" disabled={!mistakeLesson} onClick={() => { setMistakesOpen(false); if (mistakeLesson) begin(mistakeLesson) }}>开始错题复习 <ArrowRight size={18} /></button>
             </section>
           </div>
         )}
@@ -680,8 +962,12 @@ function App() {
           <h1>{lesson.title}</h1>
           <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
           {lesson.id === 'mistake-review' && (
-            <p className={`review-result ${mistakes === 0 ? 'clean' : ''}`}>
-              {mistakes === 0 ? '本轮全部答对，这组错题已清除。' : '本轮仍有错误，这组错题会全部保留，请再完整练一轮。'}
+            <p className={`review-result ${reviewOutcome && !reviewOutcome.hadErrors ? 'clean' : ''}`}>
+              {reviewOutcome?.hadErrors
+                ? '本轮有表达再次出错，相关词的连续正确进度已重置。'
+                : reviewOutcome?.mastered
+                  ? `${reviewOutcome.mastered} 个表达已连续两轮零错误，标记为已掌握。`
+                  : '本轮全部正确；再保持一轮零错误即可掌握。'}
             </p>
           )}
           <div className="result-grid">
