@@ -654,6 +654,55 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 @media (max-width: 819px) {
+  .lesson-card {
+    min-width: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) 34px;
+    gap: 10px;
+  }
+  .lesson-number { width: 48px; }
+  .lesson-copy {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .lesson-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lesson-copy strong {
+    min-width: 0;
+    margin: 4px 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.2;
+  }
+  .lesson-copy > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.3;
+  }
+  .lesson-meta {
+    width: 34px;
+    min-width: 0;
+    align-self: center;
+    justify-self: end;
+  }
+  .mistake-card > div:nth-child(2) { min-width: 0; }
+  .mistake-card h3,
+  .mistake-card p { overflow-wrap: anywhere; }
+
   .practice-screen.keyboard-open {
     height: var(--visible-viewport-height, 100svh);
     min-height: 0;
