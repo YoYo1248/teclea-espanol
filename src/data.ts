@@ -8,6 +8,7 @@ export type LessonKind = '对话' | '短句' | '高频' | '变位'
 export type LessonWord = {
   spanish: string
   chinese: string
+  reviewKey?: string
   article?: string
   example?: string
   exampleChinese?: string

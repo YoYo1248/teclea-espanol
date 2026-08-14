@@ -26,10 +26,19 @@ type PracticeState = {
   lastLessonId: string
   dailyWords: Record<string, number>
 }
+type MistakeRecord = {
+  lessonId: string
+  spanish: string
+  chinese: string
+  count: number
+  lastWrongAt: number
+  lastMode: Mode
+}
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
+const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -60,6 +69,16 @@ function learningStreak(dailyWords: Record<string, number>) {
     cursor.setDate(cursor.getDate() - 1)
   }
   return count
+}
+
+function readMistakeBank(): Record<string, MistakeRecord> {
+  try {
+    const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, MistakeRecord>
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+    return Object.fromEntries(Object.entries(stored).filter(([, item]) => item && typeof item.spanish === 'string' && typeof item.chinese === 'string' && typeof item.count === 'number'))
+  } catch {
+    return {}
+  }
 }
 
 function normalize(value: string) {
@@ -131,6 +150,7 @@ function App() {
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
+  const [mistakeBank, setMistakeBank] = useState<Record<string, MistakeRecord>>(readMistakeBank)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(0)
   const [completed, setCompleted] = useState<string[]>(() => {
@@ -233,6 +253,28 @@ function App() {
     () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
     [levelFilter, kindFilter, sceneFilter],
   )
+  const mistakeLesson = useMemo<Lesson | null>(() => {
+    const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
+    if (!entries.length) return null
+    return {
+      id: 'mistake-review',
+      level: 'A1',
+      scene: '基础',
+      kind: '短句',
+      eyebrow: '错题库 · 按最近出错排序',
+      title: '错题复习',
+      description: '完整打对后自动移出错题库',
+      color: '#b9674f',
+      words: entries.map(([reviewKey, record]) => {
+        const originalLesson = lessons.find((item) => item.id === record.lessonId)
+        const originalWord = originalLesson?.words.find((item) => item.spanish === record.spanish)
+        return originalWord
+          ? { ...originalWord, reviewKey }
+          : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
+      }),
+    }
+  }, [mistakeBank])
+  const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
 
   const elapsedSeconds = screen === 'complete'
     ? finalElapsedSeconds
@@ -256,6 +298,37 @@ function App() {
       const nextState = update(current)
       localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(nextState))
       return nextState
+    })
+  }
+
+  function saveMistakeBank(update: (current: Record<string, MistakeRecord>) => Record<string, MistakeRecord>) {
+    setMistakeBank((current) => {
+      const nextBank = update(current)
+      localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(nextBank))
+      return nextBank
+    })
+  }
+
+  function recordMistake() {
+    const reviewKey = word.reviewKey ?? `${lesson.id}::${getTypingTarget(word.spanish)}`
+    saveMistakeBank((current) => ({
+      ...current,
+      [reviewKey]: {
+        lessonId: current[reviewKey]?.lessonId ?? lesson.id,
+        spanish: word.spanish,
+        chinese: word.chinese,
+        count: (current[reviewKey]?.count ?? 0) + 1,
+        lastWrongAt: Date.now(),
+        lastMode: mode,
+      },
+    }))
+  }
+
+  function removeReviewedMistake(reviewKey: string) {
+    saveMistakeBank((current) => {
+      const nextBank = { ...current }
+      delete nextBank[reviewKey]
+      return nextBank
     })
   }
 
@@ -298,7 +371,11 @@ function App() {
     compositionCommittedValueRef.current = null
     setLesson(nextLesson)
     setMode(nextMode)
-    savePracticeState((current) => ({ ...current, lastLessonId: nextLesson.id, lastMode: nextMode }))
+    savePracticeState((current) => ({
+      ...current,
+      lastLessonId: lessons.some((item) => item.id === nextLesson.id) ? nextLesson.id : current.lastLessonId,
+      lastMode: nextMode,
+    }))
     setIndex(0)
     setTyped('')
     setInputDraft('')
@@ -321,12 +398,15 @@ function App() {
     flowTokenRef.current += 1
     setCompletedWords((value) => value + 1)
     recordCompletedWord()
+    if (lesson.id === 'mistake-review' && word.reviewKey) removeReviewedMistake(word.reviewKey)
     if (index === lesson.words.length - 1) {
       const seconds = sessionStartedAtRef.current ? Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000)) : 0
       setFinalElapsedSeconds(seconds)
-      const nextCompleted = Array.from(new Set([...completed, lesson.id]))
-      setCompleted(nextCompleted)
-      localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+      if (lessons.some((item) => item.id === lesson.id)) {
+        const nextCompleted = Array.from(new Set([...completed, lesson.id]))
+        setCompleted(nextCompleted)
+        localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+      }
       setScreen('complete')
       return
     }
@@ -415,6 +495,7 @@ function App() {
       setStatus('wrong')
       setMistakes((value) => value + 1)
       setMistakeWords((value) => ({ ...value, [word.spanish]: (value[word.spanish] ?? 0) + 1 }))
+      recordMistake()
       playEffect('wrong')
       resetTimerRef.current = window.setTimeout(() => {
         setTyped('')
@@ -524,11 +605,18 @@ function App() {
             </div>
           </section>
 
-          <section className="mode-card">
-            <div className="mode-icon"><Headphones size={23} /></div>
-            <div><span className="section-kicker">挑战模式</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
-            <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
-          </section>
+          <div className="home-actions">
+            <section className="mode-card">
+              <div className="mode-icon"><Headphones size={23} /></div>
+              <div><span className="section-kicker">挑战模式</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
+              <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
+            </section>
+            <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
+              <div className="mistake-icon"><RotateCcw size={22} /></div>
+              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3><p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 打对后移出` : '输错的词和短句会自动出现在这里。'}</p></div>
+              <button disabled={!mistakeLesson} aria-label="开始错题复习" onClick={() => mistakeLesson && begin(mistakeLesson)}><ArrowRight size={19} /></button>
+            </section>
+          </div>
           <footer className="project-legal">
             <span>GPL-3.0 开源项目</span>
             <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">基于 Qwerty Learner 修改</a>
@@ -586,7 +674,7 @@ function App() {
             </div>
           )}
           <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
-          <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> 用听写再来一遍</button>
+          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> 用听写再来一遍</button>}
         </main>
       </div>
     )
