@@ -1,0 +1,12 @@
+Teclea Español responsive Spanish typing learner
+
+This project is a modified mobile Spanish learning work based on the training
+mechanics of Qwerty Learner:
+https://github.com/RealKai42/qwerty-learner
+
+Modifications began on 2026-08-14 and include a new responsive interface,
+Spanish input and accent handling, live statistics, lesson data, and interaction design.
+
+Qwerty Learner is licensed under GNU GPL v3. This project is distributed under
+the same GNU GPL v3 license. There is no warranty. See LICENSE for the complete
+license and THIRD_PARTY_NOTICES.md for bundled resource attribution.
