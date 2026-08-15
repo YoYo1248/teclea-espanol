@@ -74,6 +74,14 @@ function initialDisplayLanguage(): DisplayLanguage {
   return deviceLanguage.startsWith('zh') ? 'zh' : 'en'
 }
 
+function normalizeSpeechRate(value: unknown): SpeechRate {
+  const numericRate = Number(value)
+  if (numericRate === 1) return 1
+  if (numericRate > 0 && numericRate <= 0.7) return 0.55
+  if (numericRate > 0.7 && numericRate < 1) return 0.8
+  return 0.8
+}
+
 function initialSyncCode() {
   const hashCode = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('sync')
   const code = normalizeSyncCode(hashCode ?? localStorage.getItem(SYNC_CODE_KEY) ?? '')
@@ -246,10 +254,7 @@ function App() {
   const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [displayLanguage, setDisplayLanguage] = useState<DisplayLanguage>(initialDisplayLanguage)
-  const [speechRate, setSpeechRate] = useState<SpeechRate>(() => {
-    const stored = Number(localStorage.getItem('teclea-speech-rate'))
-    return stored === 0.7 || stored === 1 ? stored : 0.86
-  })
+  const [speechRate, setSpeechRate] = useState<SpeechRate>(() => normalizeSpeechRate(localStorage.getItem('teclea-speech-rate')))
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [mistakesOpen, setMistakesOpen] = useState(false)
   const [syncCode, setSyncCode] = useState(initialSyncCode)
@@ -485,7 +490,7 @@ function App() {
     localStorage.setItem('teclea-accent-mode', snapshot.accentMode)
     localStorage.setItem('teclea-sound-enabled', String(snapshot.soundEnabled))
     const nextLanguage = snapshot.displayLanguage ?? displayLanguage
-    const nextSpeechRate = snapshot.speechRate ?? speechRate
+    const nextSpeechRate = normalizeSpeechRate(snapshot.speechRate ?? speechRate)
     localStorage.setItem('teclea-display-language', nextLanguage)
     localStorage.setItem('teclea-speech-rate', String(nextSpeechRate))
     setPracticeState(snapshot.practiceState)
@@ -774,7 +779,7 @@ function App() {
     setSpeechRate(nextRate)
     localStorage.setItem('teclea-speech-rate', String(nextRate))
     scheduleSync()
-    speak('Hola, ¿cómo estás?', nextRate)
+    speak('Hola, ¿cómo estás? Encantado de conocerte.', nextRate)
   }
 
   function handleCharacters(rawValue: string) {
@@ -847,7 +852,8 @@ function App() {
       resetTimerRef.current = window.setTimeout(() => {
         if (flowTokenRef.current !== completionToken) return
         const started = speak(word.spanish, speechRate, advance)
-        resetTimerRef.current = window.setTimeout(advance, started ? 2600 : minimumFeedbackMs)
+        const speechFallbackMs = Math.min(12000, Math.max(3200, Math.round(word.spanish.length * 100 / speechRate)))
+        resetTimerRef.current = window.setTimeout(advance, started ? speechFallbackMs : minimumFeedbackMs)
       }, 130)
     } else if (newlyCorrect) {
       playEffect('key')
@@ -954,7 +960,7 @@ function App() {
               <div className="setting-choice">
                 <span><strong>{tr('西语语速', 'Spanish speech speed')}</strong><small>{tr('选择后会播放一条试听', 'A sample plays when you choose')}</small></span>
                 <div className="setting-segments rate" role="group" aria-label={tr('西语语速', 'Spanish speech speed')}>
-                  {([0.7, 0.86, 1] as SpeechRate[]).map((rate) => <button key={rate} className={speechRate === rate ? 'active' : ''} onClick={() => chooseSpeechRate(rate)}>{rate === 0.7 ? tr('慢速', 'Slow') : rate === 0.86 ? tr('标准', 'Standard') : tr('原速', 'Natural')}</button>)}
+                  {([0.55, 0.8, 1] as SpeechRate[]).map((rate) => <button key={rate} className={speechRate === rate ? 'active' : ''} onClick={() => chooseSpeechRate(rate)}>{rate === 0.55 ? tr('慢速', 'Slow') : rate === 0.8 ? tr('标准', 'Standard') : tr('原速', 'Natural')}</button>)}
                 </div>
               </div>
               <button className="setting-row" onClick={toggleAccentMode}>

@@ -1,5 +1,5 @@
 export type DisplayLanguage = 'zh' | 'en'
-export type SpeechRate = 0.7 | 0.86 | 1
+export type SpeechRate = 0.55 | 0.8 | 1
 
 const meanings: Record<string, string> = {
   'hola': 'hello', 'gracias': 'thank you', 'por favor': 'please', 'perdón': 'sorry / excuse me',
