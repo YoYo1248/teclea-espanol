@@ -1,0 +1,2882 @@
+[
+  {
+    "spanish": "soy",
+    "chinese": "ser（是（本质））· 现在时 · 我",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "eres",
+    "chinese": "ser（是（本质））· 现在时 · 你",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "es",
+    "chinese": "ser（是（本质））· 现在时 · 他 / 她 / 您",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "somos",
+    "chinese": "ser（是（本质））· 现在时 · 我们",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "sois",
+    "chinese": "ser（是（本质））· 现在时 · 你们（西班牙）",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "son",
+    "chinese": "ser（是（本质））· 现在时 · 他们 / 诸位",
+    "lemma": "ser",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "estoy",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 我",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "estás",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 你",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "está",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 他 / 她 / 您",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "estamos",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 我们",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "estáis",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 你们（西班牙）",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "están",
+    "chinese": "estar（是 / 在（状态））· 现在时 · 他们 / 诸位",
+    "lemma": "estar",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "tengo",
+    "chinese": "tener（有）· 现在时 · 我",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "tienes",
+    "chinese": "tener（有）· 现在时 · 你",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "tiene",
+    "chinese": "tener（有）· 现在时 · 他 / 她 / 您",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "tenemos",
+    "chinese": "tener（有）· 现在时 · 我们",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "tenéis",
+    "chinese": "tener（有）· 现在时 · 你们（西班牙）",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "tienen",
+    "chinese": "tener（有）· 现在时 · 他们 / 诸位",
+    "lemma": "tener",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hago",
+    "chinese": "hacer（做）· 现在时 · 我",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "haces",
+    "chinese": "hacer（做）· 现在时 · 你",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "hace",
+    "chinese": "hacer（做）· 现在时 · 他 / 她 / 您",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hacemos",
+    "chinese": "hacer（做）· 现在时 · 我们",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "hacéis",
+    "chinese": "hacer（做）· 现在时 · 你们（西班牙）",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hacen",
+    "chinese": "hacer（做）· 现在时 · 他们 / 诸位",
+    "lemma": "hacer",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "voy",
+    "chinese": "ir（去）· 现在时 · 我",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "vas",
+    "chinese": "ir（去）· 现在时 · 你",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "va",
+    "chinese": "ir（去）· 现在时 · 他 / 她 / 您",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vamos",
+    "chinese": "ir（去）· 现在时 · 我们",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "vais",
+    "chinese": "ir（去）· 现在时 · 你们（西班牙）",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "van",
+    "chinese": "ir（去）· 现在时 · 他们 / 诸位",
+    "lemma": "ir",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "puedo",
+    "chinese": "poder（能够）· 现在时 · 我",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "puedes",
+    "chinese": "poder（能够）· 现在时 · 你",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "puede",
+    "chinese": "poder（能够）· 现在时 · 他 / 她 / 您",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "podemos",
+    "chinese": "poder（能够）· 现在时 · 我们",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "podéis",
+    "chinese": "poder（能够）· 现在时 · 你们（西班牙）",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pueden",
+    "chinese": "poder（能够）· 现在时 · 他们 / 诸位",
+    "lemma": "poder",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "quiero",
+    "chinese": "querer（想要）· 现在时 · 我",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "quieres",
+    "chinese": "querer（想要）· 现在时 · 你",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "quiere",
+    "chinese": "querer（想要）· 现在时 · 他 / 她 / 您",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "queremos",
+    "chinese": "querer（想要）· 现在时 · 我们",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "queréis",
+    "chinese": "querer（想要）· 现在时 · 你们（西班牙）",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "quieren",
+    "chinese": "querer（想要）· 现在时 · 他们 / 诸位",
+    "lemma": "querer",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "digo",
+    "chinese": "decir（说）· 现在时 · 我",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "dices",
+    "chinese": "decir（说）· 现在时 · 你",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "dice",
+    "chinese": "decir（说）· 现在时 · 他 / 她 / 您",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "decimos",
+    "chinese": "decir（说）· 现在时 · 我们",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "decís",
+    "chinese": "decir（说）· 现在时 · 你们（西班牙）",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "dicen",
+    "chinese": "decir（说）· 现在时 · 他们 / 诸位",
+    "lemma": "decir",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hablo",
+    "chinese": "hablar（说话）· 现在时 · 我",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "hablas",
+    "chinese": "hablar（说话）· 现在时 · 你",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "habla",
+    "chinese": "hablar（说话）· 现在时 · 他 / 她 / 您",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hablamos",
+    "chinese": "hablar（说话）· 现在时 · 我们",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "habláis",
+    "chinese": "hablar（说话）· 现在时 · 你们（西班牙）",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hablan",
+    "chinese": "hablar（说话）· 现在时 · 他们 / 诸位",
+    "lemma": "hablar",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "como",
+    "chinese": "comer（吃）· 现在时 · 我",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "comes",
+    "chinese": "comer（吃）· 现在时 · 你",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "come",
+    "chinese": "comer（吃）· 现在时 · 他 / 她 / 您",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "comemos",
+    "chinese": "comer（吃）· 现在时 · 我们",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "coméis",
+    "chinese": "comer（吃）· 现在时 · 你们（西班牙）",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "comen",
+    "chinese": "comer（吃）· 现在时 · 他们 / 诸位",
+    "lemma": "comer",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "vivo",
+    "chinese": "vivir（生活）· 现在时 · 我",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "vives",
+    "chinese": "vivir（生活）· 现在时 · 你",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "vive",
+    "chinese": "vivir（生活）· 现在时 · 他 / 她 / 您",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vivimos",
+    "chinese": "vivir（生活）· 现在时 · 我们",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "vivís",
+    "chinese": "vivir（生活）· 现在时 · 你们（西班牙）",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "viven",
+    "chinese": "vivir（生活）· 现在时 · 他们 / 诸位",
+    "lemma": "vivir",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "vengo",
+    "chinese": "venir（来）· 现在时 · 我",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "vienes",
+    "chinese": "venir（来）· 现在时 · 你",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "viene",
+    "chinese": "venir（来）· 现在时 · 他 / 她 / 您",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "venimos",
+    "chinese": "venir（来）· 现在时 · 我们",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "venís",
+    "chinese": "venir（来）· 现在时 · 你们（西班牙）",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "vienen",
+    "chinese": "venir（来）· 现在时 · 他们 / 诸位",
+    "lemma": "venir",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "pongo",
+    "chinese": "poner（放）· 现在时 · 我",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "pones",
+    "chinese": "poner（放）· 现在时 · 你",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "pone",
+    "chinese": "poner（放）· 现在时 · 他 / 她 / 您",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "ponemos",
+    "chinese": "poner（放）· 现在时 · 我们",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "ponéis",
+    "chinese": "poner（放）· 现在时 · 你们（西班牙）",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "ponen",
+    "chinese": "poner（放）· 现在时 · 他们 / 诸位",
+    "lemma": "poner",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "sé",
+    "chinese": "saber（知道）· 现在时 · 我",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "sabes",
+    "chinese": "saber（知道）· 现在时 · 你",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "sabe",
+    "chinese": "saber（知道）· 现在时 · 他 / 她 / 您",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "sabemos",
+    "chinese": "saber（知道）· 现在时 · 我们",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "sabéis",
+    "chinese": "saber（知道）· 现在时 · 你们（西班牙）",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "saben",
+    "chinese": "saber（知道）· 现在时 · 他们 / 诸位",
+    "lemma": "saber",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "veo",
+    "chinese": "ver（看见）· 现在时 · 我",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "ves",
+    "chinese": "ver（看见）· 现在时 · 你",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "ve",
+    "chinese": "ver（看见）· 现在时 · 他 / 她 / 您",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vemos",
+    "chinese": "ver（看见）· 现在时 · 我们",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "veis",
+    "chinese": "ver（看见）· 现在时 · 你们（西班牙）",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "ven",
+    "chinese": "ver（看见）· 现在时 · 他们 / 诸位",
+    "lemma": "ver",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "doy",
+    "chinese": "dar（给）· 现在时 · 我",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "das",
+    "chinese": "dar（给）· 现在时 · 你",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "da",
+    "chinese": "dar（给）· 现在时 · 他 / 她 / 您",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "damos",
+    "chinese": "dar（给）· 现在时 · 我们",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "dais",
+    "chinese": "dar（给）· 现在时 · 你们（西班牙）",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "dan",
+    "chinese": "dar（给）· 现在时 · 他们 / 诸位",
+    "lemma": "dar",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "salgo",
+    "chinese": "salir（出去）· 现在时 · 我",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "sales",
+    "chinese": "salir（出去）· 现在时 · 你",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "sale",
+    "chinese": "salir（出去）· 现在时 · 他 / 她 / 您",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "salimos",
+    "chinese": "salir（出去）· 现在时 · 我们",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "salís",
+    "chinese": "salir（出去）· 现在时 · 你们（西班牙）",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "salen",
+    "chinese": "salir（出去）· 现在时 · 他们 / 诸位",
+    "lemma": "salir",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "llego",
+    "chinese": "llegar（到达）· 现在时 · 我",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "llegas",
+    "chinese": "llegar（到达）· 现在时 · 你",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "llega",
+    "chinese": "llegar（到达）· 现在时 · 他 / 她 / 您",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "llegamos",
+    "chinese": "llegar（到达）· 现在时 · 我们",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "llegáis",
+    "chinese": "llegar（到达）· 现在时 · 你们（西班牙）",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "llegan",
+    "chinese": "llegar（到达）· 现在时 · 他们 / 诸位",
+    "lemma": "llegar",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "paso",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 我",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "pasas",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 你",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "pasa",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 他 / 她 / 您",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "pasamos",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 我们",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "pasáis",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 你们（西班牙）",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pasan",
+    "chinese": "pasar（经过 / 发生）· 现在时 · 他们 / 诸位",
+    "lemma": "pasar",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "debo",
+    "chinese": "deber（应该）· 现在时 · 我",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "yo"
+  },
+  {
+    "spanish": "debes",
+    "chinese": "deber（应该）· 现在时 · 你",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "tú"
+  },
+  {
+    "spanish": "debe",
+    "chinese": "deber（应该）· 现在时 · 他 / 她 / 您",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "debemos",
+    "chinese": "deber（应该）· 现在时 · 我们",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "debéis",
+    "chinese": "deber（应该）· 现在时 · 你们（西班牙）",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "deben",
+    "chinese": "deber（应该）· 现在时 · 他们 / 诸位",
+    "lemma": "deber",
+    "tense": "present",
+    "level": "A1",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "fui",
+    "chinese": "ser（是（本质））· 简单过去时 · 我",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "fuiste",
+    "chinese": "ser（是（本质））· 简单过去时 · 你",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "fue",
+    "chinese": "ser（是（本质））· 简单过去时 · 他 / 她 / 您",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "fuimos",
+    "chinese": "ser（是（本质））· 简单过去时 · 我们",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "fuisteis",
+    "chinese": "ser（是（本质））· 简单过去时 · 你们（西班牙）",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "fueron",
+    "chinese": "ser（是（本质））· 简单过去时 · 他们 / 诸位",
+    "lemma": "ser",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "estuve",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 我",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "estuviste",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 你",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "estuvo",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 他 / 她 / 您",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "estuvimos",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 我们",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "estuvisteis",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 你们（西班牙）",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "estuvieron",
+    "chinese": "estar（是 / 在（状态））· 简单过去时 · 他们 / 诸位",
+    "lemma": "estar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "tuve",
+    "chinese": "tener（有）· 简单过去时 · 我",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "tuviste",
+    "chinese": "tener（有）· 简单过去时 · 你",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "tuvo",
+    "chinese": "tener（有）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "tuvimos",
+    "chinese": "tener（有）· 简单过去时 · 我们",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "tuvisteis",
+    "chinese": "tener（有）· 简单过去时 · 你们（西班牙）",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "tuvieron",
+    "chinese": "tener（有）· 简单过去时 · 他们 / 诸位",
+    "lemma": "tener",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hice",
+    "chinese": "hacer（做）· 简单过去时 · 我",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "hiciste",
+    "chinese": "hacer（做）· 简单过去时 · 你",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "hizo",
+    "chinese": "hacer（做）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hicimos",
+    "chinese": "hacer（做）· 简单过去时 · 我们",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "hicisteis",
+    "chinese": "hacer（做）· 简单过去时 · 你们（西班牙）",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hicieron",
+    "chinese": "hacer（做）· 简单过去时 · 他们 / 诸位",
+    "lemma": "hacer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "fui",
+    "chinese": "ir（去）· 简单过去时 · 我",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "fuiste",
+    "chinese": "ir（去）· 简单过去时 · 你",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "fue",
+    "chinese": "ir（去）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "fuimos",
+    "chinese": "ir（去）· 简单过去时 · 我们",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "fuisteis",
+    "chinese": "ir（去）· 简单过去时 · 你们（西班牙）",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "fueron",
+    "chinese": "ir（去）· 简单过去时 · 他们 / 诸位",
+    "lemma": "ir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "pude",
+    "chinese": "poder（能够）· 简单过去时 · 我",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "pudiste",
+    "chinese": "poder（能够）· 简单过去时 · 你",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "pudo",
+    "chinese": "poder（能够）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "pudimos",
+    "chinese": "poder（能够）· 简单过去时 · 我们",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "pudisteis",
+    "chinese": "poder（能够）· 简单过去时 · 你们（西班牙）",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pudieron",
+    "chinese": "poder（能够）· 简单过去时 · 他们 / 诸位",
+    "lemma": "poder",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "quise",
+    "chinese": "querer（想要）· 简单过去时 · 我",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "quisiste",
+    "chinese": "querer（想要）· 简单过去时 · 你",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "quiso",
+    "chinese": "querer（想要）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "quisimos",
+    "chinese": "querer（想要）· 简单过去时 · 我们",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "quisisteis",
+    "chinese": "querer（想要）· 简单过去时 · 你们（西班牙）",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "quisieron",
+    "chinese": "querer（想要）· 简单过去时 · 他们 / 诸位",
+    "lemma": "querer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "dije",
+    "chinese": "decir（说）· 简单过去时 · 我",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "dijiste",
+    "chinese": "decir（说）· 简单过去时 · 你",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "dijo",
+    "chinese": "decir（说）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "dijimos",
+    "chinese": "decir（说）· 简单过去时 · 我们",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "dijisteis",
+    "chinese": "decir（说）· 简单过去时 · 你们（西班牙）",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "dijeron",
+    "chinese": "decir（说）· 简单过去时 · 他们 / 诸位",
+    "lemma": "decir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hablé",
+    "chinese": "hablar（说话）· 简单过去时 · 我",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "hablaste",
+    "chinese": "hablar（说话）· 简单过去时 · 你",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "habló",
+    "chinese": "hablar（说话）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hablamos",
+    "chinese": "hablar（说话）· 简单过去时 · 我们",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "hablasteis",
+    "chinese": "hablar（说话）· 简单过去时 · 你们（西班牙）",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hablaron",
+    "chinese": "hablar（说话）· 简单过去时 · 他们 / 诸位",
+    "lemma": "hablar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "comí",
+    "chinese": "comer（吃）· 简单过去时 · 我",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "comiste",
+    "chinese": "comer（吃）· 简单过去时 · 你",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "comió",
+    "chinese": "comer（吃）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "comimos",
+    "chinese": "comer（吃）· 简单过去时 · 我们",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "comisteis",
+    "chinese": "comer（吃）· 简单过去时 · 你们（西班牙）",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "comieron",
+    "chinese": "comer（吃）· 简单过去时 · 他们 / 诸位",
+    "lemma": "comer",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "viví",
+    "chinese": "vivir（生活）· 简单过去时 · 我",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "viviste",
+    "chinese": "vivir（生活）· 简单过去时 · 你",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "vivió",
+    "chinese": "vivir（生活）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vivimos",
+    "chinese": "vivir（生活）· 简单过去时 · 我们",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "vivisteis",
+    "chinese": "vivir（生活）· 简单过去时 · 你们（西班牙）",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "vivieron",
+    "chinese": "vivir（生活）· 简单过去时 · 他们 / 诸位",
+    "lemma": "vivir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "vine",
+    "chinese": "venir（来）· 简单过去时 · 我",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "viniste",
+    "chinese": "venir（来）· 简单过去时 · 你",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "vino",
+    "chinese": "venir（来）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vinimos",
+    "chinese": "venir（来）· 简单过去时 · 我们",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "vinisteis",
+    "chinese": "venir（来）· 简单过去时 · 你们（西班牙）",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "vinieron",
+    "chinese": "venir（来）· 简单过去时 · 他们 / 诸位",
+    "lemma": "venir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "puse",
+    "chinese": "poner（放）· 简单过去时 · 我",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "pusiste",
+    "chinese": "poner（放）· 简单过去时 · 你",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "puso",
+    "chinese": "poner（放）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "pusimos",
+    "chinese": "poner（放）· 简单过去时 · 我们",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "pusisteis",
+    "chinese": "poner（放）· 简单过去时 · 你们（西班牙）",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pusieron",
+    "chinese": "poner（放）· 简单过去时 · 他们 / 诸位",
+    "lemma": "poner",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "supe",
+    "chinese": "saber（知道）· 简单过去时 · 我",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "supiste",
+    "chinese": "saber（知道）· 简单过去时 · 你",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "supo",
+    "chinese": "saber（知道）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "supimos",
+    "chinese": "saber（知道）· 简单过去时 · 我们",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "supisteis",
+    "chinese": "saber（知道）· 简单过去时 · 你们（西班牙）",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "supieron",
+    "chinese": "saber（知道）· 简单过去时 · 他们 / 诸位",
+    "lemma": "saber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "vi",
+    "chinese": "ver（看见）· 简单过去时 · 我",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "viste",
+    "chinese": "ver（看见）· 简单过去时 · 你",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "vio",
+    "chinese": "ver（看见）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vimos",
+    "chinese": "ver（看见）· 简单过去时 · 我们",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "visteis",
+    "chinese": "ver（看见）· 简单过去时 · 你们（西班牙）",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "vieron",
+    "chinese": "ver（看见）· 简单过去时 · 他们 / 诸位",
+    "lemma": "ver",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "di",
+    "chinese": "dar（给）· 简单过去时 · 我",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "diste",
+    "chinese": "dar（给）· 简单过去时 · 你",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "dio",
+    "chinese": "dar（给）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "dimos",
+    "chinese": "dar（给）· 简单过去时 · 我们",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "disteis",
+    "chinese": "dar（给）· 简单过去时 · 你们（西班牙）",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "dieron",
+    "chinese": "dar（给）· 简单过去时 · 他们 / 诸位",
+    "lemma": "dar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "salí",
+    "chinese": "salir（出去）· 简单过去时 · 我",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "saliste",
+    "chinese": "salir（出去）· 简单过去时 · 你",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "salió",
+    "chinese": "salir（出去）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "salimos",
+    "chinese": "salir（出去）· 简单过去时 · 我们",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "salisteis",
+    "chinese": "salir（出去）· 简单过去时 · 你们（西班牙）",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "salieron",
+    "chinese": "salir（出去）· 简单过去时 · 他们 / 诸位",
+    "lemma": "salir",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "llegué",
+    "chinese": "llegar（到达）· 简单过去时 · 我",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "llegaste",
+    "chinese": "llegar（到达）· 简单过去时 · 你",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "llegó",
+    "chinese": "llegar（到达）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "llegamos",
+    "chinese": "llegar（到达）· 简单过去时 · 我们",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "llegasteis",
+    "chinese": "llegar（到达）· 简单过去时 · 你们（西班牙）",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "llegaron",
+    "chinese": "llegar（到达）· 简单过去时 · 他们 / 诸位",
+    "lemma": "llegar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "pasé",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 我",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "pasaste",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 你",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "pasó",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "pasamos",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 我们",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "pasasteis",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 你们（西班牙）",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pasaron",
+    "chinese": "pasar（经过 / 发生）· 简单过去时 · 他们 / 诸位",
+    "lemma": "pasar",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "debí",
+    "chinese": "deber（应该）· 简单过去时 · 我",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "debiste",
+    "chinese": "deber（应该）· 简单过去时 · 你",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "debió",
+    "chinese": "deber（应该）· 简单过去时 · 他 / 她 / 您",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "debimos",
+    "chinese": "deber（应该）· 简单过去时 · 我们",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "debisteis",
+    "chinese": "deber（应该）· 简单过去时 · 你们（西班牙）",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "debieron",
+    "chinese": "deber（应该）· 简单过去时 · 他们 / 诸位",
+    "lemma": "deber",
+    "tense": "preterite",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "era",
+    "chinese": "ser（是（本质））· 过去未完成时 · 我",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "eras",
+    "chinese": "ser（是（本质））· 过去未完成时 · 你",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "era",
+    "chinese": "ser（是（本质））· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "éramos",
+    "chinese": "ser（是（本质））· 过去未完成时 · 我们",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "erais",
+    "chinese": "ser（是（本质））· 过去未完成时 · 你们（西班牙）",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "eran",
+    "chinese": "ser（是（本质））· 过去未完成时 · 他们 / 诸位",
+    "lemma": "ser",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "estaba",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 我",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "estabas",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 你",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "estaba",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "estábamos",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 我们",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "estabais",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 你们（西班牙）",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "estaban",
+    "chinese": "estar（是 / 在（状态））· 过去未完成时 · 他们 / 诸位",
+    "lemma": "estar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "tenía",
+    "chinese": "tener（有）· 过去未完成时 · 我",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "tenías",
+    "chinese": "tener（有）· 过去未完成时 · 你",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "tenía",
+    "chinese": "tener（有）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "teníamos",
+    "chinese": "tener（有）· 过去未完成时 · 我们",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "teníais",
+    "chinese": "tener（有）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "tenían",
+    "chinese": "tener（有）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "tener",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hacía",
+    "chinese": "hacer（做）· 过去未完成时 · 我",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "hacías",
+    "chinese": "hacer（做）· 过去未完成时 · 你",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "hacía",
+    "chinese": "hacer（做）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hacíamos",
+    "chinese": "hacer（做）· 过去未完成时 · 我们",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "hacíais",
+    "chinese": "hacer（做）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hacían",
+    "chinese": "hacer（做）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "hacer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "iba",
+    "chinese": "ir（去）· 过去未完成时 · 我",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "ibas",
+    "chinese": "ir（去）· 过去未完成时 · 你",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "iba",
+    "chinese": "ir（去）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "íbamos",
+    "chinese": "ir（去）· 过去未完成时 · 我们",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "ibais",
+    "chinese": "ir（去）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "iban",
+    "chinese": "ir（去）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "ir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "podía",
+    "chinese": "poder（能够）· 过去未完成时 · 我",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "podías",
+    "chinese": "poder（能够）· 过去未完成时 · 你",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "podía",
+    "chinese": "poder（能够）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "podíamos",
+    "chinese": "poder（能够）· 过去未完成时 · 我们",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "podíais",
+    "chinese": "poder（能够）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "podían",
+    "chinese": "poder（能够）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "poder",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "quería",
+    "chinese": "querer（想要）· 过去未完成时 · 我",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "querías",
+    "chinese": "querer（想要）· 过去未完成时 · 你",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "quería",
+    "chinese": "querer（想要）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "queríamos",
+    "chinese": "querer（想要）· 过去未完成时 · 我们",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "queríais",
+    "chinese": "querer（想要）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "querían",
+    "chinese": "querer（想要）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "querer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "decía",
+    "chinese": "decir（说）· 过去未完成时 · 我",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "decías",
+    "chinese": "decir（说）· 过去未完成时 · 你",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "decía",
+    "chinese": "decir（说）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "decíamos",
+    "chinese": "decir（说）· 过去未完成时 · 我们",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "decíais",
+    "chinese": "decir（说）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "decían",
+    "chinese": "decir（说）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "decir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "hablaba",
+    "chinese": "hablar（说话）· 过去未完成时 · 我",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "hablabas",
+    "chinese": "hablar（说话）· 过去未完成时 · 你",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "hablaba",
+    "chinese": "hablar（说话）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "hablábamos",
+    "chinese": "hablar（说话）· 过去未完成时 · 我们",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "hablabais",
+    "chinese": "hablar（说话）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "hablaban",
+    "chinese": "hablar（说话）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "hablar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "comía",
+    "chinese": "comer（吃）· 过去未完成时 · 我",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "comías",
+    "chinese": "comer（吃）· 过去未完成时 · 你",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "comía",
+    "chinese": "comer（吃）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "comíamos",
+    "chinese": "comer（吃）· 过去未完成时 · 我们",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "comíais",
+    "chinese": "comer（吃）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "comían",
+    "chinese": "comer（吃）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "comer",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "vivía",
+    "chinese": "vivir（生活）· 过去未完成时 · 我",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "vivías",
+    "chinese": "vivir（生活）· 过去未完成时 · 你",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "vivía",
+    "chinese": "vivir（生活）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "vivíamos",
+    "chinese": "vivir（生活）· 过去未完成时 · 我们",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "vivíais",
+    "chinese": "vivir（生活）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "vivían",
+    "chinese": "vivir（生活）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "vivir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "venía",
+    "chinese": "venir（来）· 过去未完成时 · 我",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "venías",
+    "chinese": "venir（来）· 过去未完成时 · 你",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "venía",
+    "chinese": "venir（来）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "veníamos",
+    "chinese": "venir（来）· 过去未完成时 · 我们",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "veníais",
+    "chinese": "venir（来）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "venían",
+    "chinese": "venir（来）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "venir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "ponía",
+    "chinese": "poner（放）· 过去未完成时 · 我",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "ponías",
+    "chinese": "poner（放）· 过去未完成时 · 你",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "ponía",
+    "chinese": "poner（放）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "poníamos",
+    "chinese": "poner（放）· 过去未完成时 · 我们",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "poníais",
+    "chinese": "poner（放）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "ponían",
+    "chinese": "poner（放）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "poner",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "sabía",
+    "chinese": "saber（知道）· 过去未完成时 · 我",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "sabías",
+    "chinese": "saber（知道）· 过去未完成时 · 你",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "sabía",
+    "chinese": "saber（知道）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "sabíamos",
+    "chinese": "saber（知道）· 过去未完成时 · 我们",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "sabíais",
+    "chinese": "saber（知道）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "sabían",
+    "chinese": "saber（知道）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "saber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "veía",
+    "chinese": "ver（看见）· 过去未完成时 · 我",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "veías",
+    "chinese": "ver（看见）· 过去未完成时 · 你",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "veía",
+    "chinese": "ver（看见）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "veíamos",
+    "chinese": "ver（看见）· 过去未完成时 · 我们",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "veíais",
+    "chinese": "ver（看见）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "veían",
+    "chinese": "ver（看见）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "ver",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "daba",
+    "chinese": "dar（给）· 过去未完成时 · 我",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "dabas",
+    "chinese": "dar（给）· 过去未完成时 · 你",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "daba",
+    "chinese": "dar（给）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "dábamos",
+    "chinese": "dar（给）· 过去未完成时 · 我们",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "dabais",
+    "chinese": "dar（给）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "daban",
+    "chinese": "dar（给）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "dar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "salía",
+    "chinese": "salir（出去）· 过去未完成时 · 我",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "salías",
+    "chinese": "salir（出去）· 过去未完成时 · 你",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "salía",
+    "chinese": "salir（出去）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "salíamos",
+    "chinese": "salir（出去）· 过去未完成时 · 我们",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "salíais",
+    "chinese": "salir（出去）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "salían",
+    "chinese": "salir（出去）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "salir",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "llegaba",
+    "chinese": "llegar（到达）· 过去未完成时 · 我",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "llegabas",
+    "chinese": "llegar（到达）· 过去未完成时 · 你",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "llegaba",
+    "chinese": "llegar（到达）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "llegábamos",
+    "chinese": "llegar（到达）· 过去未完成时 · 我们",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "llegabais",
+    "chinese": "llegar（到达）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "llegaban",
+    "chinese": "llegar（到达）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "llegar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "pasaba",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 我",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "pasabas",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 你",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "pasaba",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "pasábamos",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 我们",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "pasabais",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "pasaban",
+    "chinese": "pasar（经过 / 发生）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "pasar",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  },
+  {
+    "spanish": "debía",
+    "chinese": "deber（应该）· 过去未完成时 · 我",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "yo"
+  },
+  {
+    "spanish": "debías",
+    "chinese": "deber（应该）· 过去未完成时 · 你",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "tú"
+  },
+  {
+    "spanish": "debía",
+    "chinese": "deber（应该）· 过去未完成时 · 他 / 她 / 您",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "él, ella, usted"
+  },
+  {
+    "spanish": "debíamos",
+    "chinese": "deber（应该）· 过去未完成时 · 我们",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "nosotros"
+  },
+  {
+    "spanish": "debíais",
+    "chinese": "deber（应该）· 过去未完成时 · 你们（西班牙）",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "vosotros"
+  },
+  {
+    "spanish": "debían",
+    "chinese": "deber（应该）· 过去未完成时 · 他们 / 诸位",
+    "lemma": "deber",
+    "tense": "imperfect",
+    "level": "A2",
+    "person": "ustedes, ellos"
+  }
+]
