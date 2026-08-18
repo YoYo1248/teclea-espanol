@@ -4,11 +4,70 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f6f3ed" />
-    <meta name="description" content="为中文母语者设计、兼容手机与电脑的西语拼写练习" />
-    <title>Teclea Español — 西语拼写练习</title>
+    <meta name="description" content="面向中文母语者的免费西班牙语单词、短语、变位听写与逐字拼写练习。按 A1、A2、B1、B2 和生活场景分级，自动保存进度并复习错题。" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://teclea-espanol.vercel.app/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:site_name" content="Teclea Español" />
+    <meta property="og:title" content="西班牙语单词听写与拼写练习 A1–B2 | Teclea Español" />
+    <meta property="og:description" content="用听、看、逐字输入练习 888 张西语单词、短语与变位卡，并自动续学和复习错题。" />
+    <meta property="og:url" content="https://teclea-espanol.vercel.app/" />
+    <meta name="twitter:card" content="summary" />
+    <title>西班牙语单词听写与拼写练习 A1–B2 | Teclea Español</title>
+    <style>
+      .seo-fallback{max-width:760px;margin:0 auto;padding:72px 22px;font-family:system-ui,sans-serif;color:#242823;background:#f7f4ee;min-height:100vh}.seo-fallback p{line-height:1.75;color:#686a64}.seo-fallback h1{font-size:clamp(34px,8vw,58px);line-height:1.08;letter-spacing:-.04em}.seo-fallback nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}.seo-fallback a{padding:11px 16px;border-radius:999px;background:#242823;color:white;text-decoration:none;font-weight:700}
+    </style>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://teclea-espanol.vercel.app/#website",
+            "url": "https://teclea-espanol.vercel.app/",
+            "name": "Teclea Español",
+            "description": "为中文母语者设计的西班牙语听写与拼写练习",
+            "inLanguage": ["zh-CN", "es"]
+          },
+          {
+            "@type": ["WebApplication", "LearningResource"],
+            "@id": "https://teclea-espanol.vercel.app/#app",
+            "name": "Teclea Español 西语拼写练习",
+            "url": "https://teclea-espanol.vercel.app/",
+            "isPartOf": { "@id": "https://teclea-espanol.vercel.app/#website" },
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Any",
+            "isAccessibleForFree": true,
+            "educationalLevel": ["A1", "A2", "B1", "B2"],
+            "learningResourceType": "互动拼写与听写练习",
+            "inLanguage": ["zh-CN", "es"],
+            "description": "888 张按 A1–B2 与生活场景分组的西语单词、短语和变位练习卡，支持错题复习与本地续学。"
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="seo-fallback">
+        <p>免费 · 中文辅助 · A1–B2</p>
+        <h1>西班牙语单词、短语与变位拼写练习</h1>
+        <p>通过听发音、看提示和逐字输入，把常用西语写进记忆。课程按等级与生活场景分组，自动保存当前进度，并把写错的内容加入错题复习。</p>
+        <nav aria-label="按西语等级浏览">
+          <a href="/a1-spanish-vocabulary.html">A1 入门词汇</a>
+          <a href="/a2-spanish-vocabulary.html">A2 生活词汇</a>
+          <a href="/b1-spanish-vocabulary.html">B1 常用词汇</a>
+          <a href="/b2-spanish-vocabulary.html">B2 进阶表达</a>
+          <a href="/spanish-dictation-practice.html">西班牙语听写</a>
+          <a href="/spanish-conjugation-practice.html">动词变位练习</a>
+          <a href="/spanish-accent-practice.html">重音拼写练习</a>
+          <a href="/methodology.html">词库分级与来源</a>
+        </nav>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

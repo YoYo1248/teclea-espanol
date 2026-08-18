@@ -21,6 +21,7 @@ import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonKinds, lessonLevels, lesso
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
 type AccentMode = 'strict' | 'lenient'
+type SpeechRate = 0.55 | 0.8 | 1
 type PracticeState = {
   lastMode: Mode
   lastLessonId: string
@@ -53,12 +54,45 @@ const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
 const PAUSED_MAIN_SESSION_KEY = 'teclea-paused-main-session-v2'
+const SPEECH_RATE_KEY = 'teclea-speech-rate'
+const LESSON_PAGE_SIZE = 12
+const SPEECH_RATE_OPTIONS: Array<{ value: SpeechRate; label: string }> = [
+  { value: 0.55, label: '慢速' },
+  { value: 0.8, label: '标准' },
+  { value: 1, label: '快速' },
+]
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function readInitialLevelFilter(): '全部' | LessonLevel {
+  const level = new URLSearchParams(window.location.search).get('level')
+  return level === 'A1' || level === 'A2' || level === 'B1' || level === 'B2' ? level : '全部'
+}
+
+function readInitialKindFilter(): '全部' | LessonKind {
+  const kind = new URLSearchParams(window.location.search).get('kind')
+  return kind === '单词' || kind === '短语' || kind === '变位' ? kind : '全部'
+}
+
+function readInitialMode(fallback: Mode): Mode {
+  const mode = new URLSearchParams(window.location.search).get('mode')
+  return mode === 'copy' || mode === 'recall' || mode === 'listen' ? mode : fallback
+}
+
+function readInitialAccentMode(): AccentMode {
+  const accent = new URLSearchParams(window.location.search).get('accent')
+  if (accent === 'strict' || accent === 'lenient') return accent
+  return localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict'
+}
+
+function readSpeechRate(): SpeechRate {
+  const stored = Number(localStorage.getItem(SPEECH_RATE_KEY))
+  return stored === 0.55 || stored === 1 ? stored : 0.8
 }
 
 function readPracticeState(): PracticeState {
@@ -179,7 +213,11 @@ function spanishVoiceScore(voice: SpeechSynthesisVoice) {
   return score
 }
 
-function speak(text: string, onDone?: () => void) {
+function speechFallbackMs(text: string, rate: SpeechRate) {
+  return Math.max(2200, Math.min(5200, 900 + Array.from(getTypingTarget(text)).length * 105 / rate))
+}
+
+function speak(text: string, onDone?: () => void, rate: SpeechRate = 0.8) {
   if (!('speechSynthesis' in window)) return false
   window.speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text.replace(/[¿?¡!]/g, ''))
@@ -190,7 +228,7 @@ function speak(text: string, onDone?: () => void) {
     .sort((left, right) => spanishVoiceScore(right) - spanishVoiceScore(left))[0]
   if (spanishVoice) utterance.voice = spanishVoice
   utterance.volume = 1
-  utterance.rate = 0.86
+  utterance.rate = rate
   utterance.pitch = 1
   if (onDone) {
     utterance.onend = onDone
@@ -203,7 +241,10 @@ function speak(text: string, onDone?: () => void) {
 
 function App() {
   const initialPracticeStateRef = useRef<PracticeState | null>(null)
-  if (initialPracticeStateRef.current === null) initialPracticeStateRef.current = readPracticeState()
+  if (initialPracticeStateRef.current === null) {
+    const storedPracticeState = readPracticeState()
+    initialPracticeStateRef.current = { ...storedPracticeState, lastMode: readInitialMode(storedPracticeState.lastMode) }
+  }
   const initialPracticeState = initialPracticeStateRef.current
   const [screen, setScreen] = useState<Screen>('home')
   const [practiceState, setPracticeState] = useState<PracticeState>(initialPracticeState)
@@ -217,12 +258,14 @@ function App() {
   const [wrongAt, setWrongAt] = useState<number | null>(null)
   const [revealAnswer, setRevealAnswer] = useState(false)
   const [isTouchDevice] = useState(() => window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0)
-  const [accentMode, setAccentMode] = useState<AccentMode>(() => localStorage.getItem('teclea-accent-mode') === 'lenient' ? 'lenient' : 'strict')
+  const [accentMode, setAccentMode] = useState<AccentMode>(readInitialAccentMode)
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
+  const [speechRate, setSpeechRate] = useState<SpeechRate>(readSpeechRate)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>('全部')
-  const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>('全部')
+  const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>(readInitialLevelFilter)
+  const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>(readInitialKindFilter)
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
+  const [visibleLessonCount, setVisibleLessonCount] = useState(LESSON_PAGE_SIZE)
   const [inputEpoch, setInputEpoch] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
@@ -332,8 +375,17 @@ function App() {
   }, [screen])
 
   useEffect(() => {
-    if (screen === 'practice' && (mode === 'copy' || mode === 'listen')) speak(word.spanish)
-  }, [screen, mode, index, word.spanish])
+    if (screen === 'practice' && (mode === 'copy' || mode === 'listen')) speak(word.spanish, undefined, speechRate)
+  }, [screen, mode, index, word.spanish, speechRate])
+
+  useEffect(() => {
+    setVisibleLessonCount(LESSON_PAGE_SIZE)
+  }, [levelFilter, kindFilter, sceneFilter])
+
+  useEffect(() => {
+    if (window.location.hash !== '#courses') return
+    window.setTimeout(() => document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }, [])
 
   const todayDone = practiceState.dailyWords[localDateKey()] ?? 0
   const streak = useMemo(() => learningStreak(practiceState.dailyWords), [practiceState.dailyWords])
@@ -341,6 +393,9 @@ function App() {
     () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
     [levelFilter, kindFilter, sceneFilter],
   )
+  const visibleLessons = filteredLessons.slice(0, visibleLessonCount)
+  const hiddenLessonCount = Math.max(0, filteredLessons.length - visibleLessons.length)
+  const modeLabel = mode === 'listen' ? '听写' : mode === 'recall' ? '中文回忆' : '跟写'
   const mistakeLesson = useMemo<Lesson | null>(() => {
     const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
     if (!entries.length) return null
@@ -363,8 +418,9 @@ function App() {
     }
   }, [mistakeBank])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
+  const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
   const continueLabel = activeSession
-    ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeSession.index + 1}/${activeSession.order.length}`
+    ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : activeSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : activeSession.order.length}`
     : '开始今日练习'
 
   const elapsedSeconds = screen === 'complete'
@@ -452,6 +508,12 @@ function App() {
     }
   }
 
+  function resetFilters() {
+    setKindFilter('全部')
+    setLevelFilter('全部')
+    setSceneFilter('全部')
+  }
+
   function chooseKindFilter(nextKind: '全部' | LessonKind) {
     setKindFilter(nextKind)
     if (nextKind !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.kind === nextKind && item.scene === sceneFilter)) {
@@ -526,19 +588,19 @@ function App() {
     openPractice({ ...nextLesson, words: orderedWords }, session)
   }
 
-  function resumeActivePractice() {
-    if (!activeSession) return false
-    const baseLesson = activeSession.lessonId === 'mistake-review'
+  function resumePracticeSession(session: ActivePracticeSession | null) {
+    if (!session) return false
+    const baseLesson = session.lessonId === 'mistake-review'
       ? mistakeLesson
-      : lessons.find((item) => item.id === activeSession.lessonId) ?? null
+      : lessons.find((item) => item.id === session.lessonId) ?? null
     if (!baseLesson) {
-      persistActiveSession(null)
+      if (session === activeSession) persistActiveSession(null)
       return false
     }
 
     const availableWords = new Map(baseLesson.words.map((word) => [sessionCardId(baseLesson.id, word), word]))
-    const validPriorCount = activeSession.order.slice(0, activeSession.index).filter((cardId) => availableWords.has(cardId)).length
-    const orderedWords = activeSession.order.flatMap((cardId) => {
+    const validPriorCount = session.order.slice(0, session.index).filter((cardId) => availableWords.has(cardId)).length
+    const orderedWords = session.order.flatMap((cardId) => {
       const matchedWord = availableWords.get(cardId)
       return matchedWord ? [matchedWord] : []
     })
@@ -547,10 +609,10 @@ function App() {
       return false
     }
 
-    const reviewWasTrimmed = baseLesson.id === 'mistake-review' && orderedWords.length !== activeSession.order.length
+    const reviewWasTrimmed = baseLesson.id === 'mistake-review' && orderedWords.length !== session.order.length
     const restoredSession: ActivePracticeSession = reviewWasTrimmed
       ? {
-          ...activeSession,
+          ...session,
           order: orderedWords.map((word) => sessionCardId(baseLesson.id, word)),
           index: 0,
           elapsedMs: 0,
@@ -560,15 +622,43 @@ function App() {
           mistakeWords: {},
           reviewCorrectCount: 0,
         }
-      : { ...activeSession, index: validPriorCount }
+      : { ...session, index: validPriorCount }
     openPractice({ ...baseLesson, words: orderedWords }, restoredSession)
     return true
+  }
+
+  function resumeActivePractice() {
+    return resumePracticeSession(activeSession)
+  }
+
+  function resumePausedMainPractice() {
+    if (!pausedMainSession) return
+    const session = pausedMainSession
+    persistPausedMainSession(null)
+    resumePracticeSession(session)
+  }
+
+  function continueMistakeReview() {
+    if (activeSession?.lessonId === 'mistake-review' && resumeActivePractice()) return
+    if (mistakeLesson) begin(mistakeLesson)
   }
 
   function continuePractice() {
     if (resumeActivePractice()) return
     const lastLesson = lessons.find((item) => item.id === practiceState.lastLessonId) ?? lessons[0]
     begin(lastLesson, practiceState.lastMode)
+  }
+
+  function openLesson(nextLesson: Lesson) {
+    if (activeSession?.lessonId === nextLesson.id) {
+      resumeActivePractice()
+      return
+    }
+    if (activeSession?.lessonId === 'mistake-review' && pausedMainSession?.lessonId === nextLesson.id) {
+      resumePausedMainPractice()
+      return
+    }
+    begin(nextLesson)
   }
 
   function exitPractice() {
@@ -675,6 +765,12 @@ function App() {
     localStorage.setItem('teclea-sound-enabled', String(nextValue))
   }
 
+  function chooseSpeechRate(nextRate: SpeechRate) {
+    setSpeechRate(nextRate)
+    localStorage.setItem(SPEECH_RATE_KEY, String(nextRate))
+    speak('escuchar y repetir', undefined, nextRate)
+  }
+
   function handleCharacters(rawValue: string) {
     if (status !== 'idle') return
 
@@ -750,8 +846,8 @@ function App() {
       }
       resetTimerRef.current = window.setTimeout(() => {
         if (flowTokenRef.current !== completionToken) return
-        const started = speak(word.spanish, advance)
-        resetTimerRef.current = window.setTimeout(advance, started ? 2600 : minimumFeedbackMs)
+        const started = speak(word.spanish, advance, speechRate)
+        resetTimerRef.current = window.setTimeout(advance, started ? speechFallbackMs(word.spanish, speechRate) : minimumFeedbackMs)
       }, 130)
     } else if (newlyCorrect) {
       playEffect('key')
@@ -796,16 +892,23 @@ function App() {
             </section>
 
             <section className="daily-row">
-              <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small> / 12 项</small></strong></div>
-              <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{Math.min(Math.round(todayDone / 12 * 100), 100)}%</span></div>
+              <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small>{todayDone >= 12 ? ' 项 · 已达标' : ' / 12 项'}</small></strong></div>
+              <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{todayDone >= 12 ? '达标' : `${Math.round(todayDone / 12 * 100)}%`}</span></div>
             </section>
           </div>
 
           <div className="home-actions">
             <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
-              <div><span className="section-kicker">错题库</span><h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3><p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 答对一题清除一题` : '输错的单词和短语会自动出现在这里。'}</p></div>
-              <button disabled={!mistakeLesson} aria-label="开始错题复习" onClick={() => mistakeLesson && begin(mistakeLesson)}><ArrowRight size={19} /></button>
+              <div>
+                <span className="section-kicker">错题库</span>
+                <h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3>
+                <p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 答对一题清除一题` : '输错的单词和短语会自动出现在这里。'}</p>
+                {activeSession?.lessonId === 'mistake-review' && pausedMainSession && (
+                  <button className="resume-main-link" onClick={resumePausedMainPractice}>返回普通练习 · {pausedMainSession.index + 1}/{pausedMainSession.order.length}</button>
+                )}
+              </div>
+              <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : '开始错题复习'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
             </section>
             <section className="mode-card">
               <div className="mode-icon"><Headphones size={23} /></div>
@@ -814,25 +917,37 @@ function App() {
             </section>
           </div>
 
-          <section className="course-section">
-            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={() => { setKindFilter('全部'); setLevelFilter('全部'); setSceneFilter('全部') }}>重置</button></div>
+          <section className="course-section" id="courses">
+            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={resetFilters}>重置</button></div>
             <div className="course-filters" aria-label="词库筛选">
               <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
               <div><span>难度</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
               <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
             </div>
+            <p className="filter-result" aria-live="polite">找到 {filteredLessons.length} 组练习{hiddenLessonCount > 0 ? ` · 先显示 ${visibleLessons.length} 组` : ''} · 打开课程后使用{modeLabel}{accentMode === 'strict' ? '并严格检查重音' : ''}</p>
             <div className="lesson-list">
-              {filteredLessons.map((item) => {
+              {visibleLessons.map((item) => {
                 const isDone = completed.includes(item.id)
+                const resumableSession = activeSession?.lessonId === item.id
+                  ? activeSession
+                  : activeSession?.lessonId === 'mistake-review' && pausedMainSession?.lessonId === item.id
+                    ? pausedMainSession
+                    : null
                 return (
-                  <button className="lesson-card" key={item.id} onClick={() => begin(item)}>
+                  <button className={`lesson-card ${resumableSession ? 'in-progress' : ''}`} key={item.id} onClick={() => openLesson(item)} aria-label={`${resumableSession ? '继续' : '开始'}${item.level} ${item.title}`}>
                     <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
-                    <span className="lesson-copy"><small>{item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
-                    <span className="lesson-meta"><b>{item.words.length}</b><small>项</small></span>
+                    <span className="lesson-copy"><small>{resumableSession ? `进行中 · ${resumableSession.index + 1}/${resumableSession.order.length}` : item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
+                    <span className="lesson-meta"><b>{resumableSession ? <ArrowRight size={19} /> : item.words.length}</b><small>{resumableSession ? '继续' : '项'}</small></span>
                   </button>
                 )
               })}
             </div>
+            {hiddenLessonCount > 0 && (
+              <button className="show-more-lessons" onClick={() => setVisibleLessonCount((count) => count + LESSON_PAGE_SIZE)}>
+                再显示 {Math.min(LESSON_PAGE_SIZE, hiddenLessonCount)} 组 <small>还剩 {hiddenLessonCount} 组</small>
+              </button>
+            )}
+            {!filteredLessons.length && <p className="empty-lessons">这个组合暂时没有课程，试试减少一个筛选条件。</p>}
             <div className="word-sources">
               <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
               <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形与变位：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
@@ -842,8 +957,21 @@ function App() {
           </section>
 
           <footer className="project-legal">
-            <span>GPL-3.0 开源项目</span>
-            <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">基于 Qwerty Learner 修改</a>
+            <nav className="learning-guide-links" aria-label="免费西语学习指南">
+              <a href="/spanish-dictation-practice.html">西语听写</a>
+              <a href="/spanish-conjugation-practice.html">动词变位</a>
+              <a href="/spanish-accent-practice.html">重音拼写</a>
+              <a href="/a1-spanish-vocabulary.html">A1</a>
+              <a href="/a2-spanish-vocabulary.html">A2</a>
+              <a href="/b1-spanish-vocabulary.html">B1</a>
+              <a href="/b2-spanish-vocabulary.html">B2</a>
+              <a href="/methodology.html">词库方法</a>
+            </nav>
+            <div className="project-meta">
+              <span>GPL-3.0 开源项目</span>
+              <a href="/privacy.html">隐私说明</a>
+              <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">基于 Qwerty Learner 修改</a>
+            </div>
           </footer>
         </main>
 
@@ -860,6 +988,16 @@ function App() {
                 <span><strong>打字音效</strong><small>正确按键、错误和完成提示</small></span>
                 <b>{soundEnabled ? '已开启' : '已关闭'}</b>
               </button>
+              <div className="setting-rate">
+                <span><strong>西语发音速度</strong><small>进入每张卡会自动朗读，也可随时点 ES 重听</small></span>
+                <div className="rate-options" aria-label="西语发音速度">
+                  {SPEECH_RATE_OPTIONS.map((option) => (
+                    <button key={option.value} className={speechRate === option.value ? 'active' : ''} onClick={() => chooseSpeechRate(option.value)} aria-pressed={speechRate === option.value}>
+                      {option.label}<small>{option.value}×</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
               <div className="legal-box">
                 <strong>开源与修改声明</strong>
@@ -1026,7 +1164,7 @@ function App() {
             autoFocus
             aria-label="逐字母输入"
           />
-          <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish); inputRef.current?.focus() }} aria-label="播放西语发音"><Volume2 size={20} /> <span>ES</span></button>
+          <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish, undefined, speechRate); inputRef.current?.focus() }} aria-label={`播放西语发音，${speechRate} 倍速`}><Volume2 size={20} /> <span>ES · {speechRate}×</span></button>
           {(mode === 'copy' || status === 'correct') && (
             <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
               {status === 'correct' && mode !== 'copy' && <span>意思</span>}

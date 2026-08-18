@@ -1,0 +1,13 @@
+{
+  "name": "Teclea Español — 西语拼写练习",
+  "short_name": "Teclea",
+  "description": "A1–B2 西班牙语单词、短语、变位听写与拼写练习",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
