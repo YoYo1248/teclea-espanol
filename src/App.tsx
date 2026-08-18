@@ -299,6 +299,8 @@ function App() {
   const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
   const completeAudioRef = useRef<HTMLAudioElement | null>(null)
   const fullViewportHeightRef = useRef(window.visualViewport?.height ?? window.innerHeight)
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null)
+  const settingsDialogRef = useRef<HTMLElement | null>(null)
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
@@ -338,6 +340,40 @@ function App() {
     window.clearTimeout(resetTimerRef.current)
     window.clearTimeout(revealTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const focusableSelector = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const focusTimer = window.setTimeout(() => {
+      settingsDialogRef.current?.querySelector<HTMLElement>(focusableSelector)?.focus()
+    }, 0)
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSettingsOpen(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusableElements = Array.from(settingsDialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [])
+      if (!focusableElements.length) return
+      const first = focusableElements[0]
+      const last = focusableElements[focusableElements.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', handleDialogKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', handleDialogKeyDown)
+      previouslyFocused?.focus()
+    }
+  }, [settingsOpen])
 
   useEffect(() => {
     if (screen !== 'practice') return
@@ -875,7 +911,7 @@ function App() {
         <header className="topbar">
           <div className="brand-mark">T</div>
           <div className="brand-copy"><strong>Teclea Español</strong><span>每天敲进一点西语</span></div>
-          <button className="icon-button" aria-label="设置" onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
+          <button ref={settingsButtonRef} className="icon-button" aria-label="设置" aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
         </header>
 
         <main className="home-content">
@@ -919,10 +955,10 @@ function App() {
 
           <section className="course-section" id="courses">
             <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={resetFilters}>重置</button></div>
-            <div className="course-filters" aria-label="词库筛选">
-              <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
-              <div><span>难度</span>{lessonLevels.map((level) => <button key={level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
-              <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
+            <div className="course-filters" role="group" aria-label="词库筛选">
+              <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} aria-pressed={kindFilter === kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
+              <div><span>难度</span>{lessonLevels.map((level) => <button key={level} aria-pressed={levelFilter === level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
+              <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} aria-pressed={sceneFilter === scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
             </div>
             <p className="filter-result" aria-live="polite">找到 {filteredLessons.length} 组练习{hiddenLessonCount > 0 ? ` · 先显示 ${visibleLessons.length} 组` : ''} · 打开课程后使用{modeLabel}{accentMode === 'strict' ? '并严格检查重音' : ''}</p>
             <div className="lesson-list">
@@ -977,14 +1013,14 @@ function App() {
 
         {settingsOpen && (
           <div className="modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
-            <section className="settings-sheet" role="dialog" aria-modal="true" aria-label="训练设置" onClick={(event) => event.stopPropagation()}>
+            <section ref={settingsDialogRef} className="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
-              <div className="sheet-heading"><div><span className="section-kicker">训练偏好</span><h2>怎么判定“打对”</h2></div><button className="icon-button" onClick={() => setSettingsOpen(false)} aria-label="关闭设置"><X size={20} /></button></div>
-              <button className="setting-row" onClick={toggleAccentMode}>
+              <div className="sheet-heading"><div><span className="section-kicker">训练偏好</span><h2 id="settings-title">怎么判定“打对”</h2></div><button className="icon-button" onClick={() => setSettingsOpen(false)} aria-label="关闭设置"><X size={20} /></button></div>
+              <button className="setting-row" aria-pressed={accentMode === 'strict'} onClick={toggleAccentMode}>
                 <span><strong>重音判定</strong><small>ñ、ü 始终作为独立字母</small></span>
                 <b>{accentMode === 'strict' ? '严格拼写' : '忽略 á é í ó ú'}</b>
               </button>
-              <button className="setting-row" onClick={toggleSound}>
+              <button className="setting-row" aria-pressed={soundEnabled} onClick={toggleSound}>
                 <span><strong>打字音效</strong><small>正确按键、错误和完成提示</small></span>
                 <b>{soundEnabled ? '已开启' : '已关闭'}</b>
               </button>
@@ -1064,9 +1100,9 @@ function App() {
 
       <main className="practice-main">
         <div className="mode-switch" role="group" aria-label="练习模式">
-          <button className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
-          <button aria-label="看中文写西语" className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
-          <button className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
+          <button aria-pressed={mode === 'copy'} className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
+          <button aria-label="看中文写西语" aria-pressed={mode === 'recall'} className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
+          <button aria-pressed={mode === 'listen'} className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
         </div>
 
         <div className="live-stats" aria-label="实时训练数据">
@@ -1079,10 +1115,10 @@ function App() {
         <div className="spelling-rule">
           <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
           <div className="rule-options" role="group" aria-label="重音判定规则">
-            <button aria-label="严格拼写" className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格</button>
-            <button aria-label="忽略重音符号" className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
+            <button aria-label="严格拼写" aria-pressed={accentMode === 'strict'} className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格</button>
+            <button aria-label="忽略重音符号" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
           </div>
-          <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'}>
+          <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'} aria-pressed={soundEnabled}>
             {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
           </button>
         </div>
