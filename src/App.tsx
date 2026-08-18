@@ -56,7 +56,8 @@ const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
 const PAUSED_MAIN_SESSION_KEY = 'teclea-paused-main-session-v2'
 const SPEECH_RATE_KEY = 'teclea-speech-rate'
 const LESSON_PAGE_SIZE = 12
-const DEFAULT_LESSON = lessons.find((lesson) => lesson.id === 'common-actions-one-a1-1') ?? lessons[0]
+const DAILY_GOAL = 12
+const DEFAULT_LESSON = lessons[0]
 const SPEECH_RATE_OPTIONS: Array<{ value: SpeechRate; label: string }> = [
   { value: 0.55, label: '慢速' },
   { value: 0.8, label: '标准' },
@@ -210,6 +211,23 @@ function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds}`
 }
 
+function nextIncompleteLessonAfter(lessonId: string, completedLessonIds: Iterable<string>) {
+  const completedSet = new Set(completedLessonIds)
+  const currentIndex = lessons.findIndex((lesson) => lesson.id === lessonId)
+  const startIndex = currentIndex >= 0 ? currentIndex + 1 : 0
+  const wrappedLessons = [...lessons.slice(startIndex), ...lessons.slice(0, startIndex)]
+  return wrappedLessons.find((lesson) => !completedSet.has(lesson.id)) ?? null
+}
+
+function recommendedLesson(lastLessonId: string, completedLessonIds: Iterable<string>) {
+  const completedSet = new Set(completedLessonIds)
+  const currentLesson = lessons.find((lesson) => lesson.id === lastLessonId) ?? DEFAULT_LESSON
+  if (!completedSet.has(currentLesson.id)) return currentLesson
+  return nextIncompleteLessonAfter(currentLesson.id, completedSet)
+    ?? lessons.find((lesson) => !completedSet.has(lesson.id))
+    ?? currentLesson
+}
+
 function spanishVoiceScore(voice: SpeechSynthesisVoice) {
   const language = voice.lang.toLowerCase()
   const name = voice.name.toLowerCase()
@@ -268,11 +286,11 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [speechRate, setSpeechRate] = useState<SpeechRate>(readSpeechRate)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [dailyGoalOpen, setDailyGoalOpen] = useState(false)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>(readInitialLevelFilter)
   const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>(readInitialKindFilter)
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
   const [visibleLessonCount, setVisibleLessonCount] = useState(LESSON_PAGE_SIZE)
-  const [inputEpoch, setInputEpoch] = useState(0)
   const [inputFocused, setInputFocused] = useState(false)
   const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
@@ -299,6 +317,7 @@ function App() {
     }
   })
   const inputRef = useRef<HTMLInputElement>(null)
+  const practiceMainRef = useRef<HTMLElement>(null)
   const resetTimerRef = useRef<number | undefined>(undefined)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
@@ -313,6 +332,8 @@ function App() {
   const fullViewportHeightRef = useRef(window.visualViewport?.height ?? window.innerHeight)
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null)
   const settingsDialogRef = useRef<HTMLElement | null>(null)
+  const dailyGoalButtonRef = useRef<HTMLButtonElement | null>(null)
+  const dailyGoalDialogRef = useRef<HTMLElement | null>(null)
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
@@ -398,6 +419,23 @@ function App() {
   }, [settingsOpen])
 
   useEffect(() => {
+    if (!dailyGoalOpen) return
+    const closeButton = dailyGoalDialogRef.current?.querySelector<HTMLElement>('button')
+    const focusTimer = window.setTimeout(() => closeButton?.focus(), 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setDailyGoalOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', handleKeyDown)
+      dailyGoalButtonRef.current?.focus()
+    }
+  }, [dailyGoalOpen])
+
+  useEffect(() => {
     if (screen !== 'practice') return
     const showOnTab = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return
@@ -454,6 +492,10 @@ function App() {
   const visibleLessons = filteredLessons.slice(0, visibleLessonCount)
   const hiddenLessonCount = Math.max(0, filteredLessons.length - visibleLessons.length)
   const modeLabel = mode === 'listen' ? '听写' : mode === 'recall' ? '中文回忆' : '跟写'
+  const recommendedMainLesson = useMemo(
+    () => recommendedLesson(practiceState.lastLessonId, completed),
+    [practiceState.lastLessonId, completed],
+  )
   const mistakeLesson = useMemo<Lesson | null>(() => {
     const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
     if (!entries.length) return null
@@ -479,7 +521,9 @@ function App() {
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
   const continueLabel = activeSession
     ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : activeSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : activeSession.order.length}`
-    : '开始今日练习'
+    : completed.includes(practiceState.lastLessonId)
+      ? `下一单元 · ${recommendedMainLesson.title}`
+      : `开始精准练习 · ${recommendedMainLesson.title}`
 
   const elapsedSeconds = screen === 'complete'
     ? finalElapsedSeconds
@@ -487,6 +531,10 @@ function App() {
   const totalKeystrokes = correctKeystrokes + mistakes
   const accuracy = totalKeystrokes ? Math.round(correctKeystrokes / totalKeystrokes * 100) : 100
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
+  const masteredThisRound = lesson.id !== 'mistake-review' && mode !== 'copy' && mistakes === 0
+  const nextLesson = masteredThisRound
+    ? nextIncompleteLessonAfter(lesson.id, new Set([...completed, lesson.id]))
+    : null
 
   function playEffect(type: 'key' | 'wrong' | 'complete') {
     if (!soundEnabled) return
@@ -619,7 +667,6 @@ function App() {
     setStatus('idle')
     setWrongAt(null)
     setRevealAnswer(false)
-    setInputEpoch((value) => value + 1)
     setInputFocused(false)
     setScreen('practice')
   }
@@ -703,8 +750,7 @@ function App() {
 
   function continuePractice() {
     if (resumeActivePractice()) return
-    const lastLesson = lessons.find((item) => item.id === practiceState.lastLessonId) ?? DEFAULT_LESSON
-    begin(lastLesson, practiceState.lastMode)
+    begin(recommendedMainLesson, practiceState.lastMode)
   }
 
   function openLesson(nextLesson: Lesson) {
@@ -749,10 +795,14 @@ function App() {
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
-      if (lessons.some((item) => item.id === lesson.id)) {
+      if (masteredThisRound && lessons.some((item) => item.id === lesson.id)) {
         const nextCompleted = Array.from(new Set([...completed, lesson.id]))
         setCompleted(nextCompleted)
         localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+        const followingLesson = nextIncompleteLessonAfter(lesson.id, nextCompleted)
+        if (followingLesson) {
+          savePracticeState((current) => ({ ...current, lastLessonId: followingLesson.id }))
+        }
       }
       setScreen('complete')
       return
@@ -779,11 +829,11 @@ function App() {
 
   function changeMode(nextMode: Mode) {
     if (nextMode === mode) return
+    inputRef.current?.focus({ preventScroll: true })
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     isComposingRef.current = false
     compositionCommittedValueRef.current = null
-    inputRef.current?.blur()
     setMode(nextMode)
     if (activeSession) persistActiveSession({ ...activeSession, mode: nextMode })
     savePracticeState((current) => ({ ...current, lastMode: nextMode }))
@@ -792,25 +842,29 @@ function App() {
     setStatus('idle')
     setWrongAt(null)
     setRevealAnswer(false)
-    setInputEpoch((value) => value + 1)
-    window.setTimeout(() => inputRef.current?.focus(), 80)
+    window.requestAnimationFrame(() => {
+      practiceMainRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+      inputRef.current?.focus({ preventScroll: true })
+    })
   }
 
   function chooseAccentMode(nextMode: AccentMode) {
     if (nextMode === accentMode) return
+    inputRef.current?.focus({ preventScroll: true })
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     isComposingRef.current = false
     compositionCommittedValueRef.current = null
-    inputRef.current?.blur()
     setAccentMode(nextMode)
     localStorage.setItem('teclea-accent-mode', nextMode)
     setTyped('')
     setInputDraft('')
     setStatus('idle')
     setWrongAt(null)
-    setInputEpoch((value) => value + 1)
-    window.setTimeout(() => inputRef.current?.focus(), 80)
+    window.requestAnimationFrame(() => {
+      practiceMainRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+      inputRef.current?.focus({ preventScroll: true })
+    })
   }
 
   function toggleAccentMode() {
@@ -949,10 +1003,10 @@ function App() {
               </button>
             </section>
 
-            <section className="daily-row">
-              <div><span className="section-kicker">今日进度</span><strong>{todayDone}<small>{todayDone >= 12 ? ' 项 · 已达标' : ' / 12 项'}</small></strong></div>
-              <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / 12, 1) * 360}deg` } as React.CSSProperties}><span>{todayDone >= 12 ? '达标' : `${Math.round(todayDone / 12 * 100)}%`}</span></div>
-            </section>
+            <button ref={dailyGoalButtonRef} type="button" className="daily-row" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={() => setDailyGoalOpen(true)}>
+              <div><span className="section-kicker">今日练习</span><strong>{todayDone}<small> / {DAILY_GOAL} 项</small></strong><span className="daily-hint">{todayDone >= DAILY_GOAL ? '今日目标已完成 · 查看标准' : `完成 ${DAILY_GOAL} 项即达标 · 查看标准`}</span></div>
+              <div className="mini-ring" style={{ '--percent': `${Math.min(todayDone / DAILY_GOAL, 1) * 360}deg` } as React.CSSProperties}><span>{todayDone >= DAILY_GOAL ? '已达标' : `${Math.round(todayDone / DAILY_GOAL * 100)}%`}</span></div>
+            </button>
           </div>
 
           <div className="home-actions">
@@ -961,17 +1015,12 @@ function App() {
               <div>
                 <span className="section-kicker">错题库</span>
                 <h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3>
-                <p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 答对一题清除一题` : '输错的单词和短语会自动出现在这里。'}</p>
+                <p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 答对一题清除一题` : '练习中输错的内容会自动出现在这里。'}</p>
                 {activeSession?.lessonId === 'mistake-review' && pausedMainSession && (
                   <button className="resume-main-link" onClick={resumePausedMainPractice}>返回普通练习 · {pausedMainSession.index + 1}/{pausedMainSession.order.length}</button>
                 )}
               </div>
               <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : '开始错题复习'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
-            </section>
-            <section className="mode-card">
-              <div className="mode-icon"><Keyboard size={23} /></div>
-              <div><span className="section-kicker">动词原形</span><h3>先把高频动词敲熟</h3><p>从 ser、estar、tener 开始，不混入人称变位。</p></div>
-              <button aria-label="开始动词原形练习" onClick={() => begin(DEFAULT_LESSON, 'recall')}><ArrowRight size={19} /></button>
             </section>
           </div>
 
@@ -1069,6 +1118,18 @@ function App() {
             </section>
           </div>
         )}
+
+        {dailyGoalOpen && (
+          <div className="modal-backdrop" role="presentation" onClick={() => setDailyGoalOpen(false)}>
+            <section ref={dailyGoalDialogRef} className="settings-sheet daily-goal-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-goal-title" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+              <div className="sheet-heading"><div><span className="section-kicker">两个不同的标准</span><h2 id="daily-goal-title">“今日达标”是什么意思？</h2></div><button className="icon-button" onClick={() => setDailyGoalOpen(false)} aria-label="关闭今日目标说明"><X size={20} /></button></div>
+              <div className="goal-definition"><b>今日达标</b><strong>一天正确完成 {DAILY_GOAL} 张卡</strong><p>每完成一个单词或短语算 1 项；跟打、中文回忆、听写和错题复习都会累计。它只是帮助保持每天练习，不代表已经掌握某个单元。</p></div>
+              <div className="goal-definition mastery"><b>单元掌握</b><strong>中文回忆或听写整组 0 错</strong><p>达到这个标准才会给单元打勾，并在完成页询问是否进入下一单元。</p></div>
+              <button className="primary-button" onClick={() => setDailyGoalOpen(false)}>明白了</button>
+            </section>
+          </div>
+        )}
       </div>
     )
   }
@@ -1077,10 +1138,19 @@ function App() {
     return (
       <div className="app-shell completion-screen">
         <main>
-          <div className="completion-burst"><span>¡Muy bien!</span><Check size={44} strokeWidth={2.5} /></div>
-          <p className="eyebrow">本组完成</p>
+          <div className={`completion-burst ${masteredThisRound ? 'mastered' : ''}`}><span>{masteredThisRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
+          <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : masteredThisRound ? '单元已掌握' : '本轮完成'}</p>
           <h1>{lesson.title}</h1>
           <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
+          {lesson.id !== 'mistake-review' && (
+            <p className={`mastery-result ${masteredThisRound ? 'clean' : ''}`}>
+              {masteredThisRound
+                ? `${mode === 'listen' ? '听写' : '中文回忆'}整组 0 错，已达到掌握标准。`
+                : mode === 'copy'
+                  ? '跟打用于熟悉拼写；再用中文回忆或听写整组 0 错，才会标记为掌握。'
+                  : `本轮有 ${mistakes} 次错误；错题已经保存，再练到整组 0 错即可掌握。`}
+            </p>
+          )}
           {lesson.id === 'mistake-review' && (
             <p className={`review-result ${reviewCorrectCount === lesson.words.length ? 'clean' : ''}`}>
               {reviewCorrectCount === lesson.words.length
@@ -1100,8 +1170,22 @@ function App() {
               {Object.entries(mistakeWords).map(([name, count]) => <b key={name}>{name}<small>{count} 次</small></b>)}
             </div>
           )}
-          <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
-          {lesson.id !== 'mistake-review' && <button className="text-button" onClick={() => begin(lesson, 'listen')}><RotateCcw size={17} /> 用听写再来一遍</button>}
+          {lesson.id === 'mistake-review' ? (
+            <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
+          ) : masteredThisRound && nextLesson ? (
+            <>
+              <div className="next-lesson-preview"><span>下一单元</span><strong>{nextLesson.title}</strong><small>{nextLesson.eyebrow} · {nextLesson.words.length} 项</small></div>
+              <button className="primary-button" onClick={() => begin(nextLesson, 'copy')}>进入下一单元 <ArrowRight size={19} /></button>
+              <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
+            </>
+          ) : masteredThisRound ? (
+            <button className="primary-button" onClick={() => setScreen('home')}>全部学完，回到首页 <Home size={19} /></button>
+          ) : (
+            <>
+              <button className="primary-button" onClick={() => begin(lesson, mode === 'copy' ? 'listen' : mode)}>{mode === 'copy' ? '用听写检验掌握' : '再练一次，争取 0 错'} <RotateCcw size={18} /></button>
+              <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
+            </>
+          )}
         </main>
       </div>
     )
@@ -1120,29 +1204,31 @@ function App() {
         <span className="counter">{index + 1}/{lesson.words.length}</span>
       </header>
 
-      <main className="practice-main">
-        <div className="mode-switch" role="group" aria-label="练习模式">
-          <button aria-pressed={mode === 'copy'} className={mode === 'copy' ? 'active' : ''} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
-          <button aria-label="看中文写西语" aria-pressed={mode === 'recall'} className={mode === 'recall' ? 'active' : ''} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
-          <button aria-pressed={mode === 'listen'} className={mode === 'listen' ? 'active' : ''} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
-        </div>
-
-        <div className="live-stats" aria-label="实时训练数据">
-          <span><Timer size={14} /><b>{formatTime(elapsedSeconds)}</b><small>用时</small></span>
-          <span><Gauge size={14} /><b>{wpm}</b><small>WPM</small></span>
-          <span><Check size={14} /><b>{accuracy}%</b><small>正确率</small></span>
-          <span><X size={14} /><b>{mistakes}</b><small>错误</small></span>
-        </div>
-
-        <div className="spelling-rule">
-          <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
-          <div className="rule-options" role="group" aria-label="重音判定规则">
-            <button aria-label="严格拼写" aria-pressed={accentMode === 'strict'} className={accentMode === 'strict' ? 'active' : ''} onClick={() => chooseAccentMode('strict')}>严格</button>
-            <button aria-label="忽略重音符号" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
+      <main ref={practiceMainRef} className="practice-main">
+        <div className="practice-controls">
+          <div className="mode-switch" role="group" aria-label="练习模式">
+            <button aria-pressed={mode === 'copy'} className={mode === 'copy' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
+            <button aria-label="看中文写西语" aria-pressed={mode === 'recall'} className={mode === 'recall' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
+            <button aria-pressed={mode === 'listen'} className={mode === 'listen' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
           </div>
-          <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'} aria-pressed={soundEnabled}>
-            {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-          </button>
+
+          <div className="live-stats" aria-label="实时训练数据">
+            <span><Timer size={14} /><b>{formatTime(elapsedSeconds)}</b><small>用时</small></span>
+            <span><Gauge size={14} /><b>{wpm}</b><small>WPM</small></span>
+            <span><Check size={14} /><b>{accuracy}%</b><small>正确率</small></span>
+            <span><X size={14} /><b>{mistakes}</b><small>错误</small></span>
+          </div>
+
+          <div className="spelling-rule">
+            <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
+            <div className="rule-options" role="group" aria-label="重音判定规则">
+              <button aria-label="严格拼写" aria-pressed={accentMode === 'strict'} className={accentMode === 'strict' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('strict')}>严格</button>
+              <button aria-label="忽略重音符号" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
+            </div>
+            <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'} aria-pressed={soundEnabled}>
+              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+            </button>
+          </div>
         </div>
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
@@ -1181,7 +1267,7 @@ function App() {
             })}
           </div>
           <input
-            key={`${lesson.id}-${mode}-${inputEpoch}`}
+            key={`${lesson.id}-${index}`}
             ref={inputRef}
             id="typing-input"
             className="keyboard-capture"
@@ -1212,7 +1298,10 @@ function App() {
               compositionCommittedValueRef.current = null
               setInputFocused(false)
             }}
-            onFocus={() => setInputFocused(true)}
+            onFocus={() => {
+              setInputFocused(true)
+              window.requestAnimationFrame(() => practiceMainRef.current?.scrollTo({ top: 0, behavior: 'auto' }))
+            }}
             onKeyDown={(event) => { if (event.key === 'Backspace') event.preventDefault() }}
             autoComplete="off"
             autoCorrect="off"

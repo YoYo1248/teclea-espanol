@@ -50,10 +50,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .hero-card .primary-button { width: auto; min-width: 174px; position: relative; z-index: 1; }
 .primary-button:disabled { background: #d8d3ca; color: #9c9992; box-shadow: none; }
 
-.daily-row { margin: 17px 2px 28px; border-bottom: 1px solid var(--line); padding: 8px 4px 22px; display: flex; align-items: center; justify-content: space-between; }
+.daily-row { width: calc(100% - 4px); margin: 17px 2px 28px; border: 0; border-bottom: 1px solid var(--line); padding: 8px 4px 22px; background: transparent; color: inherit; display: flex; align-items: center; justify-content: space-between; text-align: left; }
 .daily-row > div:first-child { display: flex; flex-direction: column; gap: 7px; }
 .daily-row strong { font-size: 29px; letter-spacing: -.04em; }
 .daily-row small { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+.daily-hint { color: var(--muted); font-size: 11px; font-weight: 600; }
 .mini-ring { --percent: 0deg; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--green) var(--percent), #ddd9d0 0); position: relative; }
 .mini-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--cream); }
 .mini-ring span { z-index: 1; font-size: 10px; font-weight: 700; }
@@ -113,6 +114,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--red); transition: width .35s ease; }
 .counter { font-size: 12px; font-weight: 700; color: var(--muted); }
 .practice-main { flex: 1; padding: 8px 16px 132px; }
+.practice-controls { display: contents; }
 .mode-switch { width: 100%; padding: 4px; border-radius: 15px; background: #e9e5dc; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
 .mode-switch button { height: 39px; border: 0; border-radius: 11px; background: transparent; color: #88857e; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; font-weight: 600; }
 .mode-switch button.active { background: var(--paper); color: var(--ink); box-shadow: 0 3px 9px rgba(50,45,38,.08); }
@@ -296,6 +298,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .completion-screen main { width: 100%; }
 .completion-burst { width: 126px; height: 126px; margin: 0 auto 33px; border-radius: 40px; transform: rotate(-5deg); background: var(--green); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 18px 40px rgba(52,118,101,.22); }
 .completion-burst span { font: italic 20px Georgia, 'Times New Roman', serif; margin-bottom: 4px; }
+.completion-burst.mastered { background: #2f806a; box-shadow: 0 18px 44px rgba(47,128,106,.27); }
 .completion-screen h1 { font-size: 40px; margin: 8px 0 12px; letter-spacing: -.045em; }
 .completion-screen > main > p:not(.eyebrow) { color: var(--muted); font-size: 15px; }
 .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 34px 0; }
@@ -307,6 +310,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .mistake-summary > span { width: 100%; color: #9b5b4d; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
 .mistake-summary b { padding: 6px 9px; border-radius: 9px; background: rgba(255,255,255,.58); font-size: 11px; }
 .mistake-summary small { margin-left: 5px; color: #9a6e64; font-weight: 500; }
+.mastery-result { margin: 18px 0 0; padding: 12px 14px; border-radius: 15px; background: #f1e5df; color: #8d5142 !important; font-size: 13px !important; font-weight: 700; line-height: 1.55; }
+.mastery-result.clean { background: #deebe5; color: #2f715f !important; }
+.next-lesson-preview { margin: -13px 0 15px; padding: 14px 16px; border: 1px solid rgba(52,118,101,.2); border-radius: 17px; background: #e5efea; display: flex; flex-direction: column; text-align: left; }
+.next-lesson-preview span { color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.next-lesson-preview strong { margin: 4px 0 2px; font-size: 18px; }
+.next-lesson-preview small { color: var(--muted); font-size: 11px; }
 
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; width: min(100%, 480px); margin: auto; background: rgba(28,27,24,.42); backdrop-filter: blur(5px); display: flex; align-items: end; }
 .settings-sheet { width: 100%; border-radius: 28px 28px 0 0; background: var(--cream); padding: 10px 18px max(25px, env(safe-area-inset-bottom)); box-shadow: 0 -18px 55px rgba(32,32,29,.16); }
@@ -334,6 +343,14 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .legal-box p { margin: 5px 0 7px; font-size: 10px; line-height: 1.55; }
 .legal-box a { color: #4f6fae; font-size: 11px; font-weight: 700; }
 .legal-links { display: flex; flex-wrap: wrap; gap: 8px 13px; }
+.daily-goal-sheet { max-width: 520px; margin: 0 auto; }
+.goal-definition { margin-top: 9px; padding: 16px; border: 1px solid rgba(239,106,76,.18); border-radius: 18px; background: #fff7f2; text-align: left; }
+.goal-definition.mastery { border-color: rgba(52,118,101,.2); background: #e7f0ec; }
+.goal-definition b { display: block; color: var(--red); font-size: 11px; letter-spacing: .12em; }
+.goal-definition.mastery b { color: var(--green); }
+.goal-definition strong { display: block; margin-top: 5px; font-size: 17px; }
+.goal-definition p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.daily-goal-sheet > .primary-button { margin-top: 16px; }
 
 @media (min-width: 600px) {
   body { padding: 30px 0; }
@@ -401,7 +418,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .lesson-number { flex-basis: 54px; height: 58px; }
   .lesson-copy strong { font-size: 18px; }
   .lesson-copy > span { font-size: 11px; }
-  .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: minmax(0, 1fr); }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 82px; padding: 17px 16px; }
   .mode-card h3, .mistake-card h3 { font-size: 16px; }
   .mode-card p, .mistake-card p { font-size: 11px; }
@@ -535,6 +552,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .home-overview .daily-row strong { font-size: 34px; }
   .home-overview .daily-row small { font-size: 14px; }
   .home-overview .daily-row small { color: #aeb3ad; }
+  .home-overview .daily-hint { color: #aeb3ad; }
   .home-overview .mini-ring span { font-size: 12px; }
   .home-overview .mini-ring { background: conic-gradient(#ff8266 var(--percent), rgba(255,255,255,.12) 0); }
   .home-overview .mini-ring::before { background: #292e28; }
@@ -582,7 +600,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     grid-column: 2;
     grid-row: 2;
     margin: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
   .mode-card h3, .mistake-card h3 { font-size: 19px; }
@@ -652,22 +670,49 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     overflow-y: auto;
     overscroll-behavior: contain;
   }
-  .keyboard-open .live-stats,
-  .keyboard-open .spelling-rule,
+  .keyboard-open .practice-controls {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    padding: 2px 0 5px;
+    background: var(--cream);
+    display: grid;
+    gap: 4px;
+  }
   .keyboard-open .practice-footer { display: none; }
   .keyboard-open .mode-switch { padding: 3px; }
   .keyboard-open .mode-switch button { height: 34px; }
+  .keyboard-open .live-stats { margin: 0; padding: 4px 2px; border-radius: 11px; }
+  .keyboard-open .live-stats > span:nth-child(2) { display: none; }
+  .keyboard-open .live-stats { grid-template-columns: repeat(3, 1fr); }
+  .keyboard-open .live-stats svg { width: 10px; height: 10px; }
+  .keyboard-open .live-stats b { font-size: 11px; }
+  .keyboard-open .live-stats small { margin-top: 0; font-size: 8px; }
+  .keyboard-open .spelling-rule { min-height: 34px; margin: 0; padding: 2px 34px 2px 7px; border-radius: 11px; grid-template-columns: 29px 1fr; }
+  .keyboard-open .rule-heading span { font-size: 9px; }
+  .keyboard-open .rule-options button { height: 26px; font-size: 9px; }
+  .keyboard-open .sound-toggle { right: 4px; width: 26px; height: 26px; border-radius: 8px; }
   .keyboard-open .typing-stage {
-    min-height: 250px;
-    margin-top: 6px;
-    padding: 14px 12px 10px;
+    min-height: 190px;
+    margin-top: 4px;
+    padding: 11px 12px 8px;
     border-radius: 22px;
   }
-  .keyboard-open .recall-prompt { margin-top: 8px; font-size: 20px; }
-  .keyboard-open .letter-word { min-height: 76px; padding: 14px 0 11px; }
-  .keyboard-open .letter-slot { font-size: clamp(33px, 10vw, 43px); }
-  .keyboard-open .typing-stage .sound-button { margin-bottom: 8px; }
-  .keyboard-open .typing-stage .translation { margin-bottom: 8px; }
+  .keyboard-open .word-label { font-size: 9px; }
+  .keyboard-open .recall-prompt { margin-top: 6px; font-size: 18px; }
+  .keyboard-open .letter-word { min-height: 59px; padding: 9px 0 8px; }
+  .keyboard-open .letter-slot { font-size: clamp(30px, 9vw, 39px); }
+  .keyboard-open .typing-stage .sound-button { height: 30px; margin-bottom: 5px; }
+  .keyboard-open .typing-stage .translation { margin-bottom: 5px; font-size: 13px; }
   .keyboard-open .typing-stage .accent-strip { display: none; }
-  .keyboard-open .typing-feedback { min-height: 24px; margin-top: 7px; }
+  .keyboard-open .typing-feedback { min-height: 21px; margin-top: 4px; font-size: 11px; }
+}
+
+@media (max-width: 599px) {
+  .completion-screen { display: block; padding: 24px 20px; overflow-y: auto; }
+  .completion-burst { width: 96px; height: 96px; margin-bottom: 22px; border-radius: 31px; }
+  .completion-burst span { font-size: 16px; }
+  .completion-screen h1 { font-size: 32px; }
+  .result-grid { margin: 22px 0; }
+  .result-grid div { padding: 14px 8px; }
 }
