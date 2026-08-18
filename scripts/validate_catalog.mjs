@@ -22,13 +22,17 @@ try {
     if (lesson.id.startsWith('conjugation-')) errors.push(`脱离语境的变位课程不应进入当前词库: ${lesson.id}`)
 
     const targets = new Set()
+    const recallClues = new Map()
     for (const word of lesson.words) {
       const target = word.spanish.toLocaleLowerCase('es-ES').normalize('NFC').replace(/[¿?¡!.,;:]/g, '').replace(/\s+/g, ' ').trim()
+      const recallClue = `${word.chinese.normalize('NFC').replace(/\s+/g, ' ').trim()}::${Array.from(target).length}`
       if (!target) errors.push(`空训练目标: ${lesson.id}`)
       if (target.split(' ').length > 3) errors.push(`超过 3 个词: ${lesson.id} -> ${word.spanish}`)
       if (lesson.kind === '动词原形' && (!/^(?:ir|[\p{L}]+(?:ar|er|ir))$/u.test(target) || target.includes(' '))) errors.push(`动词原形分类包含非原形目标: ${lesson.id} -> ${word.spanish}`)
       if (targets.has(target)) errors.push(`课程内重复目标: ${lesson.id} -> ${word.spanish}`)
       targets.add(target)
+      if (recallClues.has(recallClue)) errors.push(`看义拼写提示与字符数冲突: ${lesson.id} -> ${recallClues.get(recallClue)} / ${word.spanish} (${word.chinese})`)
+      recallClues.set(recallClue, word.spanish)
       kindCounts[lesson.kind] += 1
       levelCounts[lesson.level] += 1
     }

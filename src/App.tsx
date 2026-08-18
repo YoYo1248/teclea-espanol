@@ -20,8 +20,11 @@ import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonKinds, lessonLevels, lesso
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
+type MasteryMode = Exclude<Mode, 'copy'>
 type AccentMode = 'strict' | 'lenient'
 type SpeechRate = 0.55 | 0.8 | 1
+type LessonMastery = Partial<Record<MasteryMode, true>>
+type MasteryProgress = Record<string, LessonMastery>
 type PracticeState = {
   lastMode: Mode
   lastLessonId: string
@@ -38,6 +41,8 @@ type ActivePracticeSession = {
   completedWords: number
   mistakeWords: Record<string, number>
   reviewCorrectCount: number
+  masteryMode: MasteryMode | null
+  usedHint: boolean
 }
 type MistakeRecord = {
   lessonId: string
@@ -55,6 +60,7 @@ const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
 const PAUSED_MAIN_SESSION_KEY = 'teclea-paused-main-session-v2'
 const SPEECH_RATE_KEY = 'teclea-speech-rate'
+const MASTERY_PROGRESS_KEY = 'teclea-mastery-progress-v2'
 const LESSON_PAGE_SIZE = 12
 const DAILY_GOAL = 12
 const DEFAULT_LESSON = lessons[0]
@@ -108,6 +114,43 @@ function readPracticeState(): PracticeState {
   } catch {
     return fallback
   }
+}
+
+function readCompletedLessons() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('teclea-completed') || '[]') as unknown
+    return Array.isArray(stored)
+      ? stored.filter((id): id is string => typeof id === 'string' && lessons.some((lesson) => lesson.id === id))
+      : []
+  } catch {
+    return []
+  }
+}
+
+function readMasteryProgress(): MasteryProgress {
+  const progress: MasteryProgress = {}
+  try {
+    const stored = JSON.parse(localStorage.getItem(MASTERY_PROGRESS_KEY) || '{}') as unknown
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      for (const [lessonId, value] of Object.entries(stored)) {
+        if (!lessons.some((lesson) => lesson.id === lessonId) || !value || typeof value !== 'object' || Array.isArray(value)) continue
+        const candidate = value as Record<string, unknown>
+        progress[lessonId] = {
+          ...(candidate.recall === true ? { recall: true } : {}),
+          ...(candidate.listen === true ? { listen: true } : {}),
+        }
+      }
+    }
+  } catch {
+    // Fall back to the legacy completion list below.
+  }
+
+  // Existing users already earned their checks under the former rule. Preserve
+  // those checks as complete while applying the two-direction rule to new work.
+  for (const lessonId of readCompletedLessons()) {
+    progress[lessonId] = { recall: true, listen: true }
+  }
+  return progress
 }
 
 function learningStreak(dailyWords: Record<string, number>) {
@@ -169,6 +212,14 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
       completedWords: typeof stored.completedWords === 'number' ? Math.max(0, stored.completedWords) : stored.index!,
       mistakeWords: stored.mistakeWords && typeof stored.mistakeWords === 'object' ? stored.mistakeWords : {},
       reviewCorrectCount: typeof stored.reviewCorrectCount === 'number' ? Math.max(0, stored.reviewCorrectCount) : 0,
+      masteryMode: stored.masteryMode === 'recall' || stored.masteryMode === 'listen'
+        ? stored.masteryMode
+        : stored.masteryMode === null
+          ? null
+          : stored.mode === 'recall' || stored.mode === 'listen'
+            ? stored.mode
+            : null,
+      usedHint: stored.usedHint === true,
     }
   } catch {
     return null
@@ -209,6 +260,14 @@ function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
   const seconds = (totalSeconds % 60).toString().padStart(2, '0')
   return `${minutes}:${seconds}`
+}
+
+function masteryModeLabel(mode: MasteryMode) {
+  return mode === 'recall' ? '看义拼写' : '听音拼写'
+}
+
+function pendingMasteryMode(progress: LessonMastery): MasteryMode | null {
+  return !progress.recall ? 'recall' : !progress.listen ? 'listen' : null
 }
 
 function nextIncompleteLessonAfter(lessonId: string, completedLessonIds: Iterable<string>) {
@@ -296,6 +355,9 @@ function App() {
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0)
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
+  const [masteryProgress, setMasteryProgress] = useState<MasteryProgress>(readMasteryProgress)
+  const [roundMasteryMode, setRoundMasteryMode] = useState<MasteryMode | null>(null)
+  const [roundUsedHint, setRoundUsedHint] = useState(false)
   const [mistakeBank, setMistakeBank] = useState<Record<string, MistakeRecord>>(readMistakeBank)
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(() => {
     const session = readActiveSession()
@@ -308,14 +370,7 @@ function App() {
   const [reviewCorrectCount, setReviewCorrectCount] = useState(0)
   const [timerNow, setTimerNow] = useState(Date.now())
   const [finalElapsedSeconds, setFinalElapsedSeconds] = useState(0)
-  const [completed, setCompleted] = useState<string[]>(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('teclea-completed') || '[]') as unknown
-      return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string' && lessons.some((lesson) => lesson.id === id)) : []
-    } catch {
-      return []
-    }
-  })
+  const [completed, setCompleted] = useState<string[]>(readCompletedLessons)
   const inputRef = useRef<HTMLInputElement>(null)
   const practiceMainRef = useRef<HTMLElement>(null)
   const resetTimerRef = useRef<number | undefined>(undefined)
@@ -341,6 +396,7 @@ function App() {
   useEffect(() => {
     try {
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(mistakeBank))
+      localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(masteryProgress))
       if (!activeSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
       if (!pausedMainSession) localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
     } catch {
@@ -440,6 +496,7 @@ function App() {
     const showOnTab = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return
       event.preventDefault()
+      markMasteryHintUsed()
       setRevealAnswer(true)
     }
     const hideOnTab = (event: KeyboardEvent) => {
@@ -453,7 +510,7 @@ function App() {
       window.removeEventListener('keydown', showOnTab)
       window.removeEventListener('keyup', hideOnTab)
     }
-  }, [screen])
+  }, [screen, mode, roundUsedHint, activeSession])
 
   useEffect(() => {
     keyAudioRef.current = new Audio('/sounds/key-sound/Default.wav')
@@ -491,11 +548,16 @@ function App() {
   )
   const visibleLessons = filteredLessons.slice(0, visibleLessonCount)
   const hiddenLessonCount = Math.max(0, filteredLessons.length - visibleLessons.length)
-  const modeLabel = mode === 'listen' ? '听写' : mode === 'recall' ? '中文回忆' : '跟写'
+  const modeLabel = mode === 'listen' ? '听音拼写' : mode === 'recall' ? '看义拼写' : '跟打'
   const recommendedMainLesson = useMemo(
     () => recommendedLesson(practiceState.lastLessonId, completed),
     [practiceState.lastLessonId, completed],
   )
+  const recommendedMainMastery = masteryProgress[recommendedMainLesson.id] ?? {}
+  const recommendedPendingMode = pendingMasteryMode(recommendedMainMastery)
+  const recommendedPracticeMode: Mode = (recommendedMainMastery.recall || recommendedMainMastery.listen) && recommendedPendingMode
+    ? recommendedPendingMode
+    : practiceState.lastMode
   const mistakeLesson = useMemo<Lesson | null>(() => {
     const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
     if (!entries.length) return null
@@ -521,7 +583,9 @@ function App() {
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
   const continueLabel = activeSession
     ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : activeSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : activeSession.order.length}`
-    : completed.includes(practiceState.lastLessonId)
+    : (recommendedMainMastery.recall || recommendedMainMastery.listen) && recommendedPendingMode
+      ? `继续${masteryModeLabel(recommendedPendingMode)} · ${recommendedMainLesson.title}`
+      : completed.includes(practiceState.lastLessonId)
       ? `下一单元 · ${recommendedMainLesson.title}`
       : `开始精准练习 · ${recommendedMainLesson.title}`
 
@@ -531,8 +595,26 @@ function App() {
   const totalKeystrokes = correctKeystrokes + mistakes
   const accuracy = totalKeystrokes ? Math.round(correctKeystrokes / totalKeystrokes * 100) : 100
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
-  const masteredThisRound = lesson.id !== 'mistake-review' && mode !== 'copy' && mistakes === 0
-  const nextLesson = masteredThisRound
+  const masteryBeforeRound = lesson.id === 'mistake-review' ? {} : (masteryProgress[lesson.id] ?? {})
+  const cleanMasteryRound = lesson.id !== 'mistake-review'
+    && mode !== 'copy'
+    && roundMasteryMode === mode
+    && !roundUsedHint
+    && mistakes === 0
+  const masteryAfterRound: LessonMastery = {
+    ...masteryBeforeRound,
+    ...(cleanMasteryRound && mode === 'recall' ? { recall: true } : {}),
+    ...(cleanMasteryRound && mode === 'listen' ? { listen: true } : {}),
+  }
+  const lessonMasteredAfterRound = masteryAfterRound.recall === true && masteryAfterRound.listen === true
+  const missingMasteryMode = pendingMasteryMode(masteryAfterRound)
+  const nextPracticeMode: MasteryMode = missingMasteryMode ?? (mode === 'listen' ? 'listen' : 'recall')
+  const nextPracticeButtonLabel = cleanMasteryRound
+    ? `继续${masteryModeLabel(nextPracticeMode)}`
+    : mode === nextPracticeMode
+      ? `再练一次${masteryModeLabel(nextPracticeMode)}`
+      : `开始${masteryModeLabel(nextPracticeMode)}`
+  const nextLesson = lessonMasteredAfterRound
     ? nextIncompleteLessonAfter(lesson.id, new Set([...completed, lesson.id]))
     : null
 
@@ -558,6 +640,11 @@ function App() {
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(nextBank))
       return nextBank
     })
+  }
+
+  function saveMasteryProgress(nextProgress: MasteryProgress) {
+    setMasteryProgress(nextProgress)
+    localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(nextProgress))
   }
 
   function persistActiveSession(nextSession: ActivePracticeSession | null) {
@@ -605,6 +692,12 @@ function App() {
       ...current,
       dailyWords: { ...current.dailyWords, [today]: (current.dailyWords[today] ?? 0) + 1 },
     }))
+  }
+
+  function markMasteryHintUsed() {
+    if (mode === 'copy' || roundUsedHint) return
+    setRoundUsedHint(true)
+    if (activeSession) persistActiveSession({ ...activeSession, usedHint: true })
   }
 
   function chooseLevelFilter(nextLevel: '全部' | LessonLevel) {
@@ -659,6 +752,8 @@ function App() {
     setCompletedWords(session.completedWords)
     setMistakeWords(session.mistakeWords)
     setReviewCorrectCount(session.reviewCorrectCount)
+    setRoundMasteryMode(session.masteryMode)
+    setRoundUsedHint(session.usedHint)
     currentWordHadErrorRef.current = false
     setFinalElapsedSeconds(0)
     sessionElapsedBaseRef.current = session.elapsedMs
@@ -689,6 +784,8 @@ function App() {
       completedWords: 0,
       mistakeWords: {},
       reviewCorrectCount: 0,
+      masteryMode: nextMode === 'recall' || nextMode === 'listen' ? nextMode : null,
+      usedHint: false,
     }
     openPractice({ ...nextLesson, words: orderedWords }, session)
   }
@@ -726,6 +823,8 @@ function App() {
           completedWords: 0,
           mistakeWords: {},
           reviewCorrectCount: 0,
+          masteryMode: session.mode === 'recall' || session.mode === 'listen' ? session.mode : null,
+          usedHint: false,
         }
       : { ...session, index: validPriorCount }
     openPractice({ ...baseLesson, words: orderedWords }, restoredSession)
@@ -750,7 +849,7 @@ function App() {
 
   function continuePractice() {
     if (resumeActivePractice()) return
-    begin(recommendedMainLesson, practiceState.lastMode)
+    begin(recommendedMainLesson, recommendedPracticeMode)
   }
 
   function openLesson(nextLesson: Lesson) {
@@ -762,7 +861,10 @@ function App() {
       resumePausedMainPractice()
       return
     }
-    begin(nextLesson)
+    const nextLessonMastery = masteryProgress[nextLesson.id] ?? {}
+    const nextPendingMode = pendingMasteryMode(nextLessonMastery)
+    const nextMode = (nextLessonMastery.recall || nextLessonMastery.listen) && nextPendingMode ? nextPendingMode : mode
+    begin(nextLesson, nextMode)
   }
 
   function exitPractice() {
@@ -795,13 +897,17 @@ function App() {
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
-      if (masteredThisRound && lessons.some((item) => item.id === lesson.id)) {
-        const nextCompleted = Array.from(new Set([...completed, lesson.id]))
-        setCompleted(nextCompleted)
-        localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
-        const followingLesson = nextIncompleteLessonAfter(lesson.id, nextCompleted)
-        if (followingLesson) {
-          savePracticeState((current) => ({ ...current, lastLessonId: followingLesson.id }))
+      if (cleanMasteryRound && lessons.some((item) => item.id === lesson.id) && (mode === 'recall' || mode === 'listen')) {
+        const nextLessonMastery: LessonMastery = { ...masteryBeforeRound, [mode]: true }
+        saveMasteryProgress({ ...masteryProgress, [lesson.id]: nextLessonMastery })
+        if (nextLessonMastery.recall && nextLessonMastery.listen) {
+          const nextCompleted = Array.from(new Set([...completed, lesson.id]))
+          setCompleted(nextCompleted)
+          localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+          const followingLesson = nextIncompleteLessonAfter(lesson.id, nextCompleted)
+          if (followingLesson) {
+            savePracticeState((current) => ({ ...current, lastLessonId: followingLesson.id }))
+          }
         }
       }
       setScreen('complete')
@@ -834,8 +940,11 @@ function App() {
     window.clearTimeout(resetTimerRef.current)
     isComposingRef.current = false
     compositionCommittedValueRef.current = null
+    const roundIsUntouched = completedWords === 0 && correctKeystrokes === 0 && mistakes === 0 && typed.length === 0 && !roundUsedHint
+    const nextMasteryMode = roundIsUntouched && (nextMode === 'recall' || nextMode === 'listen') ? nextMode : null
     setMode(nextMode)
-    if (activeSession) persistActiveSession({ ...activeSession, mode: nextMode })
+    setRoundMasteryMode(nextMasteryMode)
+    if (activeSession) persistActiveSession({ ...activeSession, mode: nextMode, masteryMode: nextMasteryMode })
     savePracticeState((current) => ({ ...current, lastMode: nextMode }))
     setTyped('')
     setInputDraft('')
@@ -973,7 +1082,10 @@ function App() {
 
   function startTouchReveal() {
     window.clearTimeout(revealTimerRef.current)
-    revealTimerRef.current = window.setTimeout(() => setRevealAnswer(true), 420)
+    revealTimerRef.current = window.setTimeout(() => {
+      markMasteryHintUsed()
+      setRevealAnswer(true)
+    }, 420)
   }
 
   function stopTouchReveal() {
@@ -1035,16 +1147,19 @@ function App() {
             <div className="lesson-list">
               {visibleLessons.map((item) => {
                 const isDone = completed.includes(item.id)
+                const itemMastery = masteryProgress[item.id] ?? {}
+                const itemPendingMode = pendingMasteryMode(itemMastery)
+                const isPartiallyMastered = !isDone && Boolean(itemMastery.recall || itemMastery.listen) && Boolean(itemPendingMode)
                 const resumableSession = activeSession?.lessonId === item.id
                   ? activeSession
                   : activeSession?.lessonId === 'mistake-review' && pausedMainSession?.lessonId === item.id
                     ? pausedMainSession
                     : null
                 return (
-                  <button className={`lesson-card ${resumableSession ? 'in-progress' : ''}`} key={item.id} onClick={() => openLesson(item)} aria-label={`${resumableSession ? '继续' : '开始'}${item.level} ${item.title}`}>
+                  <button className={`lesson-card ${resumableSession ? 'in-progress' : ''} ${isPartiallyMastered ? 'partial-mastery' : ''}`} key={item.id} onClick={() => openLesson(item)} aria-label={`${resumableSession || isPartiallyMastered ? '继续' : '开始'}${item.level} ${item.title}${isPartiallyMastered && itemPendingMode ? `，还差${masteryModeLabel(itemPendingMode)}` : ''}`}>
                     <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
-                    <span className="lesson-copy"><small>{resumableSession ? `进行中 · ${resumableSession.index + 1}/${resumableSession.order.length}` : item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
-                    <span className="lesson-meta"><b>{resumableSession ? <ArrowRight size={19} /> : item.words.length}</b><small>{resumableSession ? '继续' : '项'}</small></span>
+                    <span className="lesson-copy"><small>{resumableSession ? `进行中 · ${resumableSession.index + 1}/${resumableSession.order.length}` : isPartiallyMastered && itemPendingMode ? `已通过 1/2 · 还差${masteryModeLabel(itemPendingMode)}` : item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
+                    <span className="lesson-meta"><b>{resumableSession ? <ArrowRight size={19} /> : isPartiallyMastered ? '1/2' : item.words.length}</b><small>{resumableSession ? '继续' : isPartiallyMastered ? '掌握' : '项'}</small></span>
                   </button>
                 )
               })}
@@ -1096,7 +1211,7 @@ function App() {
                 <b>{soundEnabled ? '已开启' : '已关闭'}</b>
               </button>
               <div className="setting-rate">
-                <span><strong>西语发音速度</strong><small>进入每张卡会自动朗读，也可随时点 ES 重听</small></span>
+                <span><strong>西语发音速度</strong><small>跟打和听音拼写会自动朗读，也可随时点 ES 重听</small></span>
                 <div className="rate-options" aria-label="西语发音速度">
                   {SPEECH_RATE_OPTIONS.map((option) => (
                     <button key={option.value} className={speechRate === option.value ? 'active' : ''} onClick={() => chooseSpeechRate(option.value)} aria-pressed={speechRate === option.value}>
@@ -1124,8 +1239,8 @@ function App() {
             <section ref={dailyGoalDialogRef} className="settings-sheet daily-goal-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-goal-title" onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
               <div className="sheet-heading"><div><span className="section-kicker">两个不同的标准</span><h2 id="daily-goal-title">“今日达标”是什么意思？</h2></div><button className="icon-button" onClick={() => setDailyGoalOpen(false)} aria-label="关闭今日目标说明"><X size={20} /></button></div>
-              <div className="goal-definition"><b>今日达标</b><strong>一天正确完成 {DAILY_GOAL} 张卡</strong><p>每完成一个单词或短语算 1 项；跟打、中文回忆、听写和错题复习都会累计。它只是帮助保持每天练习，不代表已经掌握某个单元。</p></div>
-              <div className="goal-definition mastery"><b>单元掌握</b><strong>中文回忆或听写整组 0 错</strong><p>达到这个标准才会给单元打勾，并在完成页询问是否进入下一单元。</p></div>
+              <div className="goal-definition"><b>今日达标</b><strong>一天正确完成 {DAILY_GOAL} 张卡</strong><p>每完成一个单词或短语算 1 项；跟打、看义拼写、听音拼写和错题复习都会累计。它只是帮助保持每天练习，不代表已经掌握某个单元。</p></div>
+              <div className="goal-definition mastery"><b>单元掌握</b><strong>看义拼写和听音拼写各整组 0 错</strong><p>两个方向都在不看提示的情况下通过，单元才会打勾，并在完成页询问是否进入下一单元。</p></div>
               <button className="primary-button" onClick={() => setDailyGoalOpen(false)}>明白了</button>
             </section>
           </div>
@@ -1138,18 +1253,30 @@ function App() {
     return (
       <div className="app-shell completion-screen">
         <main>
-          <div className={`completion-burst ${masteredThisRound ? 'mastered' : ''}`}><span>{masteredThisRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
-          <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : masteredThisRound ? '单元已掌握' : '本轮完成'}</p>
+          <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}><span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
+          <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '单元已掌握' : '本轮完成'}</p>
           <h1>{lesson.title}</h1>
           <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
           {lesson.id !== 'mistake-review' && (
-            <p className={`mastery-result ${masteredThisRound ? 'clean' : ''}`}>
-              {masteredThisRound
-                ? `${mode === 'listen' ? '听写' : '中文回忆'}整组 0 错，已达到掌握标准。`
-                : mode === 'copy'
-                  ? '跟打用于熟悉拼写；再用中文回忆或听写整组 0 错，才会标记为掌握。'
-                  : `本轮有 ${mistakes} 次错误；错题已经保存，再练到整组 0 错即可掌握。`}
-            </p>
+            <>
+              <div className="mastery-steps" aria-label="单元掌握进度">
+                <span className={masteryAfterRound.recall ? 'passed' : ''}><Check size={15} /><b>看义拼写</b><small>{masteryAfterRound.recall ? '已通过' : '待完成'}</small></span>
+                <span className={masteryAfterRound.listen ? 'passed' : ''}><Check size={15} /><b>听音拼写</b><small>{masteryAfterRound.listen ? '已通过' : '待完成'}</small></span>
+              </div>
+              <p className={`mastery-result ${cleanMasteryRound || lessonMasteredAfterRound ? 'clean' : ''}`}>
+                {lessonMasteredAfterRound
+                  ? '看义拼写和听音拼写都已通过，这个单元已掌握。'
+                  : mode === 'copy'
+                    ? `跟打只用于熟悉词形；接下来完成${masteryModeLabel(nextPracticeMode)}。`
+                    : roundMasteryMode === null
+                      ? `本轮切换过模式，只计练习；完整完成一轮${masteryModeLabel(nextPracticeMode)}即可获得对应勾。`
+                      : roundUsedHint
+                        ? `本轮使用过提示，只计练习；不看提示再完成一轮${masteryModeLabel(nextPracticeMode)}即可通过。`
+                        : mistakes > 0
+                          ? `本轮有 ${mistakes} 次错误；错题已经保存，再把${masteryModeLabel(nextPracticeMode)}练到整组 0 错即可通过。`
+                          : `${masteryModeLabel(mode)}整组 0 错，已通过；再完成${masteryModeLabel(nextPracticeMode)}即可掌握。`}
+              </p>
+            </>
           )}
           {lesson.id === 'mistake-review' && (
             <p className={`review-result ${reviewCorrectCount === lesson.words.length ? 'clean' : ''}`}>
@@ -1172,17 +1299,17 @@ function App() {
           )}
           {lesson.id === 'mistake-review' ? (
             <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
-          ) : masteredThisRound && nextLesson ? (
+          ) : lessonMasteredAfterRound && nextLesson ? (
             <>
               <div className="next-lesson-preview"><span>下一单元</span><strong>{nextLesson.title}</strong><small>{nextLesson.eyebrow} · {nextLesson.words.length} 项</small></div>
               <button className="primary-button" onClick={() => begin(nextLesson, 'copy')}>进入下一单元 <ArrowRight size={19} /></button>
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
-          ) : masteredThisRound ? (
+          ) : lessonMasteredAfterRound ? (
             <button className="primary-button" onClick={() => setScreen('home')}>全部学完，回到首页 <Home size={19} /></button>
           ) : (
             <>
-              <button className="primary-button" onClick={() => begin(lesson, mode === 'copy' ? 'listen' : mode)}>{mode === 'copy' ? '用听写检验掌握' : '再练一次，争取 0 错'} <RotateCcw size={18} /></button>
+              <button className="primary-button" onClick={() => begin(lesson, nextPracticeMode)}>{nextPracticeButtonLabel} <RotateCcw size={18} /></button>
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
           )}
@@ -1208,8 +1335,8 @@ function App() {
         <div className="practice-controls">
           <div className="mode-switch" role="group" aria-label="练习模式">
             <button aria-pressed={mode === 'copy'} className={mode === 'copy' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
-            <button aria-label="看中文写西语" aria-pressed={mode === 'recall'} className={mode === 'recall' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('recall')}><BookOpen size={15} />看中文写</button>
-            <button aria-pressed={mode === 'listen'} className={mode === 'listen' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('listen')}><Headphones size={15} />听写</button>
+            <button aria-label="看义拼写：看中文写西语" aria-pressed={mode === 'recall'} className={mode === 'recall' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('recall')}><BookOpen size={15} />看义拼写</button>
+            <button aria-label="听音拼写" aria-pressed={mode === 'listen'} className={mode === 'listen' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('listen')}><Headphones size={15} />听音拼写</button>
           </div>
 
           <div className="live-stats" aria-label="实时训练数据">
@@ -1232,7 +1359,7 @@ function App() {
         </div>
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
-          <span className="word-label">{mode === 'copy' ? '逐字母输入' : mode === 'recall' ? '根据中文拼写' : '仅凭发音拼写'}</span>
+          <span className="word-label">{mode === 'copy' ? '逐字母输入' : mode === 'recall' ? `根据中文拼写 · ${targetLetters.length} 个字符` : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
           {mode === 'recall' && <p className="recall-prompt">{word.chinese}</p>}
           <div
             className="letter-word"
@@ -1311,7 +1438,7 @@ function App() {
             autoFocus
             aria-label="逐字母输入"
           />
-          <button className="sound-button" onClick={(event) => { event.stopPropagation(); speak(word.spanish, undefined, speechRate); inputRef.current?.focus() }} aria-label={`播放西语发音，${speechRate} 倍速`}><Volume2 size={20} /> <span>ES · {speechRate}×</span></button>
+          <button className="sound-button" onClick={(event) => { event.stopPropagation(); markMasteryHintUsed(); speak(word.spanish, undefined, speechRate); inputRef.current?.focus() }} aria-label={mode === 'recall' ? `播放发音提示，本轮不计看义拼写通过，${speechRate} 倍速` : `播放西语发音，${speechRate} 倍速`}><Volume2 size={20} /> <span>{mode === 'recall' ? '发音提示' : 'ES'} · {speechRate}×</span></button>
           {(mode === 'copy' || status === 'correct') && (
             <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
               {status === 'correct' && mode !== 'copy' && <span>意思</span>}
@@ -1325,7 +1452,7 @@ function App() {
           <div className="typing-feedback" aria-live="polite">
             {status === 'wrong' && <><X size={16} /><strong>这个字母错了，整词重来</strong></>}
             {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · 已显示词义</strong></>}
-            {status === 'idle' && <span>{hideSpanish ? isTouchDevice ? '长按字符槽查看拼写' : '按住 Tab 查看拼写' : '越快、越准，成绩越高'}</span>}
+            {status === 'idle' && <span>{roundMasteryMode === null && mode !== 'copy' ? '本轮切换过模式，只计练习' : roundUsedHint && mode !== 'copy' ? '本轮已使用提示，只计练习' : hideSpanish ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过' : '越快、越准，成绩越高'}</span>}
           </div>
         </section>
       </main>
