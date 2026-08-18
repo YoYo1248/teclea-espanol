@@ -1,10 +1,9 @@
-import conjugations from './generated/conjugations.json'
 import { commonDecks } from './commonWords'
 import { intermediateDecks } from './intermediateWords'
 
 export type LessonLevel = 'A1' | 'A2' | 'B1' | 'B2'
-export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '社会' | '科技' | '环境' | '行政' | '情绪' | '语法'
-export type LessonKind = '单词' | '短语' | '变位'
+export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '社会' | '科技' | '环境' | '行政' | '情绪'
+export type LessonKind = '单词' | '短语' | '动词原形'
 
 export type LessonWord = {
   spanish: string
@@ -188,7 +187,7 @@ function balancedBatches<T>(items: T[], maximumSize = 10) {
 }
 
 const commonLessons: Lesson[] = commonDecks.flatMap((deck, deckIndex) => {
-  const lessonKind: LessonKind = deck.id === 'common-dialogue' ? '短语' : '单词'
+  const lessonKind: LessonKind = deck.id.startsWith('common-actions-') ? '动词原形' : deck.id === 'common-dialogue' ? '短语' : '单词'
   const leveledWords = deck.words.map(([spanish, chinese]) => ({
     spanish,
     chinese,
@@ -224,62 +223,8 @@ const intermediateLessons: Lesson[] = intermediateDecks.map((deck, deckIndex) =>
   words: deck.words.map(([spanish, chinese]) => ({ spanish, chinese, source: { ...INTERMEDIATE_SOURCE } })),
 }))
 
-const tenseNames: Record<string, string> = {
-  present: '现在时',
-  preterite: '简单过去时',
-  imperfect: '过去未完成时',
-}
-
-const conjugationGroups = conjugations.reduce<Record<string, typeof conjugations>>((groups, item) => {
-  const tenseIndex = conjugations.filter((candidate) => candidate.tense === item.tense).indexOf(item)
-  const key = `${item.tense}-${Math.floor(tenseIndex / 30)}`
-  ;(groups[key] ??= []).push(item)
-  return groups
-}, {})
-
-const conjugationLessons: Lesson[] = Object.entries(conjugationGroups).flatMap(([key, batch], groupIndex) => {
-  const first = batch[0]
-  const verbs = Array.from(new Set(batch.map((item) => item.lemma)))
-  const tenseName = tenseNames[first.tense]
-  return balancedBatches(verbs, 2).map((verbBatch, verbBatchIndex) => {
-    const selectedItems = batch.filter((item) => verbBatch.includes(item.lemma))
-    const words = Array.from(
-      selectedItems.reduce<Map<string, typeof batch>>((forms, item) => {
-        const formKey = item.spanish.toLocaleLowerCase('es-ES').normalize('NFC')
-        ;(forms.get(formKey) ?? forms.set(formKey, []).get(formKey)!).push(item)
-        return forms
-      }, new Map()).values(),
-    ).map((sameFormItems) => {
-      const firstItem = sameFormItems[0]
-      const meanings = sameFormItems.reduce<Map<string, string[]>>((groups, item) => {
-        const chineseParts = item.chinese.split('·')
-        const meaningAndTense = chineseParts.slice(0, -1).join('·').trim()
-        const person = chineseParts.at(-1)?.trim()
-        if (person) (groups.get(meaningAndTense) ?? groups.set(meaningAndTense, []).get(meaningAndTense)!).push(person)
-        return groups
-      }, new Map())
-      return {
-        spanish: firstItem.spanish,
-        chinese: Array.from(meanings, ([meaning, people]) => `${meaning} · ${people.join(' / ')}`).join('；'),
-        source: { ...WORD_SOURCE },
-      }
-    })
-    return {
-      id: `conjugation-${key}-${verbBatch.join('-')}`,
-      level: first.level as LessonLevel,
-      scene: '语法' as const,
-      kind: '变位' as const,
-      eyebrow: `${first.level} · 变位 · ${tenseName}`,
-      title: `${verbBatch.join(' + ')} · ${tenseName}`,
-      description: '一至两个动词的常用人称；相同拼写合并',
-      color: ['#6f5b9b', '#456e9f', '#a15e70', '#5f7b55'][(groupIndex + verbBatchIndex) % 4],
-      words,
-    }
-  })
-})
-
-export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons, ...conjugationLessons]
+export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons]
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2', 'B1', 'B2']
-export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '单词', '短语', '变位']
-export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '社会', '科技', '环境', '行政', '情绪', '语法']
+export const lessonKinds: Array<'全部' | LessonKind> = ['全部', '单词', '短语', '动词原形']
+export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '社会', '科技', '环境', '行政', '情绪']

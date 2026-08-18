@@ -21,10 +21,11 @@
 - 关闭浏览器自动纠错与自动大写
 - 错误后整词重输，正确后展示中文含义
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 888 张 A1–B2 练习卡：48 张场景单词/短语、300 张 A1–A2 高频词与短表达、200 张 B1–B2 常用词与短语、340 张不重复的常用动词变位词形
+- 548 张 A1–B2 练习卡：410 张单词、88 张短语、50 张高频动词原形
 - 练习目标只保留单词和不超过 3 个词的短语；较长句子不再作为逐字输入目标
-- 可按“单词 / 短语 / 变位”、学习等级和生活场景筛选
-- 高频顺序参考 wordfreq；词形与变位以 Kaikki / English Wiktionary 结构化数据核对
+- 可按“单词 / 短语 / 动词原形”、学习等级和生活场景筛选
+- 高频顺序参考 wordfreq；拼写与词形以 Kaikki / English Wiktionary 结构化数据核对
+- 不把同一动词的不同人称和时态当成独立生词；旧变位数据保留给未来“短语境 + 单个目标词”模块，但不进入当前课程或错题库
 - A1–B2 主题与交际功能参考 Instituto Cervantes 对应等级的课程框架，具体选词、中文释义与标签仍是项目教学编辑，不是官方认证词表
 - 每轮随机排列；退出或刷新后从当前卡继续，错题复习不会覆盖普通课程进度
 - 错题答对一项清除一项；仍答错的项目继续保留
@@ -48,4 +49,4 @@ npm run build
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-词频排序参考 wordfreq 数据（CC BY-SA 4.0），词形和变位使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目原创或编辑；A1–B2 编组参考 Instituto Cervantes 的课程框架，但不是官方认证。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
+词频排序参考 wordfreq 数据（CC BY-SA 4.0），拼写和词形使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目原创或编辑；A1–B2 编组参考 Instituto Cervantes 的课程框架，但不是官方认证。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。

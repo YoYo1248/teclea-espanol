@@ -9,7 +9,7 @@ const indexablePages = [
   { file: 'public/b1-spanish-vocabulary.html', path: '/b1-spanish-vocabulary.html' },
   { file: 'public/b2-spanish-vocabulary.html', path: '/b2-spanish-vocabulary.html' },
   { file: 'public/spanish-dictation-practice.html', path: '/spanish-dictation-practice.html' },
-  { file: 'public/spanish-conjugation-practice.html', path: '/spanish-conjugation-practice.html' },
+  { file: 'public/spanish-infinitive-practice.html', path: '/spanish-infinitive-practice.html' },
   { file: 'public/spanish-accent-practice.html', path: '/spanish-accent-practice.html' },
   { file: 'public/methodology.html', path: '/methodology.html' },
 ].map((page) => ({ ...page, url: `${origin}${page.path}` }))
@@ -17,6 +17,7 @@ const indexablePages = [
 const noindexPages = [
   { file: 'public/privacy.html', path: '/privacy.html' },
   { file: 'public/404.html', path: '/404.html' },
+  { file: 'public/spanish-conjugation-practice.html', path: '/spanish-conjugation-practice.html' },
 ]
 
 function assert(condition, message) {

@@ -56,6 +56,7 @@ const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
 const PAUSED_MAIN_SESSION_KEY = 'teclea-paused-main-session-v2'
 const SPEECH_RATE_KEY = 'teclea-speech-rate'
 const LESSON_PAGE_SIZE = 12
+const DEFAULT_LESSON = lessons.find((lesson) => lesson.id === 'common-actions-one-a1-1') ?? lessons[0]
 const SPEECH_RATE_OPTIONS: Array<{ value: SpeechRate; label: string }> = [
   { value: 0.55, label: '慢速' },
   { value: 0.8, label: '标准' },
@@ -76,7 +77,7 @@ function readInitialLevelFilter(): '全部' | LessonLevel {
 
 function readInitialKindFilter(): '全部' | LessonKind {
   const kind = new URLSearchParams(window.location.search).get('kind')
-  return kind === '单词' || kind === '短语' || kind === '变位' ? kind : '全部'
+  return kind === '单词' || kind === '短语' || kind === '动词原形' ? kind : '全部'
 }
 
 function readInitialMode(fallback: Mode): Mode {
@@ -96,7 +97,7 @@ function readSpeechRate(): SpeechRate {
 }
 
 function readPracticeState(): PracticeState {
-  const fallback: PracticeState = { lastMode: 'copy', lastLessonId: lessons[0].id, dailyWords: {} }
+  const fallback: PracticeState = { lastMode: 'copy', lastLessonId: DEFAULT_LESSON.id, dailyWords: {} }
   try {
     const stored = JSON.parse(localStorage.getItem(PRACTICE_STATE_KEY) || '{}') as Partial<PracticeState>
     const lastMode = stored.lastMode === 'recall' || stored.lastMode === 'listen' ? stored.lastMode : 'copy'
@@ -123,8 +124,9 @@ function readMistakeBank(): Record<string, MistakeRecord> {
   try {
     const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, MistakeRecord>
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
-    return Object.values(stored).reduce<Record<string, MistakeRecord>>((bank, item) => {
+    const validBank = Object.values(stored).reduce<Record<string, MistakeRecord>>((bank, item) => {
       if (!item || typeof item.spanish !== 'string' || typeof item.chinese !== 'string' || typeof item.count !== 'number') return bank
+      if (typeof item.lessonId === 'string' && item.lessonId.startsWith('conjugation-')) return bank
       const target = getTypingTarget(item.spanish)
       const currentMatch = lessons.flatMap((lesson) => lesson.words.map((word) => ({ lesson, word }))).find(({ word }) => getTypingTarget(word.spanish) === target)
       if (!currentMatch) return bank
@@ -140,6 +142,7 @@ function readMistakeBank(): Record<string, MistakeRecord> {
       }
       return bank
     }, {})
+    return validBank
   } catch {
     return {}
   }
@@ -151,6 +154,9 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
     if (!stored || typeof stored.lessonId !== 'string' || !Array.isArray(stored.order) || !stored.order.every((item) => typeof item === 'string')) return null
     if (stored.mode !== 'copy' && stored.mode !== 'recall' && stored.mode !== 'listen') return null
     if (!Number.isInteger(stored.index) || stored.index! < 0 || stored.index! >= stored.order.length) return null
+    if (stored.lessonId !== 'mistake-review' && !lessons.some((lesson) => lesson.id === stored.lessonId)) {
+      return null
+    }
     return {
       lessonId: stored.lessonId,
       mode: stored.mode,
@@ -248,7 +254,7 @@ function App() {
   const initialPracticeState = initialPracticeStateRef.current
   const [screen, setScreen] = useState<Screen>('home')
   const [practiceState, setPracticeState] = useState<PracticeState>(initialPracticeState)
-  const [lesson, setLesson] = useState<Lesson>(() => lessons.find((item) => item.id === initialPracticeState.lastLessonId) ?? lessons[0])
+  const [lesson, setLesson] = useState<Lesson>(() => lessons.find((item) => item.id === initialPracticeState.lastLessonId) ?? DEFAULT_LESSON)
   const [mode, setMode] = useState<Mode>(initialPracticeState.lastMode)
   const [index, setIndex] = useState(0)
   const [typed, setTyped] = useState('')
@@ -273,7 +279,13 @@ function App() {
   const [completedWords, setCompletedWords] = useState(0)
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
   const [mistakeBank, setMistakeBank] = useState<Record<string, MistakeRecord>>(readMistakeBank)
-  const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(readActiveSession)
+  const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(() => {
+    const session = readActiveSession()
+    if (session?.lessonId === 'mistake-review' && !Object.keys(mistakeBank).length) {
+      return null
+    }
+    return session
+  })
   const [pausedMainSession, setPausedMainSession] = useState<ActivePracticeSession | null>(() => readActiveSession(PAUSED_MAIN_SESSION_KEY))
   const [reviewCorrectCount, setReviewCorrectCount] = useState(0)
   const [timerNow, setTimerNow] = useState(Date.now())
@@ -304,6 +316,16 @@ function App() {
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(mistakeBank))
+      if (!activeSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
+      if (!pausedMainSession) localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
+    } catch {
+      // Keep the in-memory migration usable when browser storage is unavailable.
+    }
+  }, [])
 
   useEffect(() => {
     if (screen !== 'practice') return
@@ -681,7 +703,7 @@ function App() {
 
   function continuePractice() {
     if (resumeActivePractice()) return
-    const lastLesson = lessons.find((item) => item.id === practiceState.lastLessonId) ?? lessons[0]
+    const lastLesson = lessons.find((item) => item.id === practiceState.lastLessonId) ?? DEFAULT_LESSON
     begin(lastLesson, practiceState.lastMode)
   }
 
@@ -921,7 +943,7 @@ function App() {
               <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
               <p className="eyebrow">BUENOS DÍAS · 早上好</p>
               <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-              <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张单词、短语与变位练习卡，练对重音和真实表达。</p>
+              <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张单词、短语与动词原形练习卡，练对重音和真实表达。</p>
               <button className="primary-button" onClick={continuePractice}>
                 {continueLabel} <ArrowRight size={19} />
               </button>
@@ -947,9 +969,9 @@ function App() {
               <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : '开始错题复习'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
             </section>
             <section className="mode-card">
-              <div className="mode-icon"><Headphones size={23} /></div>
-              <div><span className="section-kicker">听写挑战</span><h3>只听发音，写出西语</h3><p>把提示藏起来，测试真实记忆。</p></div>
-              <button aria-label="开始听写" onClick={() => begin(filteredLessons[0] ?? lessons[0], 'listen')}><ArrowRight size={19} /></button>
+              <div className="mode-icon"><Keyboard size={23} /></div>
+              <div><span className="section-kicker">动词原形</span><h3>先把高频动词敲熟</h3><p>从 ser、estar、tener 开始，不混入人称变位。</p></div>
+              <button aria-label="开始动词原形练习" onClick={() => begin(DEFAULT_LESSON, 'recall')}><ArrowRight size={19} /></button>
             </section>
           </div>
 
@@ -986,7 +1008,7 @@ function App() {
             {!filteredLessons.length && <p className="empty-lessons">这个组合暂时没有课程，试试减少一个筛选条件。</p>}
             <div className="word-sources">
               <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
-              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">词形与变位：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">拼写与词形：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
               <a className="word-source" href={INTERMEDIATE_SOURCE.url} target="_blank" rel="noreferrer">B1–B2 框架参考：Instituto Cervantes PCIC · 项目教学选词</a>
               <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">短语、中文释义与例句：项目教学编辑 · 制作说明</a>
             </div>
@@ -995,7 +1017,7 @@ function App() {
           <footer className="project-legal">
             <nav className="learning-guide-links" aria-label="免费西语学习指南">
               <a href="/spanish-dictation-practice.html">西语听写</a>
-              <a href="/spanish-conjugation-practice.html">动词变位</a>
+              <a href="/spanish-infinitive-practice.html">动词原形</a>
               <a href="/spanish-accent-practice.html">重音拼写</a>
               <a href="/a1-spanish-vocabulary.html">A1</a>
               <a href="/a2-spanish-vocabulary.html">A2</a>

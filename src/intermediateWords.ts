@@ -2,7 +2,7 @@ export type IntermediateDeck = {
   id: string
   level: 'B1' | 'B2'
   scene: '基础' | '日常' | '旅行' | '住宿' | '健康' | '学习' | '工作' | '城市' | '社会' | '科技' | '环境' | '行政' | '情绪'
-  kind: '单词' | '短语'
+  kind: '单词' | '短语' | '动词原形'
   title: string
   description: string
   words: Array<[spanish: string, chinese: string]>
@@ -77,7 +77,7 @@ export const intermediateDecks: IntermediateDeck[] = [
     ],
   },
   {
-    id: 'b1-core-verbs', level: 'B1', scene: '日常', kind: '单词', title: '推进表达的动词', description: '讲经历、问题和结果时反复使用',
+    id: 'b1-core-verbs', level: 'B1', scene: '日常', kind: '动词原形', title: '推进表达的动词', description: '讲经历、问题和结果时反复使用',
     words: [
       ['conseguir', '获得 / 做到'], ['evitar', '避免'], ['permitir', '允许'], ['ocurrir', '发生'], ['mejorar', '改善'],
       ['elegir', '选择'], ['reconocer', '认出 / 承认'], ['resolver', '解决'], ['aprovechar', '利用 / 抓住'], ['comprobar', '核实 / 检查'],
