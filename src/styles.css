@@ -36,6 +36,29 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .brand-copy span { font-size: 12px; color: var(--muted); margin-top: 5px; letter-spacing: .04em; }
 .icon-button { margin-left: auto; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.55); display: grid; place-items: center; color: var(--ink); }
 
+.domain-migration {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(520px, calc(100% - 28px));
+  padding: 16px 42px 16px 17px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 21px;
+  background: rgba(32, 32, 29, .96);
+  color: white;
+  box-shadow: 0 18px 55px rgba(32,32,29,.3);
+  transform: translateX(-50%);
+  backdrop-filter: blur(14px);
+}
+.domain-migration > div { min-width: 0; }
+.domain-migration .section-kicker { color: #ff9b84; }
+.domain-migration strong { display: block; margin-top: 3px; font-size: 17px; }
+.domain-migration p { margin: 7px 0 12px; color: #c7c8c3; font-size: 12px; line-height: 1.55; }
+.migration-button { min-height: 43px; padding: 0 15px; border: 0; border-radius: 13px; background: var(--red); color: white; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 800; }
+.migration-button:disabled { opacity: .7; cursor: wait; }
+.migration-dismiss { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 10px; background: rgba(255,255,255,.08); color: #d2d2ce; display: grid; place-items: center; }
+
 .home-content { padding: 6px 18px max(30px, env(safe-area-inset-bottom)); }
 .hero-card { min-height: 390px; border-radius: 30px; padding: 26px 24px; color: #fffaf4; background: #242823; position: relative; overflow: hidden; }
 .hero-card::after { content: 'ñ'; position: absolute; right: -14px; bottom: -70px; font: italic 220px/1 'Playfair Display', serif; color: rgba(255,255,255,.045); transform: rotate(-10deg); }
@@ -521,6 +544,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .keyboard-prompt { max-width: 520px; margin: 0 auto; min-height: 56px; }
   .completion-screen main { max-width: 720px; }
   .modal-backdrop { width: min(1180px, calc(100% - 48px)); }
+  .domain-migration { width: min(720px, calc(100% - 64px)); padding: 17px 58px 17px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; }
+  .domain-migration p { margin-bottom: 0; }
+  .migration-button { min-width: 174px; }
   .settings-sheet { max-width: 520px; margin: 0 auto; border-radius: 28px 28px 0 0; }
 }
 

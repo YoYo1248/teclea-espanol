@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const origin = 'https://teclea-espanol.vercel.app'
+const origin = 'https://www.holadone.com'
+const legacyOrigin = 'https://teclea-espanol.vercel.app'
 const indexablePages = [
   { file: 'index.html', path: '/' },
   { file: 'public/a1-spanish-vocabulary.html', path: '/a1-spanish-vocabulary.html' },
@@ -128,5 +129,9 @@ assert(!/fonts\.googleapis\.com|@import\s+url\(['"]?https?:/i.test(`${appCss}\n$
 
 const knownFiles = new Set(routeByFile.keys())
 assert(knownFiles.size === indexablePages.length + noindexPages.length, 'SEO page registry contains duplicate files')
+
+for (const file of [...knownFiles, 'public/sitemap.xml', 'public/robots.txt']) {
+  assert(!htmlFor(file).includes(legacyOrigin), `${file}: legacy origin must not appear in canonical SEO output`)
+}
 
 console.log(`SEO validation passed: ${indexablePages.length} unique indexable pages, ${noindexPages.length} noindex support pages, ${sitemapUrls.length} sitemap URLs, no orphan or broken HTML links.`)

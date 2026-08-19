@@ -224,14 +224,14 @@ export function generateSyncCode() {
   return Array.from(random, (byte) => BASE32[byte % BASE32.length]).join('')
 }
 
-export function createSyncLink(code: string) {
-  const url = new URL(window.location.href)
+export function createSyncLink(code: string, baseUrl = window.location.href) {
+  const url = new URL(baseUrl)
   url.hash = `sync=${normalizeSyncCode(code)}`
   return url.toString()
 }
 
-export async function createSyncQr(code: string) {
-  return QRCode.toDataURL(createSyncLink(code), { width: 220, margin: 1, color: { dark: '#22231f', light: '#ffffff' } })
+export async function createSyncQr(code: string, baseUrl?: string) {
+  return QRCode.toDataURL(createSyncLink(code, baseUrl), { width: 220, margin: 1, color: { dark: '#22231f', light: '#ffffff' } })
 }
 
 async function syncError(response: Response, fallback: string) {

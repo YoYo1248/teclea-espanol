@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://teclea-espanol.vercel.app/sitemap.xml
+Sitemap: https://www.holadone.com/sitemap.xml

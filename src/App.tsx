@@ -71,6 +71,8 @@ const SPEECH_RATE_KEY = 'teclea-speech-rate'
 const MASTERY_PROGRESS_KEY = 'teclea-mastery-progress-v2'
 const MISTAKE_RESOLVED_KEY = 'teclea-mistake-resolved-at-v1'
 const LOCAL_UPDATED_KEY = 'teclea-local-updated-at-v2'
+const PRIMARY_ORIGIN = 'https://www.holadone.com'
+const LEGACY_HOST = 'teclea-espanol.vercel.app'
 const LESSON_PAGE_SIZE = 12
 const DAILY_GOAL = 12
 const DEFAULT_LESSON = lessons[0]
@@ -461,6 +463,7 @@ function App() {
   const [syncQr, setSyncQr] = useState('')
   const [showSyncCode, setShowSyncCode] = useState(initialSyncInvite.fromHash)
   const [syncLastAt, setSyncLastAt] = useState<number | null>(null)
+  const [legacyNoticeDismissed, setLegacyNoticeDismissed] = useState(false)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>(readInitialLevelFilter)
   const [trackFilter, setTrackFilter] = useState<PracticeTrack>(readInitialTrackFilter)
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
@@ -515,6 +518,7 @@ function App() {
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
+  const isLegacyDomain = window.location.hostname === LEGACY_HOST
 
   syncCodeRef.current = syncCode
   latestSnapshotRef.current = {
@@ -606,8 +610,9 @@ function App() {
       setSyncQr('')
       return
     }
-    void createSyncQr(syncCode).then(setSyncQr).catch(() => setSyncQr(''))
-  }, [showSyncCode, syncCode])
+    const baseUrl = isLegacyDomain ? `${PRIMARY_ORIGIN}/` : window.location.href
+    void createSyncQr(syncCode, baseUrl).then(setSyncQr).catch(() => setSyncQr(''))
+  }, [showSyncCode, syncCode, isLegacyDomain])
 
   useEffect(() => {
     if (!settingsOpen) return
@@ -871,12 +876,12 @@ function App() {
     }
   }
 
-  async function syncNow(code = syncCodeRef.current, initial = false) {
+  async function syncNow(code = syncCodeRef.current, initial = false): Promise<boolean> {
     const normalized = normalizeSyncCode(code)
-    if (normalized.length !== 20 || !latestSnapshotRef.current) return
+    if (normalized.length !== 20 || !latestSnapshotRef.current) return false
     if (syncRunningRef.current) {
       syncPendingRef.current = true
-      return
+      return false
     }
     syncRunningRef.current = true
     setSyncStatus('syncing')
@@ -893,9 +898,11 @@ function App() {
       setSyncLastAt(Date.now())
       setSyncStatus('synced')
       setSyncMessage(remote ? '手机与电脑的学习进度已合并。' : '同步空间已创建，可以连接另一台设备了。')
+      return true
     } catch (error) {
       setSyncStatus('error')
       setSyncMessage(error instanceof Error ? error.message : '同步失败，请稍后再试')
+      return false
     } finally {
       syncRunningRef.current = false
       syncInitializedRef.current = true
@@ -905,6 +912,22 @@ function App() {
         syncTimerRef.current = window.setTimeout(() => void syncNow(syncCodeRef.current), 100)
       }
     }
+  }
+
+  async function migrateLegacyProgress() {
+    if (!isLegacyDomain || syncRunningRef.current) return
+    let code = normalizeSyncCode(syncCodeRef.current)
+    if (code.length !== 20) {
+      code = generateSyncCode()
+      localUpdatedAtRef.current = Math.max(Date.now(), localUpdatedAtRef.current + 1)
+      localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
+      if (latestSnapshotRef.current) latestSnapshotRef.current = { ...latestSnapshotRef.current, updatedAt: localUpdatedAtRef.current }
+      setSyncCode(code)
+      syncCodeRef.current = code
+      localStorage.setItem(SYNC_CODE_KEY, code)
+    }
+    const migrated = await syncNow(code, true)
+    if (migrated) window.location.assign(createSyncLink(code, `${PRIMARY_ORIGIN}/`))
   }
 
   function createSyncSpace() {
@@ -982,7 +1005,7 @@ function App() {
 
   async function shareSyncLink() {
     if (!syncCode) return
-    const url = createSyncLink(syncCode)
+    const url = createSyncLink(syncCode, isLegacyDomain ? `${PRIMARY_ORIGIN}/` : window.location.href)
     const canShare = typeof navigator.share === 'function'
     try {
       if (canShare) await navigator.share({ title: 'Teclea Español 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
@@ -1535,6 +1558,20 @@ function App() {
           <div className="brand-copy"><strong>Teclea Español</strong><span>每天敲进一点西语</span></div>
           <button ref={settingsButtonRef} className="icon-button" aria-label="设置" aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
         </header>
+
+        {isLegacyDomain && !legacyNoticeDismissed && (
+          <aside className="domain-migration" aria-label="网站新域名迁移提醒">
+            <div>
+              <span className="section-kicker">新网址已启用</span>
+              <strong>www.holadone.com</strong>
+              <p>{syncStatus === 'error' ? `迁移未完成：${syncMessage}。旧网址里的进度仍然保留。` : '先加密同步这里的学习记录，再安全前往新网址，进度不会丢。'}</p>
+            </div>
+            <button className="migration-button" onClick={() => void migrateLegacyProgress()} disabled={syncStatus === 'syncing'}>
+              {syncStatus === 'syncing' ? '正在安全迁移…' : '迁移进度并前往'} <ArrowRight size={17} />
+            </button>
+            <button className="migration-dismiss" onClick={() => setLegacyNoticeDismissed(true)} aria-label="暂时关闭迁移提醒"><X size={17} /></button>
+          </aside>
+        )}
 
         <main className="home-content">
           <div className="home-overview">

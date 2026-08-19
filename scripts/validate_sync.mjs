@@ -94,6 +94,9 @@ try {
   globalThis.window = { location: { href: 'https://example.com/?level=A1' } }
   const link = createSyncLink(code)
   assert.equal(new URL(link).hash, `#sync=${code}`)
+  const migratedLink = createSyncLink(code, 'https://www.holadone.com/')
+  assert.equal(new URL(migratedLink).origin, 'https://www.holadone.com')
+  assert.equal(new URL(migratedLink).hash, `#sync=${code}`)
   const qr = await createSyncQr(code)
   assert.match(qr, /^data:image\/png;base64,/)
 
