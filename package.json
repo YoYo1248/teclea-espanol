@@ -1,25 +1,28 @@
 {
   "name": "teclea-espanol",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "validate:catalog": "node scripts/validate_catalog.mjs",
+    "validate:sync": "node scripts/validate_sync.mjs",
     "validate:seo": "node scripts/validate_seo.mjs",
-    "check": "npm run validate:catalog && npm run validate:seo && npm run build"
+    "check": "npm run validate:catalog && npm run validate:sync && npm run validate:seo && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "lucide-react": "latest",
+    "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   }

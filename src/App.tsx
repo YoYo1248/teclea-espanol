@@ -4,6 +4,10 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  Cloud,
+  Copy,
+  Eye,
+  EyeOff,
   Flame,
   Headphones,
   Home,
@@ -11,12 +15,15 @@ import {
   Gauge,
   RotateCcw,
   Settings2,
+  Share2,
   Timer,
+  Trash2,
   VolumeX,
   Volume2,
   X,
 } from 'lucide-react'
 import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
+import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -62,6 +69,8 @@ const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
 const PAUSED_MAIN_SESSION_KEY = 'teclea-paused-main-session-v2'
 const SPEECH_RATE_KEY = 'teclea-speech-rate'
 const MASTERY_PROGRESS_KEY = 'teclea-mastery-progress-v2'
+const MISTAKE_RESOLVED_KEY = 'teclea-mistake-resolved-at-v1'
+const LOCAL_UPDATED_KEY = 'teclea-local-updated-at-v2'
 const LESSON_PAGE_SIZE = 12
 const DAILY_GOAL = 12
 const DEFAULT_LESSON = lessons[0]
@@ -82,6 +91,42 @@ const SPEECH_RATE_OPTIONS: Array<{ value: SpeechRate; label: string }> = [
   { value: 0.8, label: '标准' },
   { value: 1, label: '快速' },
 ]
+
+function readInitialSyncInvite() {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const hashCode = hash.get('sync')
+  const normalizedHashCode = normalizeSyncCode(hashCode ?? '')
+  const storedCode = normalizeSyncCode(localStorage.getItem(SYNC_CODE_KEY) ?? '')
+  const fromHash = Boolean(hashCode && normalizedHashCode.length === 20)
+  const normalized = fromHash ? normalizedHashCode : storedCode
+  if (hashCode) history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+  if (fromHash) localStorage.setItem(SYNC_CODE_KEY, normalized)
+  return { code: normalized.length === 20 ? normalized : '', fromHash }
+}
+
+function readInitialLocalUpdatedAt() {
+  const stored = Number(localStorage.getItem(LOCAL_UPDATED_KEY))
+  if (stored > 0) return stored
+  const hasLocalProgress = [
+    PRACTICE_STATE_KEY,
+    MISTAKE_BANK_KEY,
+    MASTERY_PROGRESS_KEY,
+    ACTIVE_SESSION_KEY,
+    PAUSED_MAIN_SESSION_KEY,
+    'teclea-completed',
+  ].some((key) => localStorage.getItem(key) !== null)
+  return hasLocalProgress ? Date.now() : 0
+}
+
+function readMistakeResolvedAt() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(MISTAKE_RESOLVED_KEY) || '{}') as unknown
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+    return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0))
+  } catch {
+    return {}
+  }
+}
 
 function localDateKey(date = new Date()) {
   const year = date.getFullYear()
@@ -385,6 +430,7 @@ function speak(text: string, onDone?: () => void, rate: SpeechRate = 0.8) {
 }
 
 function App() {
+  const [initialSyncInvite] = useState(readInitialSyncInvite)
   const initialPracticeStateRef = useRef<PracticeState | null>(null)
   if (initialPracticeStateRef.current === null) {
     const storedPracticeState = readPracticeState()
@@ -406,8 +452,15 @@ function App() {
   const [accentMode, setAccentMode] = useState<AccentMode>(readInitialAccentMode)
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('teclea-sound-enabled') !== 'false')
   const [speechRate, setSpeechRate] = useState<SpeechRate>(readSpeechRate)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(initialSyncInvite.fromHash)
   const [dailyGoalOpen, setDailyGoalOpen] = useState(false)
+  const [syncCode, setSyncCode] = useState(initialSyncInvite.code)
+  const [syncInput, setSyncInput] = useState('')
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle')
+  const [syncMessage, setSyncMessage] = useState(initialSyncInvite.fromHash ? '已读取同步码，正在连接…' : '')
+  const [syncQr, setSyncQr] = useState('')
+  const [showSyncCode, setShowSyncCode] = useState(initialSyncInvite.fromHash)
+  const [syncLastAt, setSyncLastAt] = useState<number | null>(null)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>(readInitialLevelFilter)
   const [trackFilter, setTrackFilter] = useState<PracticeTrack>(readInitialTrackFilter)
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
@@ -421,6 +474,7 @@ function App() {
   const [roundMasteryMode, setRoundMasteryMode] = useState<MasteryMode | null>(null)
   const [roundUsedHint, setRoundUsedHint] = useState(false)
   const [mistakeBank, setMistakeBank] = useState<Record<string, MistakeRecord>>(readMistakeBank)
+  const [mistakeResolvedAt, setMistakeResolvedAt] = useState<Record<string, number>>(readMistakeResolvedAt)
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(() => {
     const session = readActiveSession()
     if (session?.lessonId === 'mistake-review' && !Object.keys(mistakeBank).length) {
@@ -451,13 +505,37 @@ function App() {
   const settingsDialogRef = useRef<HTMLElement | null>(null)
   const dailyGoalButtonRef = useRef<HTMLButtonElement | null>(null)
   const dailyGoalDialogRef = useRef<HTMLElement | null>(null)
+  const localUpdatedAtRef = useRef(readInitialLocalUpdatedAt())
+  const syncCodeRef = useRef(syncCode)
+  const latestSnapshotRef = useRef<SyncSnapshot | null>(null)
+  const syncTimerRef = useRef<number | undefined>(undefined)
+  const syncRunningRef = useRef(false)
+  const syncPendingRef = useRef(false)
+  const syncInitializedRef = useRef(false)
 
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
 
+  syncCodeRef.current = syncCode
+  latestSnapshotRef.current = {
+    version: 2,
+    updatedAt: localUpdatedAtRef.current,
+    practiceState,
+    mistakeBank,
+    mistakeResolvedAt,
+    completed,
+    masteryProgress,
+    activeSession,
+    pausedMainSession,
+    accentMode,
+    soundEnabled,
+    speechRate,
+  }
+
   useEffect(() => {
     try {
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(mistakeBank))
+      localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(mistakeResolvedAt))
       localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(masteryProgress))
       if (!activeSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
       if (!pausedMainSession) localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
@@ -500,7 +578,36 @@ function App() {
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
     window.clearTimeout(revealTimerRef.current)
+    window.clearTimeout(syncTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!syncCodeRef.current) return
+    void syncNow(syncCodeRef.current, true)
+  }, [])
+
+  useEffect(() => {
+    if (!syncCode) return
+    const syncWhenActive = () => {
+      if (document.visibilityState === 'visible') void syncNow(syncCodeRef.current)
+    }
+    window.addEventListener('focus', syncWhenActive)
+    window.addEventListener('online', syncWhenActive)
+    document.addEventListener('visibilitychange', syncWhenActive)
+    return () => {
+      window.removeEventListener('focus', syncWhenActive)
+      window.removeEventListener('online', syncWhenActive)
+      document.removeEventListener('visibilitychange', syncWhenActive)
+    }
+  }, [syncCode])
+
+  useEffect(() => {
+    if (!showSyncCode || !syncCode) {
+      setSyncQr('')
+      return
+    }
+    void createSyncQr(syncCode).then(setSyncQr).catch(() => setSyncQr(''))
+  }, [showSyncCode, syncCode])
 
   useEffect(() => {
     if (!settingsOpen) return
@@ -715,7 +822,180 @@ function App() {
     void audio.play().catch(() => undefined)
   }
 
+  function scheduleSync() {
+    localUpdatedAtRef.current = Math.max(Date.now(), localUpdatedAtRef.current + 1)
+    localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
+    if (!syncCodeRef.current || !syncInitializedRef.current) return
+    window.clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = window.setTimeout(() => void syncNow(syncCodeRef.current), 1200)
+  }
+
+  function applySyncSnapshot(snapshot: SyncSnapshot) {
+    localUpdatedAtRef.current = snapshot.updatedAt
+    localStorage.setItem(LOCAL_UPDATED_KEY, String(snapshot.updatedAt))
+    localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(snapshot.practiceState))
+    localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(snapshot.mistakeBank))
+    localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(snapshot.mistakeResolvedAt))
+    localStorage.setItem('teclea-completed', JSON.stringify(snapshot.completed))
+    localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(snapshot.masteryProgress))
+    if (snapshot.activeSession) localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(snapshot.activeSession))
+    else localStorage.removeItem(ACTIVE_SESSION_KEY)
+    if (snapshot.pausedMainSession) localStorage.setItem(PAUSED_MAIN_SESSION_KEY, JSON.stringify(snapshot.pausedMainSession))
+    else localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
+    localStorage.setItem('teclea-accent-mode', snapshot.accentMode)
+    localStorage.setItem('teclea-sound-enabled', String(snapshot.soundEnabled))
+    localStorage.setItem(SPEECH_RATE_KEY, String(snapshot.speechRate))
+
+    const nextPracticeState = readPracticeState()
+    const nextMistakeBank = readMistakeBank()
+    const nextCompleted = readCompletedLessons()
+    const nextMasteryProgress = readMasteryProgress()
+    const storedActiveSession = readActiveSession()
+    const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.keys(nextMistakeBank).length ? null : storedActiveSession
+    const nextPausedMainSession = readActiveSession(PAUSED_MAIN_SESSION_KEY)
+    if (!nextActiveSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
+
+    setPracticeState(nextPracticeState)
+    setMistakeBank(nextMistakeBank)
+    setMistakeResolvedAt(snapshot.mistakeResolvedAt)
+    setCompleted(nextCompleted)
+    setMasteryProgress(nextMasteryProgress)
+    setActiveSession(nextActiveSession)
+    setPausedMainSession(nextPausedMainSession)
+    setAccentMode(snapshot.accentMode)
+    setSoundEnabled(snapshot.soundEnabled)
+    setSpeechRate(snapshot.speechRate)
+    if (screen === 'home') {
+      setLesson(lessons.find((item) => item.id === nextPracticeState.lastLessonId) ?? DEFAULT_LESSON)
+      setMode(nextActiveSession?.mode ?? nextPracticeState.lastMode)
+    }
+  }
+
+  async function syncNow(code = syncCodeRef.current, initial = false) {
+    const normalized = normalizeSyncCode(code)
+    if (normalized.length !== 20 || !latestSnapshotRef.current) return
+    if (syncRunningRef.current) {
+      syncPendingRef.current = true
+      return
+    }
+    syncRunningRef.current = true
+    setSyncStatus('syncing')
+    setSyncMessage(initial ? '正在连接并合并两台设备的学习记录…' : '正在同步学习记录…')
+    try {
+      const local = { ...latestSnapshotRef.current, updatedAt: localUpdatedAtRef.current }
+      const remote = await pullSync(normalized)
+      const merged = remote ? mergeSyncSnapshots(local, remote) : local
+      applySyncSnapshot(merged)
+      await pushSync(normalized, merged)
+      setSyncCode(normalized)
+      syncCodeRef.current = normalized
+      localStorage.setItem(SYNC_CODE_KEY, normalized)
+      setSyncLastAt(Date.now())
+      setSyncStatus('synced')
+      setSyncMessage(remote ? '手机与电脑的学习进度已合并。' : '同步空间已创建，可以连接另一台设备了。')
+    } catch (error) {
+      setSyncStatus('error')
+      setSyncMessage(error instanceof Error ? error.message : '同步失败，请稍后再试')
+    } finally {
+      syncRunningRef.current = false
+      syncInitializedRef.current = true
+      if (syncPendingRef.current && syncCodeRef.current) {
+        syncPendingRef.current = false
+        window.clearTimeout(syncTimerRef.current)
+        syncTimerRef.current = window.setTimeout(() => void syncNow(syncCodeRef.current), 100)
+      }
+    }
+  }
+
+  function createSyncSpace() {
+    const code = generateSyncCode()
+    localUpdatedAtRef.current = Math.max(Date.now(), localUpdatedAtRef.current + 1)
+    localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
+    if (latestSnapshotRef.current) latestSnapshotRef.current = { ...latestSnapshotRef.current, updatedAt: localUpdatedAtRef.current }
+    setSyncCode(code)
+    syncCodeRef.current = code
+    localStorage.setItem(SYNC_CODE_KEY, code)
+    setShowSyncCode(true)
+    void syncNow(code, true)
+  }
+
+  function connectSyncSpace() {
+    const code = normalizeSyncCode(syncInput)
+    if (code.length !== 20) {
+      setSyncStatus('error')
+      setSyncMessage('请输入完整的 20 位同步码。')
+      return
+    }
+    setSyncCode(code)
+    syncCodeRef.current = code
+    localStorage.setItem(SYNC_CODE_KEY, code)
+    setSyncInput('')
+    setShowSyncCode(false)
+    void syncNow(code, true)
+  }
+
+  function stopSync() {
+    window.clearTimeout(syncTimerRef.current)
+    localStorage.removeItem(SYNC_CODE_KEY)
+    syncCodeRef.current = ''
+    syncPendingRef.current = false
+    syncInitializedRef.current = false
+    setSyncCode('')
+    setSyncStatus('idle')
+    setSyncMessage('已停止本机同步；本机和云端原有学习记录均保留。')
+    setShowSyncCode(false)
+  }
+
+  async function removeCloudSync() {
+    if (!syncCode || !window.confirm('确定删除云端同步数据吗？本机进度会保留。其他仍连接的设备如果再次同步，可能重新创建云端数据。')) return
+    syncRunningRef.current = true
+    setSyncStatus('syncing')
+    setSyncMessage('正在删除云端同步数据…')
+    try {
+      await deleteSync(syncCode)
+      window.clearTimeout(syncTimerRef.current)
+      localStorage.removeItem(SYNC_CODE_KEY)
+      syncCodeRef.current = ''
+      syncPendingRef.current = false
+      syncInitializedRef.current = false
+      setSyncCode('')
+      setShowSyncCode(false)
+      setSyncStatus('idle')
+      setSyncMessage('云端同步数据已删除，本机进度仍然保留。')
+    } catch (error) {
+      setSyncStatus('error')
+      setSyncMessage(error instanceof Error ? error.message : '删除云端数据失败')
+    } finally {
+      syncRunningRef.current = false
+    }
+  }
+
+  async function copySyncCode() {
+    if (!syncCode) return
+    try {
+      await navigator.clipboard.writeText(formatSyncCode(syncCode))
+      setSyncMessage('同步码已复制。')
+    } catch {
+      setSyncMessage('无法自动复制，请长按同步码复制。')
+    }
+  }
+
+  async function shareSyncLink() {
+    if (!syncCode) return
+    const url = createSyncLink(syncCode)
+    const canShare = typeof navigator.share === 'function'
+    try {
+      if (canShare) await navigator.share({ title: 'Teclea Español 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
+      else await navigator.clipboard.writeText(url)
+      setSyncMessage(canShare ? '已完成系统分享，请只发送给自己的设备。' : '私密同步链接已复制。')
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setSyncMessage('无法分享，请改用二维码或复制同步码。')
+    }
+  }
+
   function savePracticeState(update: (current: PracticeState) => PracticeState) {
+    scheduleSync()
     setPracticeState((current) => {
       const nextState = update(current)
       localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(nextState))
@@ -724,6 +1004,7 @@ function App() {
   }
 
   function saveMistakeBank(update: (current: Record<string, MistakeRecord>) => Record<string, MistakeRecord>) {
+    scheduleSync()
     setMistakeBank((current) => {
       const nextBank = update(current)
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(nextBank))
@@ -732,20 +1013,32 @@ function App() {
   }
 
   function saveMasteryProgress(nextProgress: MasteryProgress) {
+    scheduleSync()
     setMasteryProgress(nextProgress)
     localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(nextProgress))
   }
 
   function persistActiveSession(nextSession: ActivePracticeSession | null) {
+    scheduleSync()
     setActiveSession(nextSession)
     if (nextSession) localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(nextSession))
     else localStorage.removeItem(ACTIVE_SESSION_KEY)
   }
 
   function persistPausedMainSession(nextSession: ActivePracticeSession | null) {
+    scheduleSync()
     setPausedMainSession(nextSession)
     if (nextSession) localStorage.setItem(PAUSED_MAIN_SESSION_KEY, JSON.stringify(nextSession))
     else localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
+  }
+
+  function saveMistakeResolvedAt(update: (current: Record<string, number>) => Record<string, number>) {
+    scheduleSync()
+    setMistakeResolvedAt((current) => {
+      const nextResolvedAt = update(current)
+      localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(nextResolvedAt))
+      return nextResolvedAt
+    })
   }
 
   function currentElapsedMs() {
@@ -754,6 +1047,12 @@ function App() {
 
   function recordMistake() {
     const reviewKey = word.reviewKey ?? `${lesson.id}::${getTypingTarget(word.spanish)}`
+    saveMistakeResolvedAt((current) => {
+      if (!(reviewKey in current)) return current
+      const nextResolvedAt = { ...current }
+      delete nextResolvedAt[reviewKey]
+      return nextResolvedAt
+    })
     saveMistakeBank((current) => ({
       ...current,
       [reviewKey]: {
@@ -768,6 +1067,12 @@ function App() {
   }
 
   function clearReviewedMistakes(reviewKeys: string[]) {
+    const resolvedAt = Date.now()
+    saveMistakeResolvedAt((current) => {
+      const nextResolvedAt = { ...current }
+      reviewKeys.forEach((reviewKey) => { nextResolvedAt[reviewKey] = resolvedAt })
+      return nextResolvedAt
+    })
     saveMistakeBank((current) => {
       const nextBank = { ...current }
       reviewKeys.forEach((reviewKey) => delete nextBank[reviewKey])
@@ -1012,6 +1317,7 @@ function App() {
         saveMasteryProgress({ ...masteryProgress, [lesson.id]: nextLessonMastery })
         if (nextLessonMastery.recall && nextLessonMastery.listen) {
           const nextCompleted = Array.from(new Set([...completed, lesson.id]))
+          scheduleSync()
           setCompleted(nextCompleted)
           localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
           const followingPool = lessonsForTrack(practiceTrackForLesson(lesson)).filter((item) => item.level === lesson.level)
@@ -1091,6 +1397,7 @@ function App() {
     compositionCommittedValueRef.current = null
     setAccentMode(nextMode)
     localStorage.setItem('teclea-accent-mode', nextMode)
+    scheduleSync()
     setTyped('')
     setInputDraft('')
     setStatus('idle')
@@ -1109,11 +1416,13 @@ function App() {
     const nextValue = !soundEnabled
     setSoundEnabled(nextValue)
     localStorage.setItem('teclea-sound-enabled', String(nextValue))
+    scheduleSync()
   }
 
   function chooseSpeechRate(nextRate: SpeechRate) {
     setSpeechRate(nextRate)
     localStorage.setItem(SPEECH_RATE_KEY, String(nextRate))
+    scheduleSync()
     speak('escuchar y repetir', undefined, nextRate)
   }
 
@@ -1385,6 +1694,49 @@ function App() {
                 </div>
               </div>
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
+              <div className="sync-box">
+                <div className="sync-heading">
+                  <span><Cloud size={18} /><strong>手机与电脑同步</strong></span>
+                  <small>{syncCode ? '端到端加密 · 无需账号' : '共享进度与错题'}</small>
+                </div>
+                {syncCode ? (
+                  <>
+                    <button className="sync-code-toggle" onClick={() => setShowSyncCode((value) => !value)} aria-expanded={showSyncCode}>
+                      <span>{showSyncCode ? formatSyncCode(syncCode) : '•••••-•••••-•••••-•••••'}</span>
+                      {showSyncCode ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                    {showSyncCode && (
+                      <div className="sync-secret">
+                        {syncQr && <img src={syncQr} alt="跨设备同步二维码" />}
+                        <p>在另一台设备扫码，或输入上面的同步码。同步码相当于密码，请只发送给自己的设备；丢失后无法替你找回。</p>
+                      </div>
+                    )}
+                    <div className="sync-actions">
+                      <button onClick={shareSyncLink}><Share2 size={15} />发到另一台设备</button>
+                      <button onClick={copySyncCode}><Copy size={15} />复制同步码</button>
+                      <button onClick={() => void syncNow()} disabled={syncStatus === 'syncing'}><RotateCcw size={15} />立即同步</button>
+                    </div>
+                    <div className="sync-secondary-actions">
+                      <button onClick={stopSync} disabled={syncStatus === 'syncing'}>只停止本机同步</button>
+                      <button className="danger" onClick={() => void removeCloudSync()} disabled={syncStatus === 'syncing'}><Trash2 size={14} />删除云端数据</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button className="sync-create" onClick={createSyncSpace} disabled={syncStatus === 'syncing'}>创建我的加密同步空间</button>
+                    <div className="sync-divider"><span>或连接已有设备</span></div>
+                    <div className="sync-connect">
+                      <label className="sr-only" htmlFor="sync-code-input">另一台设备的同步码</label>
+                      <input id="sync-code-input" value={syncInput} onChange={(event) => setSyncInput(formatSyncCode(event.target.value))} placeholder="输入 20 位同步码" inputMode="text" autoCapitalize="characters" autoCorrect="off" maxLength={23} />
+                      <button onClick={connectSyncSpace} disabled={syncStatus === 'syncing'}>连接</button>
+                    </div>
+                  </>
+                )}
+                <p className={`sync-message ${syncStatus}`} aria-live="polite">
+                  {syncMessage || '创建一次后，打开页面、返回页面和完成练习时都会自动同步。'}
+                  {syncLastAt && syncStatus === 'synced' ? ` · ${new Date(syncLastAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                </p>
+              </div>
               <div className="legal-box">
                 <strong>开源与修改声明</strong>
                 <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>

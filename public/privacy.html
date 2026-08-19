@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>隐私说明 | Teclea Español</title>
-  <meta name="description" content="Teclea Español 当前版本的隐私说明：无需账号，不含广告或站内分析，练习进度与错题保存在本机浏览器，并说明语音与托管服务的边界。" />
+  <meta name="description" content="Teclea Español 隐私说明：练习记录默认保存在本机；用户可选择使用无账号、端到端加密的跨设备同步，并可随时删除云端密文。" />
   <meta name="robots" content="noindex, follow" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/seo-pages.css" />
@@ -12,13 +12,15 @@
 <body><div class="shell">
   <header><a class="mark" href="/">T</a><a href="/">Teclea Español</a><span>西语从手指进入记忆</span></header>
   <nav class="breadcrumbs" aria-label="面包屑"><a href="/">练习首页</a><span>›</span><span>隐私说明</span></nav>
-  <section class="hero"><span class="eyebrow">PRIVACIDAD · 2026-08-17</span><h1>练习记录留在<br />你的浏览器里</h1><p>当前版本不要求注册账号，也没有接入广告、站内分析、支付或营销追踪代码。</p><a class="cta" href="/">返回练习</a></section>
+  <section class="hero"><span class="eyebrow">PRIVACIDAD · 2026-08-19</span><h1>默认留在本机<br />同步由你开启</h1><p>不要求注册账号，也没有接入广告、站内分析、支付或营销追踪代码。跨设备同步默认关闭。</p><a class="cta" href="/">返回练习</a></section>
   <main>
-    <h2>当前版本会保存什么？</h2>
-    <ul class="privacy-list"><li><strong>本地练习数据：</strong>当前课程、随机顺序、进度、完成状态、每日练习数、错题、重音模式、音效与语速偏好保存在浏览器 localStorage。</li><li><strong>不会由应用上传：</strong>当前代码没有账号系统，也不会把上述练习数据发送到 Teclea Español 的数据库。</li><li><strong>如何删除：</strong>清除本网站的浏览器站点数据即可删除本机记录；删除后无法恢复。</li></ul>
+    <h2>本机保存什么？</h2>
+    <ul class="privacy-list"><li><strong>本地练习数据：</strong>当前课程、随机顺序、中途位置、完成状态、每日练习数、错题、重音模式、音效与语速偏好保存在浏览器 localStorage。</li><li><strong>默认不上传：</strong>未创建或连接同步空间时，上述练习数据不会发送到 Teclea Español 的同步数据库。</li><li><strong>删除本机数据：</strong>清除本网站的浏览器站点数据即可删除本机记录；删除后无法恢复。</li></ul>
+    <h2>主动开启同步后会发生什么？</h2>
+    <ul class="privacy-list"><li><strong>同步内容：</strong>当前练习位置、每日记录、单元掌握进度、错题和训练偏好会在浏览器内加密后上传。</li><li><strong>端到端加密：</strong>浏览器从 20 位同步码派生 AES-256-GCM 密钥。Vercel Function 与 Upstash Redis 只处理派生凭证和密文，不接收明文同步码或可直接解密的密钥。</li><li><strong>同步码责任：</strong>拿到同步码的人可以加入、修改或删除这份进度；它应当像密码一样保管。本项目没有邮箱账号，也无法替用户找回丢失的同步码。</li><li><strong>保存期限与删除：</strong>每次写入会将云端密文的自动过期时间续至 400 天。用户可在设置中立即删除云端数据；仅“停止本机同步”不会删除云端副本。</li></ul>
     <h2>语音和托管的边界</h2>
-    <ul class="privacy-list"><li><strong>西语朗读：</strong>应用调用浏览器的 Speech Synthesis 接口。具体声音可能由浏览器或操作系统本地提供，也可能依设备厂商设置使用网络服务；请以你的浏览器和系统隐私说明为准。</li><li><strong>网站托管：</strong>页面由 Vercel 托管。与多数托管服务一样，Vercel 可能处理请求所需的 IP、设备或访问日志；这不等于本站安装了用户行为分析。</li><li><strong>外部链接：</strong>来源和开源说明会链接到 GitHub、Instituto Cervantes、Kaikki 等第三方站点；离开本站后适用对方的隐私规则。</li></ul>
-    <div class="note"><strong>未来版本</strong><p>如果以后加入账号、跨设备同步、分析、广告或支付，本页必须在上线前更新，并在需要时取得相应同意。当前说明只覆盖页面所标日期的本地版本。</p></div>
+    <ul class="privacy-list"><li><strong>西语朗读：</strong>应用调用浏览器的 Speech Synthesis 接口。具体声音可能由浏览器或操作系统本地提供，也可能依设备厂商设置使用网络服务；请以你的浏览器和系统隐私说明为准。</li><li><strong>托管与存储：</strong>页面和同步接口由 Vercel 托管，可选同步密文由 Upstash Redis 保存。服务商可能处理提供服务所需的 IP、设备、请求与安全日志；这不等于本站安装了用户行为分析。</li><li><strong>外部链接：</strong>来源和开源说明会链接到 GitHub、Instituto Cervantes、Kaikki 等第三方站点；离开本站后适用对方的隐私规则。</li></ul>
+    <div class="note"><strong>使用选择</strong><p>不需要跨设备时可以一直只用本地保存。需要手机与电脑共享进度时，再由用户在设置中主动创建或连接同步空间。</p></div>
   </main>
-  <footer><nav><a href="/">练习首页</a><a href="/methodology.html">词库方法与来源</a></nav>当前版本：无需账号 · 本地保存</footer>
+  <footer><nav><a href="/">练习首页</a><a href="/methodology.html">词库方法与来源</a></nav>无需账号 · 本地优先 · 可选加密同步</footer>
 </div></body></html>
