@@ -26,6 +26,7 @@ import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, less
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 import { dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
+import { bucketByRecentQueues } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 
 type Screen = 'home' | 'practice' | 'complete'
@@ -58,6 +59,7 @@ type ActivePracticeSession = {
   onboarding?: boolean
   independentCorrect?: number
   weakWordIds?: string[]
+  satisfiedModes?: LessonMastery
 }
 type MistakeRecord = {
   lessonId: string
@@ -79,6 +81,7 @@ type ChallengeState = {
 }
 type WordEvidence = Record<string, { recall?: true; listen?: true; lastCorrectAt?: number }>
 type RoundRecord = RoundTimingRecord
+type RecentRoundQueues = Record<string, string[][]>
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
@@ -98,6 +101,7 @@ const CHALLENGE_KEY = 'teclea-challenge-v1'
 const ONBOARDING_DONE_KEY = 'teclea-first-three-complete-v1'
 const WORD_EVIDENCE_KEY = 'teclea-word-evidence-v1'
 const ROUND_HISTORY_KEY = 'teclea-round-history-v1'
+const RECENT_ROUND_QUEUES_KEY = 'teclea-recent-round-queues-v1'
 const PRIMARY_ORIGIN = 'https://www.holadone.com'
 const LEGACY_HOST = 'teclea-espanol.vercel.app'
 const LESSON_PAGE_SIZE = 12
@@ -240,6 +244,29 @@ function readRoundHistory(): RoundRecord[] {
   } catch {
     return []
   }
+}
+
+function readRecentRoundQueues(): RecentRoundQueues {
+  try {
+    const stored = JSON.parse(localStorage.getItem(RECENT_ROUND_QUEUES_KEY) || '{}') as unknown
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
+    return Object.fromEntries(Object.entries(stored).flatMap(([key, value]) => {
+      if (!Array.isArray(value)) return []
+      const migratedQueues = value.every((item) => typeof item === 'string')
+        ? [value.filter((item): item is string => typeof item === 'string')]
+        : value
+            .filter((item): item is unknown[] => Array.isArray(item))
+            .map((queue) => queue.filter((item): item is string => typeof item === 'string'))
+      const cleanQueues = migratedQueues.filter((queue) => queue.length).slice(0, 2)
+      return cleanQueues.length ? [[key, cleanQueues]] : []
+    }))
+  } catch {
+    return {}
+  }
+}
+
+function adaptiveRoundQueueKey(level: LessonLevel, track: PracticeTrack, category: '全部' | LessonCategory, scene: '全部' | LessonScene) {
+  return `${level}:${track}:${category}:${scene}`
 }
 
 function adaptiveLevelFromLessonId(lessonId: string): LessonLevel | null {
@@ -451,6 +478,10 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
       onboarding: stored.onboarding === true,
       independentCorrect: typeof stored.independentCorrect === 'number' ? Math.max(0, stored.independentCorrect) : 0,
       weakWordIds: Array.isArray(stored.weakWordIds) ? stored.weakWordIds.filter((item): item is string => typeof item === 'string') : [],
+      satisfiedModes: stored.satisfiedModes && typeof stored.satisfiedModes === 'object' ? {
+        ...(stored.satisfiedModes.recall === true ? { recall: true } : {}),
+        ...(stored.satisfiedModes.listen === true ? { listen: true } : {}),
+      } : {},
     }
   } catch {
     return null
@@ -613,6 +644,7 @@ function App() {
   const [installHint, setInstallHint] = useState('')
   const [wordEvidence, setWordEvidence] = useState<WordEvidence>(readWordEvidence)
   const [roundHistory, setRoundHistory] = useState<RoundRecord[]>(readRoundHistory)
+  const [recentRoundQueues, setRecentRoundQueues] = useState<RecentRoundQueues>(readRecentRoundQueues)
   const [syncCode, setSyncCode] = useState(initialSyncInvite.code)
   const [syncInput, setSyncInput] = useState('')
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle')
@@ -632,6 +664,7 @@ function App() {
   const [completedWords, setCompletedWords] = useState(0)
   const [independentCorrect, setIndependentCorrect] = useState(0)
   const [weakWordIds, setWeakWordIds] = useState<string[]>([])
+  const [roundSatisfiedModes, setRoundSatisfiedModes] = useState<LessonMastery>({})
   const [mistakeWords, setMistakeWords] = useState<Record<string, number>>({})
   const [masteryProgress, setMasteryProgress] = useState<MasteryProgress>(readMasteryProgress)
   const [roundMasteryMode, setRoundMasteryMode] = useState<MasteryMode | null>(null)
@@ -1024,21 +1057,19 @@ function App() {
   const independentRate = completedWords && mode !== 'copy' ? Math.round(independentCorrect / completedWords * 100) : null
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
   const adaptiveRound = Boolean(adaptiveLevelFromLessonId(lesson.id))
-  const adaptiveEvidence: LessonMastery = adaptiveRound ? {
-    ...(lesson.words.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall) ? { recall: true as const } : {}),
-    ...(lesson.words.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.listen) ? { listen: true as const } : {}),
-  } : {}
-  const masteryBeforeRound = lesson.id === 'mistake-review' ? {} : adaptiveRound ? adaptiveEvidence : (masteryProgress[lesson.id] ?? {})
+  const catalogLesson = adaptiveRound ? null : lessons.find((item) => item.id === lesson.id) ?? null
+  const masteryScopeWords = catalogLesson?.words ?? lesson.words
+  const itemEvidence: LessonMastery = lesson.id === 'mistake-review' ? {} : {
+    ...(masteryScopeWords.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall) ? { recall: true as const } : {}),
+    ...(masteryScopeWords.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.listen) ? { listen: true as const } : {}),
+  }
+  const legacyMastery = lesson.id === 'mistake-review' || adaptiveRound ? {} : (masteryProgress[lesson.id] ?? {})
+  const masteryBeforeRound: LessonMastery = { ...itemEvidence, ...legacyMastery, ...roundSatisfiedModes }
   const cleanMasteryRound = lesson.id !== 'mistake-review'
     && mode !== 'copy'
     && roundMasteryMode === mode
-    && !roundUsedHint
-    && mistakes === 0
-  const masteryAfterRound: LessonMastery = {
-    ...masteryBeforeRound,
-    ...(cleanMasteryRound && mode === 'recall' ? { recall: true } : {}),
-    ...(cleanMasteryRound && mode === 'listen' ? { listen: true } : {}),
-  }
+    && independentRate === 100
+  const masteryAfterRound: LessonMastery = masteryBeforeRound
   const lessonMasteredAfterRound = masteryAfterRound.recall === true && masteryAfterRound.listen === true
   const missingMasteryMode = pendingMasteryMode(masteryAfterRound)
   const nextPracticeMode: MasteryMode = missingMasteryMode ?? (mode === 'listen' ? 'listen' : 'recall')
@@ -1053,12 +1084,18 @@ function App() {
   const nextLesson = lessonMasteredAfterRound
     ? nextIncompleteLessonAfter(lesson.id, new Set([...completed, lesson.id]), continuationPool)
     : null
-  const adaptiveModeRound = adaptiveRound && mode !== 'copy'
-  const adaptiveRoundCanRoute = adaptiveModeRound && roundMasteryMode === mode
-  const adaptiveRecommendation = masteryRecommendation(independentRate, adaptiveRoundCanRoute)
-  const weakRoundWords = adaptiveRound
+  const masteryModeRound = lesson.id !== 'mistake-review' && mode !== 'copy'
+  const masteryRoundCanRoute = masteryModeRound && roundMasteryMode === mode
+  const roundRecommendation = masteryRecommendation(independentRate, masteryRoundCanRoute)
+  const weakRoundWords = masteryModeRound
     ? lesson.words.filter((item) => weakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
     : []
+  const recallEvidenceCount = masteryAfterRound.recall
+    ? masteryScopeWords.length
+    : masteryScopeWords.filter((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall).length
+  const listenEvidenceCount = masteryAfterRound.listen
+    ? masteryScopeWords.length
+    : masteryScopeWords.filter((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.listen).length
 
   function playEffect(type: 'key' | 'wrong' | 'complete') {
     if (!soundEnabled) return
@@ -1373,13 +1410,15 @@ function App() {
   }
 
   function recordWordEvidence(independentAnswer: boolean) {
-    if ((mode !== 'recall' && mode !== 'listen') || !independentAnswer) return
+    if ((mode !== 'recall' && mode !== 'listen') || !independentAnswer) return wordEvidence
     const cardId = word.reviewKey ?? sessionCardId(lesson.id, word)
     const previous = wordEvidence[cardId] ?? {}
-    saveWordEvidence({
+    const nextEvidence: WordEvidence = {
       ...wordEvidence,
       [cardId]: { ...previous, [mode]: true, lastCorrectAt: Date.now() },
-    })
+    }
+    saveWordEvidence(nextEvidence)
+    return nextEvidence
   }
 
   function recordAdaptiveRound(elapsedMs: number) {
@@ -1416,16 +1455,24 @@ function App() {
         return [{ lesson: item, word: { ...word, reviewKey: sessionCardId(item.id, word) } }]
       }))
     if (!candidates.length) return
-    const weak = candidates.filter((item) => mistakeBank[item.word.reviewKey!])
-    const unmastered = candidates.filter((item) => !mistakeBank[item.word.reviewKey!] && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
-    const stable = candidates.filter((item) => !mistakeBank[item.word.reviewKey!] && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)
-    const weakOrdered = balancedLengthOrder(weak)
-    const unmasteredOrdered = balancedLengthOrder(unmastered)
-    const stableOrdered = balancedLengthOrder(stable)
+    const queueKey = adaptiveRoundQueueKey(nextLevel, nextTrack, category, scene)
+    const recentHistory = recentRoundQueues[queueKey] ?? []
+    const recentSets = recentHistory.map((queue) => new Set(queue))
+    const priorityOrder = (pool: typeof candidates) => {
+      const weakOrdered = balancedLengthOrder(pool.filter((item) => mistakeBank[item.word.reviewKey!]))
+      const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !mistakeBank[item.word.reviewKey!] && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
+      const stableOrdered = balancedLengthOrder(pool.filter((item) => !mistakeBank[item.word.reviewKey!] && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
+      const guaranteedMix = weakOrdered.length && unmasteredOrdered.length ? [weakOrdered.shift()!, unmasteredOrdered.shift()!] : []
+      return [...guaranteedMix, ...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
+    }
+    const { fresh: freshCandidates, earlier: earlierCandidates, immediate: immediateCandidates } = bucketByRecentQueues(candidates, recentSets, (item) => item.word.reviewKey!)
     const roundSize = adaptiveRoundSize(nextMode, roundHistory)
-    const guaranteedMix = weakOrdered.length && unmasteredOrdered.length ? [weakOrdered.shift()!, unmasteredOrdered.shift()!] : []
-    const ordered = [...guaranteedMix, ...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
+    const ordered = [...priorityOrder(freshCandidates), ...priorityOrder(earlierCandidates), ...priorityOrder(immediateCandidates)]
     const roundWords = ordered.slice(0, roundSize).map((item) => item.word)
+    const currentQueue = roundWords.map((item) => item.reviewKey ?? sessionCardId(`adaptive-${nextLevel}-${nextTrack}`, item))
+    const nextRecentQueues = { ...recentRoundQueues, [queueKey]: [currentQueue, ...recentHistory].slice(0, 2) }
+    setRecentRoundQueues(nextRecentQueues)
+    localStorage.setItem(RECENT_ROUND_QUEUES_KEY, JSON.stringify(nextRecentQueues))
     const adaptiveLesson: Lesson = {
       id: `adaptive-${nextLevel}-${nextTrack}`,
       level: nextLevel,
@@ -1507,15 +1554,19 @@ function App() {
   }
 
   function advanceAdaptiveStage() {
-    if (mode === 'recall') {
-      begin(lesson, 'listen', { orderedWords: shuffleWords(lesson.words) })
+    if (missingMasteryMode) {
+      const catalogRound = lessons.find((item) => item.id === lesson.id)
+      const queueKey = adaptiveRoundQueueKey(lesson.level, practiceTrackForLesson(lesson), categoryFilter, sceneFilter)
+      const adaptiveRoundLesson = adaptiveLessonFromOrder(lesson.id, recentRoundQueues[queueKey]?.[0] ?? [])
+      const fullRound = catalogRound ?? adaptiveRoundLesson ?? lesson
+      begin(fullRound, missingMasteryMode, { orderedWords: shuffleWords(fullRound.words), satisfiedModes: masteryAfterRound })
       return
     }
-    beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), mode === 'listen' ? 'listen' : 'recall')
+    beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'recall', categoryFilter, sceneFilter)
   }
 
   function repeatAdaptiveMode() {
-    begin(lesson, mode, { orderedWords: shuffleWords(lesson.words) })
+    begin(lesson, mode, { orderedWords: shuffleWords(lesson.words), satisfiedModes: masteryAfterRound })
   }
 
   function reinforceAdaptiveWeakWords() {
@@ -1523,7 +1574,7 @@ function App() {
       repeatAdaptiveMode()
       return
     }
-    begin({ ...lesson, words: weakRoundWords }, mode, { orderedWords: shuffleWords(weakRoundWords) })
+    begin({ ...lesson, words: weakRoundWords }, mode, { orderedWords: shuffleWords(weakRoundWords), satisfiedModes: masteryAfterRound })
   }
 
   async function promptInstall() {
@@ -1621,6 +1672,7 @@ function App() {
     setCompletedWords(session.completedWords)
     setIndependentCorrect(session.independentCorrect ?? 0)
     setWeakWordIds(session.weakWordIds ?? [])
+    setRoundSatisfiedModes(session.satisfiedModes ?? {})
     setMistakeWords(session.mistakeWords)
     setReviewCorrectCount(session.reviewCorrectCount)
     setRoundMasteryMode(session.masteryMode)
@@ -1639,7 +1691,7 @@ function App() {
     setScreen('practice')
   }
 
-  function begin(nextLesson: Lesson, nextMode: Mode = mode, options: { orderedWords?: Lesson['words']; onboarding?: boolean } = {}) {
+  function begin(nextLesson: Lesson, nextMode: Mode = mode, options: { orderedWords?: Lesson['words']; onboarding?: boolean; satisfiedModes?: LessonMastery } = {}) {
     if (nextLesson.id === 'mistake-review' && activeSession?.lessonId !== 'mistake-review') {
       if (activeSession) persistPausedMainSession(activeSession)
     } else if (nextLesson.id !== 'mistake-review') {
@@ -1662,6 +1714,7 @@ function App() {
       onboarding: options.onboarding === true,
       independentCorrect: 0,
       weakWordIds: [],
+      satisfiedModes: options.satisfiedModes ?? {},
     }
     openPractice({ ...nextLesson, words: orderedWords }, session)
   }
@@ -1699,6 +1752,7 @@ function App() {
           completedWords: 0,
           independentCorrect: 0,
           weakWordIds: [],
+          satisfiedModes: {},
           mistakeWords: {},
           reviewCorrectCount: 0,
           masteryMode: session.mode === 'recall' || session.mode === 'listen' ? session.mode : null,
@@ -1781,6 +1835,7 @@ function App() {
         usedHint: roundUsedHint,
         independentCorrect,
         weakWordIds,
+        satisfiedModes: roundSatisfiedModes,
       })
     }
     setScreen('home')
@@ -1791,6 +1846,17 @@ function App() {
     const nextCompletedWords = completedWords + 1
     const independentAnswer = mode !== 'copy' && !currentWordHadErrorRef.current && !currentWordUsedHintRef.current
     const nextIndependentCorrect = independentCorrect + (independentAnswer ? 1 : 0)
+    const completingRound = index === lesson.words.length - 1
+    const nextIndependentRate = mode === 'copy' ? null : Math.round(nextIndependentCorrect / nextCompletedWords * 100)
+    const currentModeSatisfied = completingRound
+      && (mode === 'recall' || mode === 'listen')
+      && roundMasteryMode === mode
+      && masteryRecommendation(nextIndependentRate, true) === 'advance'
+    const nextSatisfiedModes: LessonMastery = {
+      ...roundSatisfiedModes,
+      ...(currentModeSatisfied && mode === 'recall' ? { recall: true } : {}),
+      ...(currentModeSatisfied && mode === 'listen' ? { listen: true } : {}),
+    }
     const currentCardId = currentPracticeCardId()
     const nextWeakWordIds = independentAnswer || weakWordIds.includes(currentCardId) ? weakWordIds : [...weakWordIds, currentCardId]
     const cleanReviewAnswer = lesson.id === 'mistake-review' && !currentWordHadErrorRef.current && Boolean(word.reviewKey)
@@ -1799,12 +1865,13 @@ function App() {
     setCompletedWords(nextCompletedWords)
     setIndependentCorrect(nextIndependentCorrect)
     setWeakWordIds(nextWeakWordIds)
+    if (completingRound) setRoundSatisfiedModes(nextSatisfiedModes)
     if (cleanReviewAnswer) {
       clearReviewedMistakes([word.reviewKey!])
       setReviewCorrectCount(nextReviewCorrectCount)
     }
     recordCompletedWord()
-    recordWordEvidence(independentAnswer)
+    const nextWordEvidence = recordWordEvidence(independentAnswer)
     recordChallengeSuccess(independentAnswer)
     if (index === lesson.words.length - 1) {
       if (isOnboardingRound) localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
@@ -1818,9 +1885,16 @@ function App() {
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
       recordAdaptiveRound(elapsedMs)
-      if (cleanMasteryRound && lessons.some((item) => item.id === lesson.id) && (mode === 'recall' || mode === 'listen')) {
-        const nextLessonMastery: LessonMastery = { ...masteryBeforeRound, [mode]: true }
-        saveMasteryProgress({ ...masteryProgress, [lesson.id]: nextLessonMastery })
+      const completedCatalogLesson = lessons.find((item) => item.id === lesson.id)
+      if (completedCatalogLesson && (mode === 'recall' || mode === 'listen')) {
+        const completedMode = mode
+        const modeNowComplete = completedCatalogLesson.words.every((item) => nextWordEvidence[sessionCardId(completedCatalogLesson.id, item)]?.[completedMode])
+        const nextLessonMastery: LessonMastery = {
+          ...(masteryProgress[lesson.id] ?? {}),
+          ...nextSatisfiedModes,
+          ...(modeNowComplete ? { [completedMode]: true } : {}),
+        }
+        if (modeNowComplete || currentModeSatisfied) saveMasteryProgress({ ...masteryProgress, [lesson.id]: nextLessonMastery })
         if (nextLessonMastery.recall && nextLessonMastery.listen) {
           const nextCompleted = Array.from(new Set([...completed, lesson.id]))
           scheduleSync()
@@ -1848,6 +1922,7 @@ function App() {
         reviewCorrectCount: nextReviewCorrectCount,
         independentCorrect: nextIndependentCorrect,
         weakWordIds: nextWeakWordIds,
+        satisfiedModes: roundSatisfiedModes,
       })
     }
     currentWordHadErrorRef.current = false
@@ -1886,6 +1961,7 @@ function App() {
         usedHint: roundUsedHint,
         independentCorrect,
         weakWordIds,
+        satisfiedModes: roundSatisfiedModes,
       })
     }
     savePracticeState((current) => ({ ...current, lastMode: nextMode }))
@@ -2321,6 +2397,10 @@ function App() {
   if (screen === 'complete') {
     return (
       <div className="app-shell completion-screen">
+        <button className="completion-home-button" onClick={() => setScreen('home')} aria-label="回到首页">
+          <Home size={18} />
+          <span>回到首页</span>
+        </button>
         <main ref={completionMainRef}>
           <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}><span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
           <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</p>
@@ -2329,13 +2409,13 @@ function App() {
           {lesson.id !== 'mistake-review' && (
             <>
               <div className="mastery-steps" aria-label="本轮掌握进度">
-                <span className={masteryAfterRound.recall ? 'passed' : ''}><Check size={15} /><b>看义拼写</b><small>{masteryAfterRound.recall ? '已通过' : '待完成'}</small></span>
-                <span className={masteryAfterRound.listen ? 'passed' : ''}><Check size={15} /><b>听音拼写</b><small>{masteryAfterRound.listen ? '已通过' : '待完成'}</small></span>
+                <span className={masteryAfterRound.recall ? 'passed' : ''}><Check size={15} /><b>看义拼写</b><small>{masteryAfterRound.recall ? '已通过' : recallEvidenceCount ? `${recallEvidenceCount}/${masteryScopeWords.length} 项` : '待完成'}</small></span>
+                <span className={masteryAfterRound.listen ? 'passed' : ''}><Check size={15} /><b>听音拼写</b><small>{masteryAfterRound.listen ? '已通过' : listenEvidenceCount ? `${listenEvidenceCount}/${masteryScopeWords.length} 项` : '待完成'}</small></span>
               </div>
               <p className={`mastery-result ${cleanMasteryRound || lessonMasteredAfterRound ? 'clean' : ''}`}>
                 {lessonMasteredAfterRound
                   ? '看义拼写和听音拼写都已通过，本轮内容已掌握。'
-                  : adaptiveModeRound && independentRate !== null
+                  : masteryModeRound && independentRate !== null
                     ? `本轮 ${independentCorrect}/${completedWords} 项独立答对（${independentRate}%）。输错或查看答案的项目会保留在后续优先池；听写重播题目音频不扣分。`
                   : mode === 'copy'
                     ? `跟打只用于熟悉词形；接下来完成${masteryModeLabel(nextPracticeMode)}。`
@@ -2378,27 +2458,31 @@ function App() {
             </div>
           ) : lesson.id === 'mistake-review' ? (
             <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
-          ) : adaptiveModeRound && adaptiveRecommendation === 'advance' ? (
+          ) : masteryModeRound && roundRecommendation === 'advance' ? (
             <>
-              <button className="primary-button" onClick={advanceAdaptiveStage}>{mode === 'recall' ? '进入听写' : '开始下一轮'} <ArrowRight size={19} /></button>
+              <button className="primary-button" onClick={advanceAdaptiveStage}>{missingMasteryMode ? `开始${masteryModeLabel(missingMasteryMode)}` : '开始下一轮'} <ArrowRight size={19} /></button>
               <p className="enter-hint">已独立答对 {independentRate}% · 按 Enter 直接继续</p>
               <button className="text-button" onClick={repeatAdaptiveMode}>再巩固一次</button>
             </>
-          ) : adaptiveModeRound && adaptiveRecommendation === 'reinforce' ? (
+          ) : masteryModeRound && roundRecommendation === 'reinforce' ? (
             <>
               <button className="primary-button" onClick={reinforceAdaptiveWeakWords}>巩固薄弱项{weakRoundWords.length ? ` · ${weakRoundWords.length} 项` : ''} <RotateCcw size={18} /></button>
               <p className="enter-hint">已独立答对 {independentRate}% · 先短复习更稳妥</p>
-              <button className="text-button" onClick={advanceAdaptiveStage}>仍然进入{mode === 'recall' ? '听写' : '下一轮'}</button>
+              {missingMasteryMode && missingMasteryMode !== mode
+                ? <button className="text-button" onClick={advanceAdaptiveStage}>先练{masteryModeLabel(missingMasteryMode)}</button>
+                : <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>}
             </>
-          ) : adaptiveModeRound ? (
+          ) : masteryModeRound ? (
             <>
               <button className="primary-button" onClick={repeatAdaptiveMode}>{roundMasteryMode === null ? `完整重练${masteryModeLabel(mode === 'listen' ? 'listen' : 'recall')}` : '继续巩固本轮'} <RotateCcw size={18} /></button>
               <p className="enter-hint">{roundMasteryMode === null ? '本轮中途切换过模式，本次只记练习。' : `已独立答对 ${independentRate ?? 0}% · 建议留在当前模式`}</p>
-              <button className="text-button" onClick={advanceAdaptiveStage}>挑战{mode === 'recall' ? '听写' : '下一轮'}</button>
+              {missingMasteryMode && missingMasteryMode !== mode
+                ? <button className="text-button" onClick={advanceAdaptiveStage}>挑战{masteryModeLabel(missingMasteryMode)}</button>
+                : <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>}
             </>
           ) : lessonMasteredAfterRound && adaptiveRound ? (
             <>
-              <button className="primary-button" onClick={() => beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'listen')}>开始下一轮 <ArrowRight size={19} /></button>
+              <button className="primary-button" onClick={() => beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'recall', categoryFilter, sceneFilter)}>开始下一轮 <ArrowRight size={19} /></button>
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
           ) : lessonMasteredAfterRound && nextLesson ? (

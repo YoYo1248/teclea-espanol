@@ -362,6 +362,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 
 .completion-screen { min-height: 100svh; display: grid; place-items: center; padding: 30px 24px; text-align: center; }
 .completion-screen main { width: 100%; }
+.completion-home-button { position: fixed; z-index: 10; top: max(15px, env(safe-area-inset-top)); left: max(15px, calc((100vw - 480px) / 2 + 15px)); min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,253,249,.92); color: var(--ink); display: flex; align-items: center; gap: 7px; box-shadow: 0 8px 25px rgba(32,32,29,.1); backdrop-filter: blur(10px); }
+.completion-home-button span { font-size: 13px; font-weight: 700; }
 .completion-burst { width: 126px; height: 126px; margin: 0 auto 33px; border-radius: 40px; transform: rotate(-5deg); background: var(--green); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 18px 40px rgba(52,118,101,.22); }
 .completion-burst span { font: italic 20px Georgia, 'Times New Roman', serif; margin-bottom: 4px; }
 .completion-burst.mastered { background: #2f806a; box-shadow: 0 18px 44px rgba(47,128,106,.27); }
@@ -595,6 +597,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   }
   .keyboard-prompt { max-width: 520px; margin: 0 auto; min-height: 56px; }
   .completion-screen main { max-width: 720px; }
+  .completion-home-button { left: max(39px, calc((100vw - 1180px) / 2 + 15px)); }
   .modal-backdrop { width: min(1180px, calc(100% - 48px)); }
   .domain-migration { width: min(720px, calc(100% - 64px)); padding: 17px 58px 17px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; }
   .domain-migration p { margin-bottom: 0; }
@@ -641,6 +644,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     border-radius: 30px;
     font-size: 16px;
   }
+  .completion-home-button { left: max(35px, calc((100vw - 1400px) / 2 + 15px)); }
   .topbar { height: 76px; padding: 17px 30px 12px; }
   .brand-mark { width: 48px; height: 48px; font-size: 20px; }
   .brand-copy strong { font-size: 21px; }
@@ -880,7 +884,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 
 @media (max-width: 599px) {
-  .completion-screen { display: block; padding: 24px 20px; overflow-y: auto; }
+  .completion-screen { display: block; padding: 74px 20px 24px; overflow-y: auto; }
+  .completion-home-button { left: max(15px, env(safe-area-inset-left)); }
   .completion-burst { width: 96px; height: 96px; margin-bottom: 22px; border-radius: 31px; }
   .completion-burst span { font-size: 16px; }
   .completion-screen h1 { font-size: 32px; }
