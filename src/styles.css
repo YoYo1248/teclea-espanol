@@ -68,6 +68,30 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .course-filters span { flex: 0 0 35px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .course-filters button { flex: 0 0 auto; height: 31px; padding: 0 11px; border: 1px solid var(--line); border-radius: 99px; background: rgba(255,255,255,.56); color: #77746d; font-size: 11px; font-weight: 700; }
 .course-filters button.active { border-color: var(--red); background: #fff0eb; color: #d95036; }
+.primary-filters { margin-bottom: 13px; }
+.level-paths { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.level-path-card { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.7); box-shadow: 0 6px 20px rgba(61,54,44,.035); }
+.level-path-heading { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; align-items: center; }
+.level-path-heading > span { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: #29332d; color: white; font-size: 14px; font-weight: 800; }
+.level-path-heading > div { min-width: 0; display: flex; flex-direction: column; }
+.level-path-heading small { color: var(--muted); font-size: 10px; font-weight: 700; }
+.level-path-heading strong { margin-top: 2px; font-size: 18px; }
+.level-path-heading > b { color: var(--green); font-size: 16px; }
+.level-progress { height: 6px; margin: 13px 0 8px; overflow: hidden; border-radius: 99px; background: #e4e0d7; }
+.level-progress span { display: block; height: 100%; border-radius: inherit; background: var(--green); transition: width .25s ease; }
+.level-path-card p { margin: 0 0 11px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.level-path-card > button { width: 100%; min-height: 39px; padding: 0 13px; border: 0; border-radius: 12px; background: #e5efea; color: var(--green); display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; }
+.theme-browser { margin-top: 12px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.42); overflow: hidden; }
+.theme-browser > summary { min-height: 52px; padding: 0 14px; display: flex; align-items: center; gap: 9px; cursor: pointer; list-style: none; color: var(--ink); }
+.theme-browser > summary::-webkit-details-marker { display: none; }
+.theme-browser > summary > span { min-width: 0; display: flex; flex-direction: column; font-size: 12px; font-weight: 800; }
+.theme-browser > summary small { margin-top: 2px; color: var(--muted); font-size: 9px; font-weight: 600; }
+.theme-browser > summary b { margin-left: auto; color: var(--green); font-size: 11px; white-space: nowrap; }
+.theme-browser > summary::after { content: '+'; width: 24px; height: 24px; border-radius: 8px; background: #e8e4dc; display: grid; place-items: center; color: #706d66; font-size: 16px; font-weight: 500; }
+.theme-browser[open] > summary { border-bottom: 1px solid var(--line); }
+.theme-browser[open] > summary::after { content: '−'; }
+.theme-browser-content { padding: 13px; }
+.theme-filters { margin: 0 0 12px; }
 .filter-result { margin: -5px 3px 10px; color: var(--muted); font-size: 11px; }
 .lesson-list { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .lesson-card { width: 100%; min-width: 0; padding: 15px 14px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.65); display: flex; align-items: center; text-align: left; color: var(--ink); box-shadow: 0 5px 18px rgba(61, 54, 44, .025); }
@@ -422,6 +446,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   }
   .course-section { grid-column: 2; grid-row: 2; min-width: 0; }
   .section-heading h2 { font-size: 27px; }
+  .level-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .level-paths.single .level-path-card { grid-column: 1 / -1; }
   .lesson-list { max-height: 302px; padding-right: 5px; gap: 10px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #c9c3b9 transparent; }
   .lesson-card { min-height: 88px; padding: 16px; }
   .lesson-number { flex-basis: 54px; height: 58px; }
@@ -580,6 +606,13 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .course-filters > div { overflow: visible; flex-wrap: wrap; }
   .course-filters span { flex-basis: 44px; font-size: 13px; }
   .course-filters button { height: 35px; padding: 0 14px; font-size: 13px; }
+  .level-paths { flex: 0 0 auto; grid-auto-rows: minmax(128px, auto); }
+  .level-path-card { padding: 13px 14px; }
+  .level-path-heading > span { width: 40px; height: 40px; }
+  .level-progress { margin: 10px 0 7px; }
+  .level-path-card p { margin-bottom: 8px; }
+  .theme-browser { flex: 0 0 auto; }
+  .theme-browser .lesson-list { max-height: 270px; }
   .lesson-list {
     flex: 1;
     min-height: 160px;
@@ -656,6 +689,15 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .home-overview .daily-row { min-height: 78px; margin-bottom: 16px; padding: 10px 15px; }
   .course-filters { gap: 5px; margin-bottom: 8px; }
   .course-filters button { height: 31px; }
+  .level-paths { grid-auto-rows: minmax(105px, auto); gap: 7px; }
+  .level-path-card { padding: 10px 12px; }
+  .level-path-heading { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 8px; }
+  .level-path-heading > span { width: 36px; height: 36px; border-radius: 11px; }
+  .level-progress { margin: 7px 0 5px; }
+  .level-path-card p { display: none; }
+  .level-path-card > button { min-height: 32px; }
+  .theme-browser { margin-top: 7px; }
+  .theme-browser > summary { min-height: 42px; }
   .lesson-list { min-height: 186px; gap: 7px; }
   .lesson-card { min-height: 82px; padding: 9px 12px; }
   .lesson-number { flex-basis: 48px; height: 50px; }

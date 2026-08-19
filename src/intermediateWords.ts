@@ -66,7 +66,7 @@ export const intermediateDecks: IntermediateDeck[] = [
     id: 'b1-media-tech', level: 'B1', scene: '科技', kind: '单词', title: '信息与数字生活', description: '新闻、设备和线上操作常用词',
     words: [
       ['noticia', '新闻'], ['medios', '媒体 / 手段'], ['pantalla', '屏幕'], ['archivo', '文件'], ['contraseña', '密码'],
-      ['descargar', '下载'], ['compartir', '分享'], ['conectar', '连接'], ['informado', '了解情况的'], ['mensaje', '消息'],
+      ['descargar', '下载'], ['compartir', '分享'], ['conectar', '连接'], ['informado', '了解情况的'], ['enlace', '链接'],
     ],
   },
   {

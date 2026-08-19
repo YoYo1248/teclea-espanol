@@ -16,11 +16,12 @@ import {
   Volume2,
   X,
 } from 'lucide-react'
-import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonKinds, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonKind, type LessonLevel, type LessonScene } from './data'
+import { FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
 type MasteryMode = Exclude<Mode, 'copy'>
+type PracticeTrack = 'main' | 'verbs'
 type AccentMode = 'strict' | 'lenient'
 type SpeechRate = 0.55 | 0.8 | 1
 type LessonMastery = Partial<Record<MasteryMode, true>>
@@ -64,6 +65,18 @@ const MASTERY_PROGRESS_KEY = 'teclea-mastery-progress-v2'
 const LESSON_PAGE_SIZE = 12
 const DAILY_GOAL = 12
 const DEFAULT_LESSON = lessons[0]
+const LEVEL_ORDER: LessonLevel[] = ['A1', 'A2', 'B1', 'B2']
+const PRACTICE_TRACKS: Array<{ value: PracticeTrack; label: string; shortLabel: string }> = [
+  { value: 'main', label: '词汇与短语', shortLabel: '词汇主线' },
+  { value: 'verbs', label: '常用动词专项', shortLabel: '动词专项' },
+]
+const MERGED_LESSON_MIGRATIONS: Record<string, string[]> = {
+  'b1-learning-digital': ['b1-education', 'b1-media-tech'],
+  'b2-wellbeing-judgment': ['b2-wellbeing', 'b2-core-nuance'],
+}
+const LEGACY_LESSON_REDIRECTS = Object.fromEntries(
+  Object.entries(MERGED_LESSON_MIGRATIONS).flatMap(([nextId, previousIds]) => previousIds.map((previousId) => [previousId, nextId])),
+)
 const SPEECH_RATE_OPTIONS: Array<{ value: SpeechRate; label: string }> = [
   { value: 0.55, label: '慢速' },
   { value: 0.8, label: '标准' },
@@ -82,9 +95,17 @@ function readInitialLevelFilter(): '全部' | LessonLevel {
   return level === 'A1' || level === 'A2' || level === 'B1' || level === 'B2' ? level : '全部'
 }
 
-function readInitialKindFilter(): '全部' | LessonKind {
+function readInitialTrackFilter(): PracticeTrack {
   const kind = new URLSearchParams(window.location.search).get('kind')
-  return kind === '单词' || kind === '短语' || kind === '动词原形' ? kind : '全部'
+  if (kind === '动词原形') return 'verbs'
+  if (kind === '单词' || kind === '短语') return 'main'
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRACTICE_STATE_KEY) || '{}') as Partial<PracticeState>
+    const lastLesson = lessons.find((lesson) => lesson.id === stored.lastLessonId)
+    return lastLesson?.kind === '动词原形' ? 'verbs' : 'main'
+  } catch {
+    return 'main'
+  }
 }
 
 function readInitialMode(fallback: Mode): Mode {
@@ -108,7 +129,8 @@ function readPracticeState(): PracticeState {
   try {
     const stored = JSON.parse(localStorage.getItem(PRACTICE_STATE_KEY) || '{}') as Partial<PracticeState>
     const lastMode = stored.lastMode === 'recall' || stored.lastMode === 'listen' ? stored.lastMode : 'copy'
-    const lastLessonId = lessons.some((item) => item.id === stored.lastLessonId) ? stored.lastLessonId! : fallback.lastLessonId
+    const redirectedLessonId = typeof stored.lastLessonId === 'string' ? (LEGACY_LESSON_REDIRECTS[stored.lastLessonId] ?? stored.lastLessonId) : ''
+    const lastLessonId = lessons.some((item) => item.id === redirectedLessonId) ? redirectedLessonId : fallback.lastLessonId
     const dailyWords = stored.dailyWords && typeof stored.dailyWords === 'object' ? stored.dailyWords : {}
     return { lastMode, lastLessonId, dailyWords }
   } catch {
@@ -119,9 +141,13 @@ function readPracticeState(): PracticeState {
 function readCompletedLessons() {
   try {
     const stored = JSON.parse(localStorage.getItem('teclea-completed') || '[]') as unknown
-    return Array.isArray(stored)
-      ? stored.filter((id): id is string => typeof id === 'string' && lessons.some((lesson) => lesson.id === id))
-      : []
+    if (!Array.isArray(stored)) return []
+    const storedIds = stored.filter((id): id is string => typeof id === 'string')
+    const completedIds = storedIds.filter((id) => lessons.some((lesson) => lesson.id === id))
+    for (const [nextId, previousIds] of Object.entries(MERGED_LESSON_MIGRATIONS)) {
+      if (previousIds.every((previousId) => storedIds.includes(previousId))) completedIds.push(nextId)
+    }
+    return Array.from(new Set(completedIds))
   } catch {
     return []
   }
@@ -129,9 +155,11 @@ function readCompletedLessons() {
 
 function readMasteryProgress(): MasteryProgress {
   const progress: MasteryProgress = {}
+  let storedProgress: Record<string, unknown> = {}
   try {
     const stored = JSON.parse(localStorage.getItem(MASTERY_PROGRESS_KEY) || '{}') as unknown
     if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      storedProgress = stored as Record<string, unknown>
       for (const [lessonId, value] of Object.entries(stored)) {
         if (!lessons.some((lesson) => lesson.id === lessonId) || !value || typeof value !== 'object' || Array.isArray(value)) continue
         const candidate = value as Record<string, unknown>
@@ -143,6 +171,15 @@ function readMasteryProgress(): MasteryProgress {
     }
   } catch {
     // Fall back to the legacy completion list below.
+  }
+
+  for (const [nextId, previousIds] of Object.entries(MERGED_LESSON_MIGRATIONS)) {
+    const previousValues = previousIds.map((previousId) => storedProgress[previousId]).filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value))
+    if (previousValues.length !== previousIds.length) continue
+    progress[nextId] = {
+      ...(previousValues.every((value) => value.recall === true) ? { recall: true } : {}),
+      ...(previousValues.every((value) => value.listen === true) ? { listen: true } : {}),
+    }
   }
 
   // Existing users already earned their checks under the former rule. Preserve
@@ -198,13 +235,18 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
     if (!stored || typeof stored.lessonId !== 'string' || !Array.isArray(stored.order) || !stored.order.every((item) => typeof item === 'string')) return null
     if (stored.mode !== 'copy' && stored.mode !== 'recall' && stored.mode !== 'listen') return null
     if (!Number.isInteger(stored.index) || stored.index! < 0 || stored.index! >= stored.order.length) return null
-    if (stored.lessonId !== 'mistake-review' && !lessons.some((lesson) => lesson.id === stored.lessonId)) {
+    const previousLessonId = stored.lessonId
+    const lessonId = previousLessonId === 'mistake-review' ? previousLessonId : (LEGACY_LESSON_REDIRECTS[previousLessonId] ?? previousLessonId)
+    if (lessonId !== 'mistake-review' && !lessons.some((lesson) => lesson.id === lessonId)) {
       return null
     }
+    const order = lessonId === previousLessonId
+      ? stored.order
+      : stored.order.map((cardId) => cardId.replace(`${previousLessonId}::`, `${lessonId}::`))
     return {
-      lessonId: stored.lessonId,
+      lessonId,
       mode: stored.mode,
-      order: stored.order,
+      order,
       index: stored.index!,
       elapsedMs: typeof stored.elapsedMs === 'number' ? Math.max(0, stored.elapsedMs) : 0,
       correctKeystrokes: typeof stored.correctKeystrokes === 'number' ? Math.max(0, stored.correctKeystrokes) : 0,
@@ -270,21 +312,41 @@ function pendingMasteryMode(progress: LessonMastery): MasteryMode | null {
   return !progress.recall ? 'recall' : !progress.listen ? 'listen' : null
 }
 
-function nextIncompleteLessonAfter(lessonId: string, completedLessonIds: Iterable<string>) {
+function practiceTrackForLesson(lesson: Lesson): PracticeTrack {
+  return lesson.kind === '动词原形' ? 'verbs' : 'main'
+}
+
+function practiceTrackLabel(track: PracticeTrack, short = false) {
+  const option = PRACTICE_TRACKS.find((item) => item.value === track)!
+  return short ? option.shortLabel : option.label
+}
+
+function lessonsForTrack(track: PracticeTrack) {
+  return lessons
+    .filter((lesson) => practiceTrackForLesson(lesson) === track)
+    .sort((left, right) => LEVEL_ORDER.indexOf(left.level) - LEVEL_ORDER.indexOf(right.level))
+}
+
+function nextIncompleteLessonAfter(lessonId: string, completedLessonIds: Iterable<string>, lessonPool = lessons) {
   const completedSet = new Set(completedLessonIds)
-  const currentIndex = lessons.findIndex((lesson) => lesson.id === lessonId)
+  const currentIndex = lessonPool.findIndex((lesson) => lesson.id === lessonId)
   const startIndex = currentIndex >= 0 ? currentIndex + 1 : 0
-  const wrappedLessons = [...lessons.slice(startIndex), ...lessons.slice(0, startIndex)]
+  const wrappedLessons = [...lessonPool.slice(startIndex), ...lessonPool.slice(0, startIndex)]
   return wrappedLessons.find((lesson) => !completedSet.has(lesson.id)) ?? null
 }
 
-function recommendedLesson(lastLessonId: string, completedLessonIds: Iterable<string>) {
+function recommendedLessonInPool(lastLessonId: string, completedLessonIds: Iterable<string>, lessonPool: Lesson[]) {
   const completedSet = new Set(completedLessonIds)
+  const currentLesson = lessonPool.find((lesson) => lesson.id === lastLessonId)
+  if (currentLesson && !completedSet.has(currentLesson.id)) return currentLesson
+  return nextIncompleteLessonAfter(currentLesson?.id ?? lessonPool[lessonPool.length - 1]?.id ?? '', completedSet, lessonPool)
+    ?? lessonPool[0]
+    ?? DEFAULT_LESSON
+}
+
+function recommendedLesson(lastLessonId: string, completedLessonIds: Iterable<string>) {
   const currentLesson = lessons.find((lesson) => lesson.id === lastLessonId) ?? DEFAULT_LESSON
-  if (!completedSet.has(currentLesson.id)) return currentLesson
-  return nextIncompleteLessonAfter(currentLesson.id, completedSet)
-    ?? lessons.find((lesson) => !completedSet.has(lesson.id))
-    ?? currentLesson
+  return recommendedLessonInPool(lastLessonId, completedLessonIds, lessonsForTrack(practiceTrackForLesson(currentLesson)))
 }
 
 function spanishVoiceScore(voice: SpeechSynthesisVoice) {
@@ -347,7 +409,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [dailyGoalOpen, setDailyGoalOpen] = useState(false)
   const [levelFilter, setLevelFilter] = useState<'全部' | LessonLevel>(readInitialLevelFilter)
-  const [kindFilter, setKindFilter] = useState<'全部' | LessonKind>(readInitialKindFilter)
+  const [trackFilter, setTrackFilter] = useState<PracticeTrack>(readInitialTrackFilter)
   const [sceneFilter, setSceneFilter] = useState<'全部' | LessonScene>('全部')
   const [visibleLessonCount, setVisibleLessonCount] = useState(LESSON_PAGE_SIZE)
   const [inputFocused, setInputFocused] = useState(false)
@@ -533,7 +595,7 @@ function App() {
 
   useEffect(() => {
     setVisibleLessonCount(LESSON_PAGE_SIZE)
-  }, [levelFilter, kindFilter, sceneFilter])
+  }, [levelFilter, trackFilter, sceneFilter])
 
   useEffect(() => {
     if (window.location.hash !== '#courses') return
@@ -542,10 +604,34 @@ function App() {
 
   const todayDone = practiceState.dailyWords[localDateKey()] ?? 0
   const streak = useMemo(() => learningStreak(practiceState.dailyWords), [practiceState.dailyWords])
-  const filteredLessons = useMemo(
-    () => lessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (kindFilter === '全部' || item.kind === kindFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
-    [levelFilter, kindFilter, sceneFilter],
+  const trackLessons = useMemo(() => lessonsForTrack(trackFilter), [trackFilter])
+  const availableScenes = useMemo(
+    () => lessonScenes.filter((scene): scene is LessonScene => scene !== '全部' && trackLessons.some((item) => (levelFilter === '全部' || item.level === levelFilter) && item.scene === scene)),
+    [levelFilter, trackLessons],
   )
+  const filteredLessons = useMemo(
+    () => trackLessons.filter((item) => (levelFilter === '全部' || item.level === levelFilter) && (sceneFilter === '全部' || item.scene === sceneFilter)),
+    [levelFilter, sceneFilter, trackLessons],
+  )
+  const levelPaths = useMemo(() => LEVEL_ORDER.flatMap((level) => {
+    if (levelFilter !== '全部' && levelFilter !== level) return []
+    const pathLessons = trackLessons.filter((item) => item.level === level && (sceneFilter === '全部' || item.scene === sceneFilter))
+    if (!pathLessons.length) return []
+    const completedLessons = pathLessons.filter((item) => completed.includes(item.id))
+    const partialLessons = pathLessons.filter((item) => {
+      const progress = masteryProgress[item.id] ?? {}
+      return !completed.includes(item.id) && Boolean(progress.recall || progress.listen)
+    })
+    return [{
+      level,
+      lessons: pathLessons,
+      recommendation: recommendedLessonInPool(practiceState.lastLessonId, completed, pathLessons),
+      totalCards: pathLessons.reduce((sum, item) => sum + item.words.length, 0),
+      masteredCards: completedLessons.reduce((sum, item) => sum + item.words.length, 0),
+      completedGroups: completedLessons.length,
+      partialGroups: partialLessons.length,
+    }]
+  }), [completed, levelFilter, masteryProgress, practiceState.lastLessonId, sceneFilter, trackLessons])
   const visibleLessons = filteredLessons.slice(0, visibleLessonCount)
   const hiddenLessonCount = Math.max(0, filteredLessons.length - visibleLessons.length)
   const modeLabel = mode === 'listen' ? '听音拼写' : mode === 'recall' ? '看义拼写' : '跟打'
@@ -614,8 +700,11 @@ function App() {
     : mode === nextPracticeMode
       ? `再练一次${masteryModeLabel(nextPracticeMode)}`
       : `开始${masteryModeLabel(nextPracticeMode)}`
+  const continuationPool = lesson.id === 'mistake-review'
+    ? []
+    : lessonsForTrack(practiceTrackForLesson(lesson)).filter((item) => item.level === lesson.level)
   const nextLesson = lessonMasteredAfterRound
-    ? nextIncompleteLessonAfter(lesson.id, new Set([...completed, lesson.id]))
+    ? nextIncompleteLessonAfter(lesson.id, new Set([...completed, lesson.id]), continuationPool)
     : null
 
   function playEffect(type: 'key' | 'wrong' | 'complete') {
@@ -702,32 +791,26 @@ function App() {
 
   function chooseLevelFilter(nextLevel: '全部' | LessonLevel) {
     setLevelFilter(nextLevel)
-    if (nextLevel !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.level === nextLevel && item.scene === sceneFilter)) {
+    if (nextLevel !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.level === nextLevel && practiceTrackForLesson(item) === trackFilter && item.scene === sceneFilter)) {
       setSceneFilter('全部')
     }
   }
 
   function resetFilters() {
-    setKindFilter('全部')
+    setTrackFilter('main')
     setLevelFilter('全部')
     setSceneFilter('全部')
   }
 
-  function chooseKindFilter(nextKind: '全部' | LessonKind) {
-    setKindFilter(nextKind)
-    if (nextKind !== '全部' && sceneFilter !== '全部' && !lessons.some((item) => item.kind === nextKind && item.scene === sceneFilter)) {
+  function chooseTrackFilter(nextTrack: PracticeTrack) {
+    setTrackFilter(nextTrack)
+    if (sceneFilter !== '全部' && !lessons.some((item) => practiceTrackForLesson(item) === nextTrack && (levelFilter === '全部' || item.level === levelFilter) && item.scene === sceneFilter)) {
       setSceneFilter('全部')
     }
   }
 
   function chooseSceneFilter(nextScene: '全部' | LessonScene) {
     setSceneFilter(nextScene)
-    if (nextScene !== '全部' && levelFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.level === levelFilter)) {
-      setLevelFilter('全部')
-    }
-    if (nextScene !== '全部' && kindFilter !== '全部' && !lessons.some((item) => item.scene === nextScene && item.kind === kindFilter)) {
-      setKindFilter('全部')
-    }
   }
 
   function openPractice(nextLesson: Lesson, session: ActivePracticeSession) {
@@ -867,11 +950,38 @@ function App() {
     begin(nextLesson, nextMode)
   }
 
+  function openLevelPath(nextLevel: LessonLevel, pathLessons: Lesson[], recommendation: Lesson) {
+    setLevelFilter(nextLevel)
+    if (activeSession?.lessonId !== 'mistake-review' && activeSession && pathLessons.some((item) => item.id === activeSession.lessonId)) {
+      resumeActivePractice()
+      return
+    }
+    if (activeSession?.lessonId === 'mistake-review' && pausedMainSession && pathLessons.some((item) => item.id === pausedMainSession.lessonId)) {
+      resumePausedMainPractice()
+      return
+    }
+    openLesson(recommendation)
+  }
+
   function exitPractice() {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
-    if (activeSession) persistActiveSession({ ...activeSession, elapsedMs: currentElapsedMs() })
+    if (activeSession) {
+      persistActiveSession({
+        ...activeSession,
+        mode,
+        index,
+        elapsedMs: currentElapsedMs(),
+        correctKeystrokes,
+        mistakes,
+        completedWords,
+        mistakeWords,
+        reviewCorrectCount,
+        masteryMode: roundMasteryMode,
+        usedHint: roundUsedHint,
+      })
+    }
     setScreen('home')
   }
 
@@ -904,7 +1014,8 @@ function App() {
           const nextCompleted = Array.from(new Set([...completed, lesson.id]))
           setCompleted(nextCompleted)
           localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
-          const followingLesson = nextIncompleteLessonAfter(lesson.id, nextCompleted)
+          const followingPool = lessonsForTrack(practiceTrackForLesson(lesson)).filter((item) => item.level === lesson.level)
+          const followingLesson = nextIncompleteLessonAfter(lesson.id, nextCompleted, followingPool)
           if (followingLesson) {
             savePracticeState((current) => ({ ...current, lastLessonId: followingLesson.id }))
           }
@@ -944,7 +1055,21 @@ function App() {
     const nextMasteryMode = roundIsUntouched && (nextMode === 'recall' || nextMode === 'listen') ? nextMode : null
     setMode(nextMode)
     setRoundMasteryMode(nextMasteryMode)
-    if (activeSession) persistActiveSession({ ...activeSession, mode: nextMode, masteryMode: nextMasteryMode })
+    if (activeSession) {
+      persistActiveSession({
+        ...activeSession,
+        mode: nextMode,
+        index,
+        elapsedMs: currentElapsedMs(),
+        correctKeystrokes,
+        mistakes,
+        completedWords,
+        mistakeWords,
+        reviewCorrectCount,
+        masteryMode: nextMasteryMode,
+        usedHint: roundUsedHint,
+      })
+    }
     savePracticeState((current) => ({ ...current, lastMode: nextMode }))
     setTyped('')
     setInputDraft('')
@@ -1137,45 +1262,84 @@ function App() {
           </div>
 
           <section className="course-section" id="courses">
-            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张卡</span><h2>按类型、等级与场景选择</h2></div><button onClick={resetFilters}>重置</button></div>
-            <div className="course-filters" role="group" aria-label="词库筛选">
-              <div><span>类型</span>{lessonKinds.map((kind) => <button key={kind} aria-pressed={kindFilter === kind} className={kindFilter === kind ? 'active' : ''} onClick={() => chooseKindFilter(kind)}>{kind}</button>)}</div>
-              <div><span>难度</span>{lessonLevels.map((level) => <button key={level} aria-pressed={levelFilter === level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level}</button>)}</div>
-              <div><span>场景</span>{lessonScenes.map((scene) => <button key={scene} aria-pressed={sceneFilter === scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
+            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张不重复练习卡</span><h2>先选等级，再连续刷</h2></div><button onClick={resetFilters}>重置</button></div>
+            <div className="course-filters primary-filters" role="group" aria-label="刷词主线筛选">
+              <div><span>等级</span>{lessonLevels.map((level) => <button key={level} aria-pressed={levelFilter === level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level === '全部' ? '全部等级' : level}</button>)}</div>
+              <div><span>主线</span>{PRACTICE_TRACKS.map((track) => <button key={track.value} aria-pressed={trackFilter === track.value} className={trackFilter === track.value ? 'active' : ''} onClick={() => chooseTrackFilter(track.value)}>{track.label}</button>)}</div>
             </div>
-            <p className="filter-result" aria-live="polite">找到 {filteredLessons.length} 组练习{hiddenLessonCount > 0 ? ` · 先显示 ${visibleLessons.length} 组` : ''} · 打开课程后使用{modeLabel}{accentMode === 'strict' ? '并严格检查重音' : ''}</p>
-            <div className="lesson-list">
-              {visibleLessons.map((item) => {
-                const isDone = completed.includes(item.id)
-                const itemMastery = masteryProgress[item.id] ?? {}
-                const itemPendingMode = pendingMasteryMode(itemMastery)
-                const isPartiallyMastered = !isDone && Boolean(itemMastery.recall || itemMastery.listen) && Boolean(itemPendingMode)
-                const resumableSession = activeSession?.lessonId === item.id
+
+            <div className={`level-paths ${levelFilter === '全部' ? '' : 'single'}`} aria-live="polite">
+              {levelPaths.map((path) => {
+                const percentage = path.totalCards ? Math.round(path.masteredCards / path.totalCards * 100) : 0
+                const recommendationMastery = masteryProgress[path.recommendation.id] ?? {}
+                const pendingMode = pendingMasteryMode(recommendationMastery)
+                const resumableSession = activeSession?.lessonId !== 'mistake-review' && path.lessons.some((item) => item.id === activeSession?.lessonId)
                   ? activeSession
-                  : activeSession?.lessonId === 'mistake-review' && pausedMainSession?.lessonId === item.id
+                  : activeSession?.lessonId === 'mistake-review' && pausedMainSession && path.lessons.some((item) => item.id === pausedMainSession.lessonId)
                     ? pausedMainSession
                     : null
+                const isComplete = path.masteredCards === path.totalCards
+                const actionLabel = resumableSession
+                  ? `继续 ${resumableSession.index + 1}/${resumableSession.order.length}`
+                  : !isComplete && (recommendationMastery.recall || recommendationMastery.listen) && pendingMode
+                    ? `继续${masteryModeLabel(pendingMode)}`
+                    : isComplete
+                      ? '重新练习'
+                      : path.completedGroups > 0
+                        ? `继续刷 ${path.level}`
+                        : `开始刷 ${path.level}`
                 return (
-                  <button className={`lesson-card ${resumableSession ? 'in-progress' : ''} ${isPartiallyMastered ? 'partial-mastery' : ''}`} key={item.id} onClick={() => openLesson(item)} aria-label={`${resumableSession || isPartiallyMastered ? '继续' : '开始'}${item.level} ${item.title}${isPartiallyMastered && itemPendingMode ? `，还差${masteryModeLabel(itemPendingMode)}` : ''}`}>
-                    <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
-                    <span className="lesson-copy"><small>{resumableSession ? `进行中 · ${resumableSession.index + 1}/${resumableSession.order.length}` : isPartiallyMastered && itemPendingMode ? `已通过 1/2 · 还差${masteryModeLabel(itemPendingMode)}` : item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
-                    <span className="lesson-meta"><b>{resumableSession ? <ArrowRight size={19} /> : isPartiallyMastered ? '1/2' : item.words.length}</b><small>{resumableSession ? '继续' : isPartiallyMastered ? '掌握' : '项'}</small></span>
-                  </button>
+                  <section className="level-path-card" key={path.level}>
+                    <div className="level-path-heading"><span>{path.level}</span><div><small>{practiceTrackLabel(trackFilter, true)}{sceneFilter !== '全部' ? ` · ${sceneFilter}` : ''}</small><strong>{path.totalCards} 项</strong></div><b>{percentage}%</b></div>
+                    <div className="level-progress" aria-label={`${path.level} 已掌握 ${path.masteredCards} / ${path.totalCards}`}><span style={{ width: `${percentage}%` }} /></div>
+                    <p>已掌握 {path.masteredCards} / {path.totalCards}{path.partialGroups ? ` · ${path.partialGroups} 组进行中` : ` · ${path.lessons.length} 个小组自动衔接`}</p>
+                    <button onClick={() => openLevelPath(path.level, path.lessons, path.recommendation)}>{actionLabel}<ArrowRight size={17} /></button>
+                  </section>
                 )
               })}
             </div>
-            {hiddenLessonCount > 0 && (
-              <button className="show-more-lessons" onClick={() => setVisibleLessonCount((count) => count + LESSON_PAGE_SIZE)}>
-                再显示 {Math.min(LESSON_PAGE_SIZE, hiddenLessonCount)} 组 <small>还剩 {hiddenLessonCount} 组</small>
-              </button>
-            )}
-            {!filteredLessons.length && <p className="empty-lessons">这个组合暂时没有课程，试试减少一个筛选条件。</p>}
-            <div className="word-sources">
-              <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
-              <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">拼写与词形：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
-              <a className="word-source" href={INTERMEDIATE_SOURCE.url} target="_blank" rel="noreferrer">B1–B2 框架参考：Instituto Cervantes PCIC · 项目教学选词</a>
-              <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">短语、中文释义与例句：项目教学编辑 · 制作说明</a>
-            </div>
+
+            <details className="theme-browser">
+              <summary><span>按主题或小组选择 <small>可选 · 主线会自动续刷</small></span><b>{sceneFilter === '全部' ? `${filteredLessons.length} 组` : sceneFilter}</b></summary>
+              <div className="theme-browser-content">
+                <div className="course-filters theme-filters" role="group" aria-label="可选主题筛选">
+                  <div><span>主题</span><button aria-pressed={sceneFilter === '全部'} className={sceneFilter === '全部' ? 'active' : ''} onClick={() => chooseSceneFilter('全部')}>全部主题</button>{availableScenes.map((scene) => <button key={scene} aria-pressed={sceneFilter === scene} className={sceneFilter === scene ? 'active' : ''} onClick={() => chooseSceneFilter(scene)}>{scene}</button>)}</div>
+                </div>
+                <p className="filter-result" aria-live="polite">{filteredLessons.length} 组小练习{hiddenLessonCount > 0 ? ` · 先显示 ${visibleLessons.length} 组` : ''} · 使用{modeLabel}{accentMode === 'strict' ? '并严格检查重音' : ''}</p>
+                <div className="lesson-list">
+                  {visibleLessons.map((item) => {
+                    const isDone = completed.includes(item.id)
+                    const itemMastery = masteryProgress[item.id] ?? {}
+                    const itemPendingMode = pendingMasteryMode(itemMastery)
+                    const isPartiallyMastered = !isDone && Boolean(itemMastery.recall || itemMastery.listen) && Boolean(itemPendingMode)
+                    const resumableSession = activeSession?.lessonId === item.id
+                      ? activeSession
+                      : activeSession?.lessonId === 'mistake-review' && pausedMainSession?.lessonId === item.id
+                        ? pausedMainSession
+                        : null
+                    return (
+                      <button className={`lesson-card ${resumableSession ? 'in-progress' : ''} ${isPartiallyMastered ? 'partial-mastery' : ''}`} key={item.id} onClick={() => openLesson(item)} aria-label={`${resumableSession || isPartiallyMastered ? '继续' : '开始'}${item.level} ${item.title}${isPartiallyMastered && itemPendingMode ? `，还差${masteryModeLabel(itemPendingMode)}` : ''}`}>
+                        <span className="lesson-number" style={{ background: item.color }}>{isDone ? <Check size={19} /> : item.level}</span>
+                        <span className="lesson-copy"><small>{resumableSession ? `进行中 · ${resumableSession.index + 1}/${resumableSession.order.length}` : isPartiallyMastered && itemPendingMode ? `已通过 1/2 · 还差${masteryModeLabel(itemPendingMode)}` : item.eyebrow}</small><strong>{item.title}</strong><span>{item.description}</span></span>
+                        <span className="lesson-meta"><b>{resumableSession ? <ArrowRight size={19} /> : isPartiallyMastered ? '1/2' : item.words.length}</b><small>{resumableSession ? '继续' : isPartiallyMastered ? '掌握' : '项'}</small></span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {hiddenLessonCount > 0 && (
+                  <button className="show-more-lessons" onClick={() => setVisibleLessonCount((count) => count + LESSON_PAGE_SIZE)}>
+                    再显示 {Math.min(LESSON_PAGE_SIZE, hiddenLessonCount)} 组 <small>还剩 {hiddenLessonCount} 组</small>
+                  </button>
+                )}
+                {!filteredLessons.length && <p className="empty-lessons">这个主题暂时没有练习，试试切换等级或主线。</p>}
+                <div className="word-sources">
+                  <a className="word-source" href={FREQUENCY_SOURCE.url} target="_blank" rel="noreferrer">词频排序：{FREQUENCY_SOURCE.name} · {FREQUENCY_SOURCE.license}</a>
+                  <a className="word-source" href={WORD_SOURCE.url} target="_blank" rel="noreferrer">拼写与词形：{WORD_SOURCE.name} · {WORD_SOURCE.license}</a>
+                  <a className="word-source" href={INTERMEDIATE_SOURCE.url} target="_blank" rel="noreferrer">B1–B2 框架参考：Instituto Cervantes PCIC · 项目教学选词</a>
+                  <a className="word-source" href={PHRASE_SOURCE.url} target="_blank" rel="noreferrer">短语、中文释义与例句：项目教学编辑 · 制作说明</a>
+                </div>
+              </div>
+            </details>
           </section>
 
           <footer className="project-legal">
@@ -1240,7 +1404,7 @@ function App() {
               <div className="sheet-handle" />
               <div className="sheet-heading"><div><span className="section-kicker">两个不同的标准</span><h2 id="daily-goal-title">“今日达标”是什么意思？</h2></div><button className="icon-button" onClick={() => setDailyGoalOpen(false)} aria-label="关闭今日目标说明"><X size={20} /></button></div>
               <div className="goal-definition"><b>今日达标</b><strong>一天正确完成 {DAILY_GOAL} 张卡</strong><p>每完成一个单词或短语算 1 项；跟打、看义拼写、听音拼写和错题复习都会累计。它只是帮助保持每天练习，不代表已经掌握某个单元。</p></div>
-              <div className="goal-definition mastery"><b>单元掌握</b><strong>看义拼写和听音拼写各整组 0 错</strong><p>两个方向都在不看提示的情况下通过，单元才会打勾，并在完成页询问是否进入下一单元。</p></div>
+              <div className="goal-definition mastery"><b>小组掌握</b><strong>看义拼写和听音拼写各整组 0 错</strong><p>两个方向都在不看提示的情况下通过，当前小组才会打勾，并在完成页询问是否继续同等级、同主线的下一组。</p></div>
               <button className="primary-button" onClick={() => setDailyGoalOpen(false)}>明白了</button>
             </section>
           </div>
@@ -1254,7 +1418,7 @@ function App() {
       <div className="app-shell completion-screen">
         <main>
           <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}><span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
-          <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '单元已掌握' : '本轮完成'}</p>
+          <p className="eyebrow">{lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本组已掌握' : '本轮完成'}</p>
           <h1>{lesson.title}</h1>
           <p>你完成了 {lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
           {lesson.id !== 'mistake-review' && (
@@ -1301,12 +1465,12 @@ function App() {
             <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
           ) : lessonMasteredAfterRound && nextLesson ? (
             <>
-              <div className="next-lesson-preview"><span>下一单元</span><strong>{nextLesson.title}</strong><small>{nextLesson.eyebrow} · {nextLesson.words.length} 项</small></div>
-              <button className="primary-button" onClick={() => begin(nextLesson, 'copy')}>进入下一单元 <ArrowRight size={19} /></button>
+              <div className="next-lesson-preview"><span>{lesson.level} · {practiceTrackLabel(practiceTrackForLesson(lesson), true)}继续</span><strong>{nextLesson.title}</strong><small>{nextLesson.eyebrow} · {nextLesson.words.length} 项</small></div>
+              <button className="primary-button" onClick={() => begin(nextLesson, 'copy')}>继续刷 {lesson.level} <ArrowRight size={19} /></button>
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
           ) : lessonMasteredAfterRound ? (
-            <button className="primary-button" onClick={() => setScreen('home')}>全部学完，回到首页 <Home size={19} /></button>
+            <button className="primary-button" onClick={() => setScreen('home')}>{lesson.level} {practiceTrackLabel(practiceTrackForLesson(lesson), true)}已完成 <Home size={19} /></button>
           ) : (
             <>
               <button className="primary-button" onClick={() => begin(lesson, nextPracticeMode)}>{nextPracticeButtonLabel} <RotateCcw size={18} /></button>
