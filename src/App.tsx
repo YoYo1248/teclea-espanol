@@ -24,7 +24,7 @@ import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, l
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from './roundQueue'
+import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
 import { pressHoldInputDecision, type PressHoldPending } from './pressHoldInput'
@@ -1262,6 +1262,7 @@ function App() {
   const totalKeystrokes = correctKeystrokes + mistakes
   const accuracy = totalKeystrokes ? Math.round(correctKeystrokes / totalKeystrokes * 100) : 100
   const independentRate = completedWords && mode !== 'copy' ? Math.round(independentCorrect / completedWords * 100) : null
+  const nonIndependentCount = mode === 'copy' ? 0 : Math.max(0, completedWords - independentCorrect)
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
   const adaptiveRound = Boolean(adaptiveLevelFromLessonId(lesson.id))
   const catalogLesson = adaptiveRound ? null : lessons.find((item) => item.id === lesson.id) ?? null
@@ -1677,18 +1678,19 @@ function App() {
     const queueKey = adaptiveRoundQueueKey(nextLevel, nextTrack, category, scene)
     const recentHistory = recentRoundQueues[queueKey] ?? []
     const recentSets = recentHistory.map((queue) => new Set(queue))
-    const priorityOrder = (pool: typeof candidates) => {
+    const reviewPriorityOrder = (pool: typeof candidates) => {
       const isWeak = (item: (typeof candidates)[number]) => Boolean(mistakeBank[item.word.reviewKey!] && hasActiveReview(mistakeBank[item.word.reviewKey!]))
       const weakOrdered = weightedReviewOrder(pool.filter(isWeak), (item) => mistakeSamplingWeight(mistakeBank[item.word.reviewKey!], reviewToday))
       const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
       const stableOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
-      const guaranteedMix = weakOrdered.length && unmasteredOrdered.length ? [weakOrdered.shift()!, unmasteredOrdered.shift()!] : []
-      return [...guaranteedMix, ...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
+      return [...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
     }
     const { fresh: freshCandidates, earlier: earlierCandidates, immediate: immediateCandidates } = bucketByRecentQueues(candidates, recentSets, (item) => item.word.reviewKey!)
     const roundSize = adaptiveRoundSize(nextMode, roundHistory)
-    const ordered = [...priorityOrder(freshCandidates), ...priorityOrder(earlierCandidates), ...priorityOrder(immediateCandidates)]
-    const roundWords = ordered.slice(0, roundSize).map((item) => item.word)
+    const recencyBuckets = [freshCandidates, earlierCandidates, immediateCandidates]
+    const newOrdered = recencyBuckets.flatMap((pool) => balancedLengthOrder(pool.filter((item) => !hasCompletedIntroduction(wordEvidence[item.word.reviewKey!]))))
+    const reviewOrdered = recencyBuckets.flatMap((pool) => reviewPriorityOrder(pool.filter((item) => hasCompletedIntroduction(wordEvidence[item.word.reviewKey!]))))
+    const roundWords = mixAdaptiveRound(newOrdered, reviewOrdered, roundSize).map((item) => item.word)
     const currentQueue = roundWords.map((item) => item.reviewKey ?? sessionCardId(`adaptive-${nextLevel}-${nextTrack}`, item))
     const nextRecentQueues = { ...recentRoundQueues, [queueKey]: [currentQueue, ...recentHistory].slice(0, 2) }
     setRecentRoundQueues(nextRecentQueues)
@@ -1700,7 +1702,7 @@ function App() {
       kind: nextTrack === 'verbs' ? '动词原形' : '单词',
       eyebrow: `${nextLevel} · ${practiceTrackLabel(nextTrack, true)} · 本轮`,
       title: `${nextLevel} 本轮练习`,
-      description: '优先弱词与未掌握内容，再补充新词',
+      description: '新词约占三分之二，复习位优先安排薄弱词',
       color: '#347665',
       words: roundWords,
     }
@@ -2991,9 +2993,14 @@ function App() {
           <div className="result-grid">
             <div><strong>{completedWords}</strong><span>完成项数</span></div>
             <div><strong>{accuracy}%</strong><span>按键正确率</span></div>
-            <div><strong>{wpm}</strong><span>WPM</span></div>
+            <div title="每 5 个正确字符折算为 1 个标准词"><strong>{wpm}</strong><span>打字速度（词/分钟）</span></div>
             <div><strong>{formatTime(elapsedSeconds)}</strong><span>总用时</span></div>
           </div>
+          {nonIndependentCount > 0 && mode !== 'copy' && (
+            <p className="enter-hint">
+              按键正确不等于独立答对：{nonIndependentCount} 项曾输错或使用发音 / 拼写提示，需要再独立确认。
+            </p>
+          )}
           {Object.keys(mistakeWords).length > 0 && (
             <div className="mistake-summary">
               <span>需要再练</span>
@@ -3032,8 +3039,23 @@ function App() {
             </>
           ) : masteryModeRound ? (
             <>
-              <button className="primary-button" onClick={repeatAdaptiveMode}>{roundMasteryMode === null ? `完整重练${masteryModeLabel(mode === 'listen' ? 'listen' : 'recall')}` : '继续巩固本轮'} <RotateCcw size={18} /></button>
-              <p className="enter-hint">{roundMasteryMode === null ? '本轮中途切换过模式，本次只记练习。' : `已独立答对 ${independentRate ?? 0}% · 建议留在当前模式`}</p>
+              <button
+                className="primary-button"
+                onClick={weakRoundWords.length > 0 && weakRoundWords.length < lesson.words.length ? reinforceAdaptiveWeakWords : repeatAdaptiveMode}
+              >
+                {roundMasteryMode === null
+                  ? `完整重练${masteryModeLabel(mode === 'listen' ? 'listen' : 'recall')}`
+                  : weakRoundWords.length > 0 && weakRoundWords.length < lesson.words.length
+                    ? `只巩固未独立项 · ${weakRoundWords.length} 项`
+                    : '继续巩固本轮'} <RotateCcw size={18} />
+              </button>
+              <p className="enter-hint">
+                {roundMasteryMode === null
+                  ? '本轮中途切换过模式，本次只记练习。'
+                  : weakRoundWords.length > 0 && weakRoundWords.length < lesson.words.length
+                    ? `已独立答对 ${independentRate ?? 0}% · 其余 ${lesson.words.length - weakRoundWords.length} 项不再陪练`
+                    : `已独立答对 ${independentRate ?? 0}% · 建议留在当前模式`}
+              </p>
               {missingMasteryMode && missingMasteryMode !== mode
                 ? <button className="text-button" onClick={advanceAdaptiveStage}>挑战{masteryModeLabel(missingMasteryMode)}</button>
                 : <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>}
@@ -3092,7 +3114,7 @@ function App() {
 
           <div className="live-stats" aria-label="实时训练数据">
             <span><Timer size={14} /><b>{formatTime(elapsedSeconds)}</b><small>用时</small></span>
-            <span><Gauge size={14} /><b>{wpm}</b><small>WPM</small></span>
+            <span title="打字速度；每 5 个正确字符折算为 1 个标准词"><Gauge size={14} /><b>{wpm}</b><small>词/分钟</small></span>
             <span><Check size={14} /><b>{accuracy}%</b><small>正确率</small></span>
             <span><X size={14} /><b>{mistakes}</b><small>错误</small></span>
           </div>
@@ -3116,7 +3138,9 @@ function App() {
                 : mode === 'recall'
                   ? `根据中文拼写 · ${targetLetters.length} 个字符`
                   : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
-          {mode === 'recall' && <p className="recall-prompt">{word.chinese}</p>}
+          <p className={`meaning-slot ${mode === 'listen' && status !== 'correct' ? 'waiting' : ''} ${mode === 'listen' && status === 'correct' ? 'confirmed' : ''}`}>
+            {mode === 'listen' && status !== 'correct' ? '答对后显示词义' : word.chinese}
+          </p>
           <div
             className="letter-word"
             aria-label={hideSpanish ? `${targetLetters.length} 个字符` : word.spanish}
@@ -3230,13 +3254,6 @@ function App() {
               <b>{speechRate}×</b>
             </button>
           </div>
-          {(mode === 'copy' || status === 'correct') && (
-            <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
-              {status === 'correct' && mode !== 'copy' && <span>意思</span>}
-              {word.chinese}
-            </p>
-          )}
-
           <div className="accent-strip" aria-label="西语特殊字符">
             {ACCENTS.map((character) => <button type="button" key={character} onMouseDown={(event) => event.preventDefault()} onClick={() => insertAccent(character)}>{character}</button>)}
           </div>

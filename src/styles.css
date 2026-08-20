@@ -240,7 +240,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .word-label { color: var(--muted); font-size: 12px; letter-spacing: .1em; }
 .word-stage h1 { margin: 18px 0 11px; font-size: clamp(42px, 13vw, 62px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
 .word-stage h1.hidden-word { font-size: clamp(34px, 10vw, 48px); }
-.translation { color: var(--muted); font-size: 16px; margin: 12px 0 0; }
 .pronunciation-controls { width: min(252px, 100%); margin: 0 auto 11px; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(78px, .85fr); gap: 8px; }
 .pronunciation-controls button { min-width: 0; height: 38px; border: 1px solid var(--line); background: rgba(255,255,255,.72); border-radius: 99px; color: var(--green); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; }
 .pronunciation-controls button:active { background: #e7f1ed; transform: translateY(1px); }
@@ -289,7 +288,16 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 .typing-stage.wrong { animation: word-shake .24s ease-in-out; border-color: rgba(210,73,53,.38); }
 .typing-stage.correct { border-color: rgba(52,118,101,.38); }
-.recall-prompt { margin: 13px 0 -2px; color: var(--ink); font-size: 23px; font-weight: 700; }
+.meaning-slot {
+  min-height: 31px;
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.meaning-slot.waiting { color: #aaa69d; font-size: 13px; font-weight: 650; }
+.meaning-slot.confirmed { color: var(--green); animation: meaning-in .2s ease-out; }
 .letter-word {
   min-height: 94px;
   padding: 26px 0 17px;
@@ -340,19 +348,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   opacity: .01;
   pointer-events: none;
 }
-.typing-stage .translation { margin: 0 0 13px; }
-.typing-stage .translation.revealed-meaning {
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto 13px;
-  padding: 8px 13px;
-  border-radius: 11px;
-  background: #e7f1ed;
-  color: #2e6e5d;
-  font-weight: 700;
-  animation: meaning-in .2s ease-out;
-}
-.typing-stage .translation.revealed-meaning span { margin-right: 7px; color: #83a399; font-size: 11px; letter-spacing: .08em; }
 .typing-stage .accent-strip { justify-content: center; border-top: 1px solid var(--line); margin-top: 5px; padding-top: 14px; }
 .typing-feedback {
   min-height: 27px;
@@ -560,7 +555,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .practice-main { padding: 4px 20px 104px; }
   .word-stage { padding: 13px 0 11px; }
   .word-stage h1 { margin: 7px 0 5px; font-size: 39px; }
-  .translation { margin-top: 5px; }
   .answer-panel { padding: 13px 14px 11px; }
   .answer-row input { height: 43px; }
   .accent-strip { padding-top: 8px; }
@@ -647,7 +641,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .rule-options button { height: 35px; font-size: 10px; }
   .typing-stage { grid-column: 1 / -1; margin-top: 8px; min-height: 430px; padding: 38px 36px 25px; }
   .word-label { font-size: 11px; }
-  .recall-prompt { font-size: 27px; }
+  .meaning-slot { font-size: 25px; }
+  .meaning-slot.waiting { font-size: 14px; }
   .letter-word { min-height: 130px; padding: 35px 0 22px; }
   .letter-slot { font-size: clamp(46px, 5vw, 66px); }
   .typing-stage .accent-strip { gap: 8px; }
@@ -852,10 +847,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .rule-heading small { font-size: 10px; }
   .rule-options button { font-size: 12px; }
   .word-label { font-size: 13px; }
-  .translation { font-size: 17px; }
   .pronunciation-button span { font-size: 12px; }
   .pronunciation-button kbd { display: inline-block; }
-  .typing-stage .translation.revealed-meaning span { font-size: 11px; }
   .typing-feedback { font-size: 14px; }
   .keyboard-prompt { font-size: 15px; }
 
@@ -943,12 +936,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     border-radius: 22px;
   }
   .keyboard-open .word-label { font-size: 9px; }
-  .keyboard-open .recall-prompt { margin-top: 6px; font-size: 18px; }
+  .keyboard-open .meaning-slot { min-height: 24px; margin-top: 5px; font-size: 18px; }
+  .keyboard-open .meaning-slot.waiting { font-size: 11px; }
   .keyboard-open .letter-word { min-height: 59px; padding: 9px 0 8px; }
   .keyboard-open .letter-slot { font-size: clamp(30px, 9vw, 39px); }
   .keyboard-open .pronunciation-controls { margin-bottom: 5px; gap: 6px; }
   .keyboard-open .pronunciation-controls button { height: 30px; }
-  .keyboard-open .typing-stage .translation { margin-bottom: 5px; font-size: 13px; }
   .keyboard-open .typing-stage .accent-strip { display: none; }
   .keyboard-open .typing-feedback { min-height: 21px; margin-top: 4px; font-size: 11px; }
 }

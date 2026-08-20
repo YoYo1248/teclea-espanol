@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { masteryRecommendation } from '../src/masteryRouting.ts'
 import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from '../src/roundQueue.ts'
+import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
 import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
 import {
@@ -98,6 +98,14 @@ const recentBuckets = bucketByRecentQueues(
 assert(recentBuckets.fresh.map((item) => item.id).join(',') === 'fresh', '新鲜候选分桶错误')
 assert(recentBuckets.earlier.map((item) => item.id).join(',') === 'earlier', '上上轮候选分桶错误')
 assert(recentBuckets.immediate.map((item) => item.id).join(',') === 'immediate', '上一轮候选分桶错误')
+
+const abundantNewWords = Array.from({ length: 12 }, (_, index) => `new-${index + 1}`)
+const abundantReviewWords = Array.from({ length: 12 }, (_, index) => `review-${index + 1}`)
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 6).filter((item) => item.startsWith('new-')).length === 4, '6 项普通轮次应至少安排 4 个新词')
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 8).filter((item) => item.startsWith('new-')).length === 6, '8 项普通轮次应至少安排 6 个新词')
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 12).filter((item) => item.startsWith('new-')).length === 8, '12 项普通轮次应至少安排 8 个新词')
+assert(mixAdaptiveRound(['new-only'], abundantReviewWords, 8).length === 8, '新词不足时应使用复习词补满轮次')
+assert(mixAdaptiveRound(abundantNewWords, [], 8).length === 8, '没有复习词时应继续使用新词补满轮次')
 
 assert(masteryRecommendation(69, true) === 'repeat', '69% 应继续当前模式')
 assert(masteryRecommendation(70, true) === 'reinforce', '70% 应进入薄弱项巩固')
