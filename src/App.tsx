@@ -23,7 +23,7 @@ import {
 import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
-import { masteryRecommendation } from './masteryRouting'
+import { masteryRecommendation, nextStageAfterSkippedReinforcement } from './masteryRouting'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
@@ -1275,8 +1275,9 @@ function App() {
   }, [dueMistakeEntries.length, mistakeReviewMode, reviewPool, todayMistakeEntries.length])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
-  const continueLabel = activeSession
-    ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : activeSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : activeSession.order.length}`
+  const resumableMainSession = activeSession ?? pausedMainSession
+  const continueLabel = resumableMainSession
+    ? `${resumableMainSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : resumableMainSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : resumableMainSession.order.length}`
     : (recommendedMainMastery.recall || recommendedMainMastery.listen) && recommendedPendingMode
       ? `继续${masteryModeLabel(recommendedPendingMode)} · ${recommendedMainLesson.title}`
       : completed.includes(practiceState.lastLessonId)
@@ -1313,6 +1314,11 @@ function App() {
     : mode === nextPracticeMode
       ? `再练一次${masteryModeLabel(nextPracticeMode)}`
       : `开始${masteryModeLabel(nextPracticeMode)}`
+  const skipReinforcementLabel = mode === 'copy'
+    ? '暂不巩固，进入看义拼写'
+    : mode === 'recall'
+      ? '暂不巩固，进入听音拼写'
+      : '暂不巩固，开始下一组'
   const continuationPool = lesson.id === 'mistake-review'
     ? []
     : lessonsForTrack(practiceTrackForLesson(lesson)).filter((item) => item.level === lesson.level)
@@ -2128,6 +2134,10 @@ function App() {
 
   function continuePractice() {
     if (resumeActivePractice()) return
+    if (pausedMainSession) {
+      resumePausedMainPractice()
+      return
+    }
     beginAdaptiveRound(recommendedMainLesson.level, practiceTrackForLesson(recommendedMainLesson), recommendedPracticeMode)
   }
 
@@ -2146,21 +2156,34 @@ function App() {
     begin(nextLesson, nextMode)
   }
 
-  function openLevelPath(nextLevel: LessonLevel, pathLessons: Lesson[], recommendation: Lesson) {
+  function openLevelPath(nextLevel: LessonLevel) {
     setLevelFilter(nextLevel)
-    if (activeSession && adaptiveLevelFromLessonId(activeSession.lessonId) === nextLevel) {
-      resumeActivePractice()
-      return
-    }
-    if (activeSession?.lessonId !== 'mistake-review' && activeSession && pathLessons.some((item) => item.id === activeSession.lessonId)) {
-      resumeActivePractice()
-      return
-    }
-    if (activeSession?.lessonId === 'mistake-review' && pausedMainSession && pathLessons.some((item) => item.id === pausedMainSession.lessonId)) {
-      resumePausedMainPractice()
-      return
-    }
     beginAdaptiveRound(nextLevel, trackFilter, mode, categoryFilter, sceneFilter)
+  }
+
+  function fullCurrentRoundLesson() {
+    const catalogRound = lessons.find((item) => item.id === lesson.id)
+    const queueKey = adaptiveRoundQueueKey(lesson.level, practiceTrackForLesson(lesson), categoryFilter, sceneFilter)
+    return catalogRound ?? adaptiveLessonFromOrder(lesson.id, recentRoundQueues[queueKey]?.[0] ?? []) ?? lesson
+  }
+
+  function skipReinforcementAndAdvance() {
+    const target = nextStageAfterSkippedReinforcement(mode)
+    if (target.startNewRound) {
+      beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), target.mode, categoryFilter, sceneFilter)
+      return
+    }
+    const fullRound = fullCurrentRoundLesson()
+    begin(fullRound, target.mode, {
+      orderedWords: shuffleWords(fullRound.words),
+      satisfiedModes: masteryAfterRound,
+      skipIntroduction: true,
+    })
+  }
+
+  function openPracticeChooser() {
+    setScreen('home')
+    window.setTimeout(() => document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
   function exitPractice() {
@@ -2271,12 +2294,11 @@ function App() {
     }
     if (index === lesson.words.length - 1) {
       if (isOnboardingRound) localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
-      if (lesson.id === 'mistake-review' && pausedMainSession) {
-        persistActiveSession(pausedMainSession)
-        persistPausedMainSession(null)
+      if (lesson.id === 'mistake-review') {
+        persistActiveSession(null)
       } else {
         persistActiveSession(null)
-        if (lesson.id !== 'mistake-review') persistPausedMainSession(null)
+        persistPausedMainSession(null)
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
@@ -2735,29 +2757,18 @@ function App() {
             <div className={`level-paths ${levelFilter === '全部' ? '' : 'single'}`} aria-live="polite">
               {levelPaths.map((path) => {
                 const percentage = path.totalCards ? Math.round(path.masteredCards / path.totalCards * 100) : 0
-                const recommendationMastery = masteryProgress[path.recommendation.id] ?? {}
-                const pendingMode = pendingMasteryMode(recommendationMastery)
-                const resumableSession = activeSession?.lessonId !== 'mistake-review' && (adaptiveLevelFromLessonId(activeSession?.lessonId ?? '') === path.level || path.lessons.some((item) => item.id === activeSession?.lessonId))
-                  ? activeSession
-                  : activeSession?.lessonId === 'mistake-review' && pausedMainSession && path.lessons.some((item) => item.id === pausedMainSession.lessonId)
-                    ? pausedMainSession
-                    : null
                 const isComplete = path.masteredCards === path.totalCards
-                const actionLabel = resumableSession
-                  ? `继续 ${resumableSession.index + 1}/${resumableSession.order.length}`
-                  : !isComplete && (recommendationMastery.recall || recommendationMastery.listen) && pendingMode
-                    ? `继续${masteryModeLabel(pendingMode)}`
-                    : isComplete
-                      ? '重新练习'
-                      : path.completedGroups > 0
-                        ? `继续刷 ${path.level}`
-                        : `开始刷 ${path.level}`
+                const actionLabel = isComplete
+                  ? '重新练习'
+                  : path.completedGroups > 0 || path.partialGroups > 0
+                    ? `开始下一组 ${path.level}`
+                    : `开始刷 ${path.level}`
                 return (
                   <section className="level-path-card" key={path.level}>
                     <div className="level-path-heading"><span>{path.level}</span><div><small>{practiceTrackLabel(trackFilter, true)}{path.level === 'C1' || path.level === 'C2' ? ' · 候选词库' : ''}{categoryFilter !== '全部' ? ` · ${categoryFilter}` : ''}{sceneFilter !== '全部' ? ` · ${sceneFilter}` : ''}</small><strong>{path.totalCards} 项</strong></div><b>{percentage}%</b></div>
                     <div className="level-progress" aria-label={`${path.level} 已掌握 ${path.masteredCards} / ${path.totalCards}`}><span style={{ width: `${percentage}%` }} /></div>
                     <p>已掌握 {path.masteredCards} / {path.totalCards}{path.partialGroups ? ` · ${path.partialGroups} 轮进行中` : ' · 短轮次自动衔接'}</p>
-                    <button onClick={() => openLevelPath(path.level, path.lessons, path.recommendation)}>{actionLabel}<ArrowRight size={17} /></button>
+                    <button onClick={() => openLevelPath(path.level)}>{actionLabel}<ArrowRight size={17} /></button>
                   </section>
                 )
               })}
@@ -3058,12 +3069,24 @@ function App() {
               {installHint && <p className="install-hint" aria-live="polite">{installHint}</p>}
             </div>
           ) : lesson.id === 'mistake-review' ? (
-            <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
+            <>
+              {pausedMainSession
+                ? <button className="primary-button" onClick={resumePausedMainPractice}>继续之前的练习 <ArrowRight size={19} /></button>
+                : <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>}
+              {pausedMainSession && (
+                <div className="completion-alternatives">
+                  <button className="text-button" onClick={openPracticeChooser}>选择其他内容</button>
+                </div>
+              )}
+            </>
           ) : copyWeakRoundWords.length ? (
             <>
               <button className="primary-button" onClick={reinforceCopyWeakWords}>先巩固跟打错词 · {copyWeakRoundWords.length} 项 <RotateCcw size={18} /></button>
               <p className="enter-hint">这些词先跟着再打一遍，全部打对后再进入看义拼写</p>
-              <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
+              <div className="completion-alternatives">
+                <button className="text-button" onClick={skipReinforcementAndAdvance}>{skipReinforcementLabel}</button>
+                <button className="text-button" onClick={openPracticeChooser}>选择其他内容</button>
+              </div>
             </>
           ) : masteryModeRound && roundRecommendation === 'advance' ? (
             <>
@@ -3075,9 +3098,10 @@ function App() {
             <>
               <button className="primary-button" onClick={reinforceAdaptiveWeakWords}>巩固薄弱项{weakRoundWords.length ? ` · ${weakRoundWords.length} 项` : ''} <RotateCcw size={18} /></button>
               <p className="enter-hint">已独立答对 {independentRate}% · 先短复习更稳妥</p>
-              {missingMasteryMode && missingMasteryMode !== mode
-                ? <button className="text-button" onClick={advanceAdaptiveStage}>先练{masteryModeLabel(missingMasteryMode)}</button>
-                : <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>}
+              <div className="completion-alternatives">
+                <button className="text-button" onClick={skipReinforcementAndAdvance}>{skipReinforcementLabel}</button>
+                <button className="text-button" onClick={openPracticeChooser}>选择其他内容</button>
+              </div>
             </>
           ) : masteryModeRound ? (
             <>
@@ -3098,9 +3122,10 @@ function App() {
                     ? `已独立答对 ${independentRate ?? 0}% · 其余 ${lesson.words.length - weakRoundWords.length} 项不再陪练`
                     : `已独立答对 ${independentRate ?? 0}% · 建议留在当前模式`}
               </p>
-              {missingMasteryMode && missingMasteryMode !== mode
-                ? <button className="text-button" onClick={advanceAdaptiveStage}>挑战{masteryModeLabel(missingMasteryMode)}</button>
-                : <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>}
+              <div className="completion-alternatives">
+                <button className="text-button" onClick={skipReinforcementAndAdvance}>{skipReinforcementLabel}</button>
+                <button className="text-button" onClick={openPracticeChooser}>选择其他内容</button>
+              </div>
             </>
           ) : lessonMasteredAfterRound && adaptiveRound ? (
             <>

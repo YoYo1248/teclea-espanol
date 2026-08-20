@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { masteryRecommendation } from '../src/masteryRouting.ts'
+import { masteryRecommendation, nextStageAfterSkippedReinforcement } from '../src/masteryRouting.ts'
 import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
@@ -128,6 +128,9 @@ assert(masteryRecommendation(70, true) === 'reinforce', '70% 应进入薄弱项�
 assert(masteryRecommendation(89, true) === 'reinforce', '89% 应进入薄弱项巩固')
 assert(masteryRecommendation(90, true) === 'advance', '90% 应推进到下一阶段')
 assert(masteryRecommendation(100, false) === 'repeat', '切换模式或使用提示后不应获得推进')
+assert(nextStageAfterSkippedReinforcement('copy').mode === 'recall' && !nextStageAfterSkippedReinforcement('copy').startNewRound, '跳过跟打巩固应进入同组看义拼写')
+assert(nextStageAfterSkippedReinforcement('recall').mode === 'listen' && !nextStageAfterSkippedReinforcement('recall').startNewRound, '跳过看义巩固应进入同组听音拼写')
+assert(nextStageAfterSkippedReinforcement('listen').mode === 'recall' && nextStageAfterSkippedReinforcement('listen').startNewRound, '跳过听音巩固应开始下一组')
 
 assert(adaptiveRoundSize('recall', []) === 8, '无计时历史时应使用 8 项初始轮次')
 assert(adaptiveRoundSize('recall', [
@@ -186,6 +189,8 @@ assert(
   '系统开始组合输入时不应清除已登记的长按候选',
 )
 assert(/function cancelPressHoldReplacement\(\)[\s\S]*?pressHoldPendingRef\.current = null/.test(appSource), '取消长按等待时应同时清理待替换状态')
+assert(appSource.includes('暂不巩固，进入看义拼写') && appSource.includes('暂不巩固，进入听音拼写') && appSource.includes('暂不巩固，开始下一组'), '完成页应清楚标出跳过巩固后的下一阶段')
+assert(/function openLevelPath\(nextLevel: LessonLevel\) \{\s*setLevelFilter\(nextLevel\)\s*beginAdaptiveRound/.test(appSource), '首页等级卡应按当前选择开新一组，而不是自动恢复旧练习')
 
 if (failures.length) {
   console.error(failures.join('\n'))
