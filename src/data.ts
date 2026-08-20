@@ -1,13 +1,19 @@
+import { advancedDecks } from './advancedWords'
 import { commonDecks } from './commonWords'
 import { intermediateDecks } from './intermediateWords'
+import { expansionDecks } from './lexiconExpansion'
 
-export type LessonLevel = 'A1' | 'A2' | 'B1' | 'B2'
+export type LessonLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '社会' | '科技' | '环境' | '行政' | '情绪'
 export type LessonKind = '单词' | '短语' | '动词原形'
 
 export type LessonWord = {
   spanish: string
   chinese: string
+  lemma?: string
+  partOfSpeech?: 'noun' | 'adjective' | 'adverb' | 'pronoun' | 'preposition' | 'conjunction' | 'verb'
+  frequencyRank?: number
+  frameworkReference?: string
   reviewKey?: string
   article?: string
   example?: string
@@ -59,6 +65,20 @@ export const INTERMEDIATE_SOURCE = {
   url: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_b1-b2.htm',
   license: 'PCIC 课程框架参考；中文释义与教学编组 GPL-3.0',
   checkedAt: '2026-08-17',
+} as const
+
+export const ADVANCED_SOURCE = {
+  name: 'Teclea Español C1–C2 候选教学选词 · 参考 Instituto Cervantes PCIC',
+  url: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_c1-c2.htm',
+  license: 'PCIC 课程框架参考；中文释义与教学编组 GPL-3.0',
+  checkedAt: '2026-08-19',
+} as const
+
+export const EXPANSION_SOURCE = {
+  name: 'Teclea Español 扩库批次 · wordfreq + PCIC 编辑映射',
+  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/PIPELINE.md',
+  license: '频率与词典数据依各来源许可；中文释义、例句与编组 GPL-3.0',
+  checkedAt: '2026-08-20',
 } as const
 
 function word(
@@ -290,7 +310,41 @@ const extractedIntermediateVerbLessons: Lesson[] = (['B1', 'B2'] as const).flatM
 
 const intermediateLessons: Lesson[] = [...intermediateMainLessons, ...extractedIntermediateVerbLessons]
 
-export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons]
+const advancedLessons: Lesson[] = advancedDecks.map((deck, deckIndex) => ({
+  id: deck.id,
+  level: deck.level,
+  scene: deck.scene,
+  kind: deck.kind,
+  eyebrow: `${deck.level} · ${deck.kind} · ${deck.scene}`,
+  title: deck.title,
+  description: `${deck.description} · ${deck.words.length} 项`,
+  color: ['#79564e', '#426e68', '#53648d', '#765d82'][deckIndex % 4],
+  words: deck.words.map(([spanish, chinese]) => ({ spanish, chinese, source: { ...ADVANCED_SOURCE } })),
+}))
+
+const expansionLessons: Lesson[] = expansionDecks.map((deck, deckIndex) => ({
+  id: deck.id,
+  level: deck.level,
+  scene: deck.scene,
+  kind: '单词',
+  eyebrow: `${deck.level} · 单词 · ${deck.scene}`,
+  title: deck.title,
+  description: `${deck.description} · ${deck.words.length} 项`,
+  color: ['#d46d4f', '#437e6d', '#516fa6', '#936a91'][deckIndex % 4],
+  words: deck.words.map(({ spanish, chinese, example, exampleChinese, lemma, partOfSpeech, frequencyRank }) => ({
+    spanish,
+    chinese,
+    example,
+    exampleChinese,
+    lemma,
+    partOfSpeech,
+    frequencyRank,
+    frameworkReference: deck.frameworkReference,
+    source: { ...EXPANSION_SOURCE },
+  })),
+}))
+
+export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons, ...advancedLessons, ...expansionLessons]
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
-export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2', 'B1', 'B2']
+export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '社会', '科技', '环境', '行政', '情绪']

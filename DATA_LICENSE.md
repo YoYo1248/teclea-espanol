@@ -1,6 +1,6 @@
 # Word data licensing
 
-The bundled learning library contains 888 practice cards: 48 edited scene-based word/short-phrase cards, 300 A1–A2 common-word/expression cards, 200 B1–B2 common-word/short-phrase cards, and 340 unique conjugated-form cards. Identically spelled forms shared by multiple grammatical persons are merged. Sentence-length drills are excluded from the application catalog.
+The application catalog contains 2,152 practice cards: 748 edited base and candidate cards plus 1,404 source-traceable A1–B2 expansion cards produced in seventeen review batches. A separate retained research file contains 340 unique conjugated forms but is excluded from the application catalog, as are sentence-length drills.
 
 Frequency ordering for the common-word teaching selection was informed by `wordfreq`:
 
@@ -16,6 +16,12 @@ Spanish lexical forms and conjugations were checked against the Kaikki machine-r
 - Relevant upstream terms: CC BY-SA 4.0 and GFDL
 - Verification date recorded in the data: 2026-08-14
 
-Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for Teclea Español. A1–B2 topic and communicative-function boundaries were informed by the corresponding Instituto Cervantes Plan Curricular inventories; the 200 B1–B2 cards are an original teaching selection rather than an official or exhaustive Instituto Cervantes word list. Labels remain learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki, Instituto Cervantes or their contributors.
+Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for Teclea Español. A1–C2 topic and communicative-function boundaries were informed by the corresponding Instituto Cervantes Plan Curricular inventories; the 200 B1–B2 cards and 200 C1–C2 candidate cards are original teaching selections rather than official or exhaustive Instituto Cervantes word lists. C1–C2 entries still require qualified language review. Labels remain learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki, Instituto Cervantes or their contributors.
 
 The application code remains available under GPL-3.0 as stated in `LICENSE`. This notice preserves the attribution and licensing information for the lexical-data portion.
+
+## Lexicon expansion artifacts
+
+The reproducible expansion pipeline records source ids in every candidate row and resolves them through `data/lexicon/sources.json`. Locally generated wordfreq candidate artifacts remain under `artifacts/lexicon/`, which is gitignored. Any redistributed derivative must keep wordfreq attribution and CC BY-SA 4.0 terms with the data; do not detach a converted list from its source manifest.
+
+Instituto Cervantes PCIC content is used only as a framework and mapping reference, not copied wholesale into the catalog. RAE CORPES XXI is used only for query-based or aggregate usage validation until raw-list redistribution terms are confirmed. Kaikki / English Wiktionary verification remains subject to the upstream CC BY-SA 4.0 / GFDL terms and attribution requirements.

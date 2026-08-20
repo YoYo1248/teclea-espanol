@@ -1,0 +1,118 @@
+import type { ExpansionDeck } from './lexiconExpansion'
+
+const A1_A2_PCIC = 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_a1-a2.htm'
+const B1_B2_PCIC = 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_b1-b2.htm'
+type ExpansionWord = ExpansionDeck['words'][number]
+const w = (spanish: string, chinese: string, example: string, exampleChinese: string, partOfSpeech: ExpansionWord['partOfSpeech'], frequencyRank: number): ExpansionWord => ({ spanish, chinese, example, exampleChinese, lemma: spanish, partOfSpeech, frequencyRank })
+
+// Production batch 015: 72 high-frequency canonical targets closing the first broad-coverage milestone.
+export const expansionBatch015: ExpansionDeck[] = [
+  {
+    id: 'expansion-a2-personal-public-015', level: 'A2', scene: '日常', title: '个人关系与公共身份',
+    description: '补齐个人所属、公共身份和基本时间关系', frameworkReference: A1_A2_PCIC,
+    words: [
+      w('propio', '自己的；本身的', 'Cada alumno tiene su propio ritmo.', '每位学生都有自己的节奏。', 'adjective', 506),
+      w('ambos', '两者；双方', 'Ambos documentos son necesarios.', '两份文件都需要。', 'pronoun', 548),
+      w('modo', '方式；模式', 'Cambia el modo de pago.', '更改付款方式。', 'noun', 554),
+      w('cargo', '职位；费用；负责', 'Ella ocupa un cargo público.', '她担任公职。', 'noun', 603),
+      w('pena', '惩罚；悲伤；遗憾', 'Es una pena perder la cita.', '错过预约很遗憾。', 'noun', 616),
+      w('siglo', '世纪', 'El edificio es del siglo pasado.', '这栋建筑建于上个世纪。', 'noun', 618),
+      w('ustedes', '你们；各位', '¿Ustedes necesitan ayuda?', '你们需要帮助吗？', 'pronoun', 619),
+      w('central', '中央的；核心的', 'La estación central está cerca.', '中央车站就在附近。', 'adjective', 654),
+      w('director', '主管；导演；校长', 'El director aprobó el proyecto.', '主管批准了项目。', 'noun', 655),
+      w('feliz', '幸福的；高兴的', 'Estoy feliz con el resultado.', '我对结果很满意。', 'adjective', 659),
+      w('iglesia', '教堂；教会', 'La iglesia abre por la mañana.', '教堂上午开放。', 'noun', 660),
+      w('necesario', '必要的', 'El pasaporte es necesario para el viaje.', '旅行需要护照。', 'adjective', 662),
+    ],
+  },
+  {
+    id: 'expansion-a2-society-resources-015', level: 'A2', scene: '社会', title: '社会活动与常见资源',
+    description: '理解公共活动、机构、材料和日常资源', frameworkReference: A1_A2_PCIC,
+    words: [
+      w('civil', '公民的；民事的', 'La ceremonia civil será el sábado.', '民事仪式将在周六举行。', 'adjective', 669),
+      w('campaña', '活动；宣传；战役', 'La campaña promueve hábitos saludables.', '这项活动推广健康习惯。', 'noun', 681),
+      w('ejército', '军队', 'El ejército participó en el rescate.', '军队参与了救援。', 'noun', 683),
+      w('popular', '受欢迎的；民间的', 'Es un destino popular en verano.', '这是夏季热门目的地。', 'adjective', 693),
+      w('anterior', '之前的；前一个的', 'Revise la página anterior.', '请查看上一页。', 'adjective', 719),
+      w('militar', '军人；军事的', 'El hospital militar atiende emergencias.', '军队医院处理急诊。', 'adjective', 750),
+      w('oro', '黄金；金色', 'El anillo es de oro.', '戒指是金制的。', 'noun', 752),
+      w('plata', '银；钱', 'La moneda es de plata.', '这枚硬币是银制的。', 'noun', 754),
+      w('fondo', '底部；背景；基金', 'El fondo financia proyectos sociales.', '该基金资助社会项目。', 'noun', 765),
+      w('fútbol', '足球', 'Jugamos al fútbol los domingos.', '我们周日踢足球。', 'noun', 766),
+      w('menor', '较小的；未成年人', 'El riesgo es menor de lo esperado.', '风险比预期更小。', 'adjective', 773),
+      w('ministerio', '部；政府部门', 'El ministerio publicó nuevas normas.', '政府部门发布了新规定。', 'noun', 774),
+    ],
+  },
+  {
+    id: 'expansion-b1-status-judgment-015', level: 'B1', scene: '工作', title: '状态、判断与组织关系',
+    description: '描述当前状态、组织层级和基本判断', frameworkReference: B1_B2_PCIC,
+    words: [
+      w('corte', '切割；法院；宫廷', 'La corte revisará el caso.', '法院将审查案件。', 'noun', 803),
+      w('cualquiera', '任何人；任何一个', 'Cualquiera puede solicitar información.', '任何人都可以申请信息。', 'pronoun', 804),
+      w('presente', '当前的；在场的；现在', 'El problema sigue presente.', '这个问题仍然存在。', 'adjective', 811),
+      w('serio', '严肃的；严重的', 'Es un problema serio.', '这是一个严重问题。', 'adjective', 814),
+      w('superior', '更高的；上级', 'La planta superior está cerrada.', '上层楼关闭了。', 'adjective', 815),
+      w('supuesto', '假设；所谓的', 'Partimos de un supuesto razonable.', '我们从一个合理假设出发。', 'noun', 816),
+      w('diferente', '不同的', 'Cada caso es diferente.', '每个案例都不同。', 'adjective', 821),
+      w('natural', '自然的；天然的', 'El producto contiene azúcar natural.', '产品含有天然糖。', 'adjective', 829),
+      w('comisión', '委员会；佣金；委托', 'La comisión aprobó el informe.', '委员会批准了报告。', 'noun', 839),
+      w('culpa', '过错；内疚', 'No fue culpa del usuario.', '这不是用户的错。', 'noun', 844),
+      w('imposible', '不可能的', 'Es imposible terminar hoy.', '今天不可能完成。', 'adjective', 896),
+      w('unión', '联合；工会；结合', 'La unión de los equipos mejoró el resultado.', '团队联合改善了结果。', 'noun', 904),
+    ],
+  },
+  {
+    id: 'expansion-b1-community-identity-015', level: 'B1', scene: '社会', title: '群体、身份与共同经验',
+    description: '讨论能力、群体身份和共同经验', frameworkReference: B1_B2_PCIC,
+    words: [
+      w('capaz', '有能力的；能够的', 'El equipo es capaz de resolverlo.', '团队有能力解决它。', 'adjective', 908),
+      w('club', '俱乐部；社团', 'El club organiza actividades deportivas.', '俱乐部组织体育活动。', 'noun', 909),
+      w('sexo', '性别；性', 'El formulario pregunta el sexo registrado.', '表格询问登记性别。', 'noun', 922),
+      w('contrario', '相反的；对手', 'El resultado fue contrario a lo previsto.', '结果与预期相反。', 'adjective', 933),
+      w('código', '代码；编码；法规', 'Introduzca el código de acceso.', '请输入访问码。', 'noun', 935),
+      w('premio', '奖项；奖品', 'El proyecto recibió un premio.', '这个项目获了奖。', 'noun', 974),
+      w('rico', '富有的；美味的；丰富的', 'El plato está muy rico.', '这道菜很好吃。', 'adjective', 976),
+      w('simple', '简单的；单纯的', 'La solución es simple.', '解决办法很简单。', 'adjective', 977),
+      w('pobre', '贫穷的；贫乏的', 'Es una región pobre en recursos.', '这是一个资源贫乏的地区。', 'adjective', 999),
+      w('victoria', '胜利', 'El equipo celebró la victoria.', '团队庆祝胜利。', 'noun', 1003),
+      w('alma', '灵魂；心灵', 'La música toca el alma.', '音乐触动心灵。', 'noun', 1008),
+      w('género', '性别；类型；体裁', 'El libro pertenece a otro género.', '这本书属于另一种体裁。', 'noun', 1036),
+    ],
+  },
+  {
+    id: 'expansion-b2-law-reform-015', level: 'B2', scene: '行政', title: '制度、改革与公共领导',
+    description: '分析制度改革、领导责任和公共规则', frameworkReference: B1_B2_PCIC,
+    words: [
+      w('régimen', '制度；政权；饮食方案', 'El país cambió de régimen político.', '这个国家改变了政治制度。', 'noun', 1045),
+      w('ataque', '攻击；发作', 'El sistema bloqueó el ataque informático.', '系统阻止了网络攻击。', 'noun', 1051),
+      w('acto', '行为；仪式；幕', 'El acto público empieza a las seis.', '公共活动六点开始。', 'noun', 1077),
+      w('completo', '完整的；全部的', 'Necesitamos el informe completo.', '我们需要完整报告。', 'adjective', 1080),
+      w('perfecto', '完美的；完全合适的', 'El momento no es perfecto.', '时机并不完美。', 'adjective', 1098),
+      w('reforma', '改革；翻修', 'La reforma mejora el acceso a la salud.', '改革改善医疗服务可及性。', 'noun', 1152),
+      w('reino', '王国；领域', 'El antiguo reino ocupaba toda la costa.', '古王国占据整个海岸。', 'noun', 1153),
+      w('miembro', '成员；肢体', 'Cada miembro tiene derecho a votar.', '每位成员都有投票权。', 'noun', 1175),
+      w('próximo', '下一个的；附近的', 'El próximo informe saldrá en junio.', '下一份报告将在六月发布。', 'adjective', 1180),
+      w('independencia', '独立；自主', 'La independencia judicial es esencial.', '司法独立至关重要。', 'noun', 1197),
+      w('término', '术语；期限；结尾', 'Explique el término con un ejemplo.', '请用例子解释这个术语。', 'noun', 1205),
+      w('verdadero', '真正的；真实的', 'El dato debe ser verdadero.', '数据必须真实。', 'adjective', 1207),
+    ],
+  },
+  {
+    id: 'expansion-b2-public-debate-015', level: 'B2', scene: '社会', title: '公共讨论与制度判断',
+    description: '理解公共讨论、司法角色和制度性判断', frameworkReference: B1_B2_PCIC,
+    words: [
+      w('corrupción', '腐败；贪污', 'La transparencia ayuda a prevenir la corrupción.', '透明度有助于预防腐败。', 'noun', 1210),
+      w('cruz', '十字；十字架；交叉', 'La farmacia tiene una cruz verde.', '药店有一个绿色十字标志。', 'noun', 1211),
+      w('líder', '领导者；领先者', 'La líder presentó el plan.', '领导者介绍了计划。', 'noun', 1219),
+      w('exterior', '外部；国外；外面的', 'La puerta exterior está cerrada.', '外门关着。', 'adjective', 1244),
+      w('honor', '荣誉；敬意', 'Recibió el premio en honor a su trabajo.', '他因工作获得荣誉。', 'noun', 1247),
+      w('similar', '相似的', 'Encontramos un caso similar.', '我们发现了一个类似案例。', 'adjective', 1274),
+      w('discurso', '演讲；话语', 'El discurso abordó la desigualdad.', '演讲谈到了不平等问题。', 'noun', 1283),
+      w('extraño', '奇怪的；陌生人', 'El resultado parece extraño.', '结果看起来很奇怪。', 'adjective', 1289),
+      w('inicio', '开始；起点', 'El inicio del curso será en septiembre.', '课程九月开始。', 'noun', 1294),
+      w('juez', '法官；裁判', 'El juez revisó las pruebas.', '法官审查了证据。', 'noun', 1295),
+      w('teatro', '剧院；戏剧', 'El teatro ofrece funciones los fines de semana.', '剧院周末有演出。', 'noun', 1302),
+      w('asamblea', '大会；议会；集会', 'La asamblea votó la propuesta.', '大会对提案进行了表决。', 'noun', 1305),
+    ],
+  },
+]

@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-20",
+  "scope": {
+    "catalogCards": 2152,
+    "lessons": 203,
+    "levels": [
+      "A1",
+      "A2",
+      "B1",
+      "B2",
+      "C1",
+      "C2"
+    ],
+    "denominator": "Current application catalog after runtime lesson construction"
+  },
+  "headline": {
+    "uniqueTargets": 2152,
+    "explicitAdvancedCandidates": 200,
+    "cardsWithTraceableSource": 2152,
+    "cardsWithExamples": 1452,
+    "cardsWithStructuredLemma": 1404,
+    "cardsWithFrameworkReference": 1404,
+    "cardsWithAuditableProfessionalReview": 0,
+    "officialCompleteness": null,
+    "officialCompletenessReason": "CEFR and PCIC do not publish one exhaustive official word-count denominator for each level."
+  },
+  "levelRows": [
+    {
+      "level": "A1",
+      "total": 422,
+      "words": 345,
+      "phrases": 44,
+      "infinitives": 33,
+      "catalogShare": 19.6,
+      "exampleCoverage": 38.9
+    },
+    {
+      "level": "A2",
+      "total": 464,
+      "words": 433,
+      "phrases": 24,
+      "infinitives": 7,
+      "catalogShare": 21.6,
+      "exampleCoverage": 90.9
+    },
+    {
+      "level": "B1",
+      "total": 558,
+      "words": 520,
+      "phrases": 10,
+      "infinitives": 28,
+      "catalogShare": 25.9,
+      "exampleCoverage": 82.1
+    },
+    {
+      "level": "B2",
+      "total": 508,
+      "words": 481,
+      "phrases": 10,
+      "infinitives": 17,
+      "catalogShare": 23.6,
+      "exampleCoverage": 80.3
+    },
+    {
+      "level": "C1",
+      "total": 100,
+      "words": 80,
+      "phrases": 10,
+      "infinitives": 10,
+      "catalogShare": 4.6,
+      "exampleCoverage": 0
+    },
+    {
+      "level": "C2",
+      "total": 100,
+      "words": 80,
+      "phrases": 10,
+      "infinitives": 10,
+      "catalogShare": 4.6,
+      "exampleCoverage": 0
+    }
+  ],
+  "categoryRows": [
+    {
+      "category": "核心表达",
+      "scenes": "基础、日常、时间",
+      "total": 526,
+      "levelsPresent": "A1、A2、B1、B2、C1、C2",
+      "catalogShare": 24.4
+    },
+    {
+      "category": "吃住购物",
+      "scenes": "餐厅、购物、住宿",
+      "total": 96,
+      "levelsPresent": "A1、A2、B1",
+      "catalogShare": 4.5
+    },
+    {
+      "category": "出行城市",
+      "scenes": "城市、旅行",
+      "total": 137,
+      "levelsPresent": "A1、A2、B1、B2、C2",
+      "catalogShare": 6.4
+    },
+    {
+      "category": "家庭身心",
+      "scenes": "家庭、健康、情绪",
+      "total": 233,
+      "levelsPresent": "A1、A2、B1、B2、C1、C2",
+      "catalogShare": 10.8
+    },
+    {
+      "category": "学习工作",
+      "scenes": "学习、工作",
+      "total": 530,
+      "levelsPresent": "A1、A2、B1、B2、C1、C2",
+      "catalogShare": 24.6
+    },
+    {
+      "category": "社会世界",
+      "scenes": "社会、科技、环境、行政",
+      "total": 630,
+      "levelsPresent": "A2、B1、B2、C1、C2",
+      "catalogShare": 29.3
+    }
+  ],
+  "sourceRows": [
+    {
+      "sourceName": "Kaikki / English Wiktionary",
+      "cards": 48
+    },
+    {
+      "sourceName": "Teclea Español B1–B2 教学选词 · 参考 Instituto Cervantes PCIC",
+      "cards": 200
+    },
+    {
+      "sourceName": "Teclea Español C1–C2 候选教学选词 · 参考 Instituto Cervantes PCIC",
+      "cards": 200
+    },
+    {
+      "sourceName": "Teclea Español 扩库批次 · wordfreq + PCIC 编辑映射",
+      "cards": 1404
+    },
+    {
+      "sourceName": "wordfreq + Kaikki / Wiktionary",
+      "cards": 300
+    }
+  ],
+  "orthography": {
+    "targetsWithWrittenAccent": 503,
+    "targetsWithEnye": 28,
+    "targetsWithDiaeresis": 3
+  },
+  "integrity": {
+    "duplicateTargets": [],
+    "targetsOverThreeWords": [],
+    "isolatedInfinitivesOutsideVerbTrack": [],
+    "nonNfcTargets": []
+  },
+  "frequencySurfaceCoverage": {
+    "sourceId": "wordfreq-es-3.1.1",
+    "candidateRows": 6000,
+    "definition": "Exact normalized surface-form overlap between current single-word targets and valid wordfreq tokens. This is not lemma coverage or CEFR completeness.",
+    "tiers": [
+      {
+        "rankLimit": 1000,
+        "validTokens": 969,
+        "matchedCatalogTargets": 454,
+        "coverage": 46.9
+      },
+      {
+        "rankLimit": 3000,
+        "validTokens": 2965,
+        "matchedCatalogTargets": 1222,
+        "coverage": 41.2
+      },
+      {
+        "rankLimit": 6000,
+        "validTokens": 5959,
+        "matchedCatalogTargets": 1825,
+        "coverage": 30.6
+      }
+    ]
+  },
+  "candidateAudit": {
+    "inputRows": 6000,
+    "readyForStaging": 0,
+    "blocked": 6000,
+    "withWarnings": 40,
+    "alreadyInCatalog": 1827,
+    "blockerCounts": {
+      "already_in_catalog": 1827,
+      "category_mapping_required": 6000,
+      "chinese_example_required": 6000,
+      "chinese_gloss_required": 6000,
+      "duplicate_candidate_target": 2,
+      "editorial_approval_required": 6000,
+      "kind_mapping_required": 6000,
+      "lemma_required": 6000,
+      "level_mapping_required": 6000,
+      "lexical_verification_required": 6000,
+      "normalized_target_mismatch": 2,
+      "part_of_speech_required": 6000,
+      "pcic_reference_required": 6000,
+      "review_date_required": 6000,
+      "reviewer_required": 6000,
+      "scene_mapping_required": 6000,
+      "source_id_required:kaikki-es-2026-08-16": 6000,
+      "source_id_required:pcic-cervantes": 6000,
+      "spanish_example_required": 6000,
+      "unsupported_characters": 14
+    }
+  },
+  "definitions": {
+    "card": "One unique Spanish typing target; a fixed phrase counts as one card.",
+    "sourceCoverage": "A card has name, URL, license and checked-at metadata. It does not prove professional linguistic review.",
+    "professionalReviewCoverage": "Only review records with a named reviewer and review date count. Current catalog cards do not yet carry those fields.",
+    "pcicCoverage": "Broad editorial category and level mapping against PCIC domains; not copied-entry coverage or official certification."
+  },
+  "sourceManifest": "data/lexicon/sources.json"
+}

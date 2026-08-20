@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-20",
+  "sources": [
+    {
+      "id": "cefr-coe",
+      "name": "Common European Framework of Reference for Languages",
+      "publisher": "Council of Europe",
+      "url": "https://www.coe.int/en/web/common-european-framework-reference-languages/introduction-and-context",
+      "role": "level-framework",
+      "allowedUse": "Use as a non-prescriptive proficiency framework; never describe it as an official vocabulary list.",
+      "redistributeRawData": false,
+      "evidence": "The Council of Europe describes the CEFR as a non-prescriptive framework that does not tell practitioners what or how to teach."
+    },
+    {
+      "id": "pcic-cervantes",
+      "name": "Plan curricular del Instituto Cervantes — Niveles de referencia para el español",
+      "publisher": "Instituto Cervantes",
+      "url": "https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/introduccion.htm",
+      "role": "spanish-level-and-domain-mapping",
+      "allowedUse": "Use inventory structure, communicative functions and notion domains as an editorial mapping reference. Do not bulk-copy inventory entries into the app.",
+      "redistributeRawData": false,
+      "evidence": "PCIC presents a starting point that requires adjustment and adaptation; the CVC footer states that all rights are reserved."
+    },
+    {
+      "id": "corpes-rae-1.5",
+      "name": "Corpus del Español del Siglo XXI (CORPES XXI), version 1.5",
+      "publisher": "Real Academia Española",
+      "url": "https://www.rae.es/corpes/",
+      "role": "modern-usage-validation",
+      "allowedUse": "Use query results and published aggregate frequency information for manual validation. Do not commit or redistribute raw downloaded lists until reuse terms are confirmed.",
+      "redistributeRawData": false,
+      "release": "1.5 (June 2026)",
+      "evidence": "The current public page reports 455,524,404 forms and 419,955 documents and describes CORPES as a resource under construction."
+    },
+    {
+      "id": "wordfreq-es-3.1.1",
+      "name": "wordfreq Spanish frequency data",
+      "publisher": "wordfreq contributors",
+      "url": "https://github.com/rspeer/wordfreq",
+      "role": "reproducible-frequency-candidate-generation",
+      "allowedUse": "Generate attributed candidate JSONL records. Keep the source id and this manifest with redistributed derivatives.",
+      "redistributeRawData": true,
+      "license": "CC BY-SA 4.0 data; Apache-2.0 software",
+      "release": "3.1.1",
+      "snapshot": "usage through approximately 2021",
+      "evidence": "wordfreq states that its data files are redistributable under CC BY-SA 4.0 and that the frequency snapshot is unlikely to be updated beyond approximately 2021."
+    },
+    {
+      "id": "kaikki-es-2026-08-16",
+      "name": "Kaikki Spanish machine-readable dictionary / English Wiktionary",
+      "publisher": "Kaikki / Wiktextract / Wiktionary contributors",
+      "url": "https://kaikki.org/dictionary/Spanish/index.html",
+      "role": "lemma-pos-spelling-and-form-validation",
+      "allowedUse": "Verify spelling, accents, part of speech, lemma and inflection relationships with attribution.",
+      "redistributeRawData": true,
+      "license": "CC BY-SA 4.0 / GFDL",
+      "release": "Spanish extraction dated 2026-08-16 from the 2026-08-05 English Wiktionary dump",
+      "evidence": "Kaikki exposes structured Spanish entries and identifies the extraction and upstream Wiktionary provenance."
+    }
+  ]
+}

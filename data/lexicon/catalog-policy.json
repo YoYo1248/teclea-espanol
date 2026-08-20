@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "minimumCardsByLevel": {
+    "A1": 422,
+    "A2": 464,
+    "B1": 558,
+    "B2": 508,
+    "C1": 100,
+    "C2": 100
+  },
+  "minimumCardsByKind": {
+    "单词": 1939,
+    "短语": 108,
+    "动词原形": 105
+  },
+  "maximumWordsPerTarget": 3,
+  "lessonSize": { "minimum": 5, "maximum": 12 },
+  "professionalReviewRequired": true,
+  "notes": [
+    "Minimum counts prevent accidental catalog regression while allowing approved expansion.",
+    "These counts are an implementation baseline, not an official CEFR vocabulary target.",
+    "No official completeness percentage is calculated because CEFR and PCIC do not provide a single exhaustive word-count denominator."
+  ]
+}

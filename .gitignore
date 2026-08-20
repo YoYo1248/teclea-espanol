@@ -6,4 +6,6 @@ vite.config.d.ts
 .DS_Store
 .vercel
 .firecrawl/
+artifacts/lexicon/
+.venv-lexicon/
 .env*.local

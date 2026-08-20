@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.holadone.com/schemas/lexicon-candidate-v1.json",
+  "title": "Teclea Español lexicon candidate",
+  "type": "object",
+  "required": ["schemaVersion", "candidateId", "spanish", "normalizedTarget", "frequency", "lexical", "framework", "editorial", "sourceIds"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "candidateId": { "type": "string", "minLength": 1 },
+    "spanish": { "type": "string", "minLength": 1 },
+    "normalizedTarget": { "type": "string", "minLength": 1 },
+    "lemma": { "type": ["string", "null"] },
+    "partOfSpeech": { "type": ["string", "null"] },
+    "kindCandidate": { "enum": ["单词", "短语", "动词原形", null] },
+    "frequency": {
+      "type": "object",
+      "required": ["sourceId", "rank", "zipf"],
+      "properties": {
+        "sourceId": { "const": "wordfreq-es-3.1.1" },
+        "rank": { "type": "integer", "minimum": 1 },
+        "zipf": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "lexical": {
+      "type": "object",
+      "required": ["sourceId", "status"],
+      "properties": {
+        "sourceId": { "const": "kaikki-es-2026-08-16" },
+        "status": { "enum": ["unverified", "verified", "rejected"] },
+        "checkedAt": { "type": ["string", "null"] },
+        "entryUrl": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "framework": {
+      "type": "object",
+      "required": ["sourceId", "levelCandidate", "categoryCandidate", "sceneCandidate", "references"],
+      "properties": {
+        "sourceId": { "const": "pcic-cervantes" },
+        "levelCandidate": { "enum": ["A1", "A2", "B1", "B2", "C1", "C2", null] },
+        "categoryCandidate": { "type": ["string", "null"] },
+        "sceneCandidate": { "type": ["string", "null"] },
+        "references": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "editorial": {
+      "type": "object",
+      "required": ["status", "chinese", "example", "exampleChinese", "reviewedBy", "reviewedAt", "notes"],
+      "properties": {
+        "status": { "enum": ["unreviewed", "editing", "reviewed", "approved", "rejected"] },
+        "chinese": { "type": ["string", "null"] },
+        "example": { "type": ["string", "null"] },
+        "exampleChinese": { "type": ["string", "null"] },
+        "reviewedBy": { "type": ["string", "null"] },
+        "reviewedAt": { "type": ["string", "null"] },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "sourceIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

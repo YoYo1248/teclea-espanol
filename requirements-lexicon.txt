@@ -1,0 +1,2 @@
+# Reproducible candidate-frequency extraction only; not required by the web app.
+wordfreq==3.1.1

@@ -28,17 +28,18 @@
 - 同一轮的当前通道达到推进阈值后，先进入尚未完成的看义拼写或听音拼写；只有两个通道都达到推进阈值才默认开始下一轮，未独立答对的薄弱项仍保留在后续优先池
 - 旧版本已经完成的掌握状态会保留，新练习使用双通道掌握标准
 - 浏览器原生西班牙语发音（Speech Synthesis）
-- 548 张不重复的 A1–B2 练习卡：375 张单词、88 张短语、85 张常用动词原形
+- 2,152 张不重复的 A1–C2 练习卡：1,939 张单词、108 张短语、105 张常用动词原形
 - 练习目标只保留单词和不超过 3 个词的短语；较长句子不再作为逐字输入目标
-- 首页以 A1–B2 等级和“词汇与短语 / 常用动词专项”为主线；词汇主线保留六个清晰的宽分类，细场景仅作为浏览入口
+- 首页以 A1–C2 等级和“词汇与短语 / 常用动词专项”为主线；词汇主线保留六个清晰的宽分类，细场景仅作为浏览入口
 - 系统在等级和分类内自动分成短轮次，用于练习节奏、保存和间隔；用户无需先选轮次
 - 无历史的首访轮以 8 项、约 60–90 秒作为尚待真实数据校准的初始 UX 假设；同一模式累积至少两轮后，使用近期滚动中位单项耗时估算下一轮数量，普通单模式轮目标约 2–3 分钟且限制在 6–12 项
 - 新轮优先现有错词和未掌握内容，再补充其他合格内容；同一轮不重复相同输入目标，并按当轮长度中位数交错长短项
 - 新一轮在合格词池足够时优先避开最近两轮队列；只有词池不足才先回填较早一轮、最后回填刚练过的项，薄弱项补练则会明确标示为有意重复
-- 可选创建 A1–B2 等级挑战，设定期限和每项听写次数；漏练后按剩余工作量、剩余天数与错题缓冲动态重算每日目标
+- 可选创建 A1–C2 等级挑战，设定期限和每项听写次数；漏练后按剩余工作量、剩余天数与错题缓冲动态重算每日目标
+- 挑战页按天保留达标词条与看义／听音次数明细；旧版本只保存的累计数字会如实标注为无法反推词条
 - 高频顺序参考 wordfreq；拼写与词形以 Kaikki / English Wiktionary 结构化数据核对
 - 不把同一动词的不同人称和时态当成独立生词；旧变位数据保留给未来“短语境 + 单个目标词”模块，但不进入当前课程或错题库
-- A1–B2 主题与交际功能参考 Instituto Cervantes 对应等级的课程框架，具体选词、中文释义与标签仍是项目教学编辑，不是官方认证词表
+- A1–C2 主题与交际功能参考 Instituto Cervantes 对应等级的课程框架，具体选词、中文释义与标签仍是项目教学编辑，不是官方认证词表；新增 C1–C2 内容仍是待专业复核的候选词库
 - 每轮随机排列；退出或刷新后从当前卡继续，错题复习不会覆盖普通课程进度
 - 错题答对一项清除一项；仍答错的项目继续保留
 - 本地优先保存课程完成状态、进行中的顺序和统计，断网不影响练习
@@ -60,10 +61,26 @@ npm run dev
 npm run build
 ```
 
+## 可审计词库扩充
+
+扩库不直接把高频表导入课程。候选项依次经过 wordfreq 频率生成、Kaikki / Wiktionary 的 lemma 与词形核验、Instituto Cervantes PCIC 的等级和领域映射、中文释义与例句编辑、批次抽检，最后才生成待合并课程文件。普通用户不需要逐词批准；只在出现来源冲突或产品规则变化时才需要单独决策。
+
+当前覆盖基线见 [`docs/lexicon/COVERAGE_REPORT.md`](docs/lexicon/COVERAGE_REPORT.md)，完整流程和字段说明见 [`docs/lexicon/PIPELINE.md`](docs/lexicon/PIPELINE.md)。RAE CORPES XXI 目前只用于真实用法校验；再分发条款没有明确前，不把其原始下载列表提交进仓库。
+
+```bash
+python3 -m venv .venv-lexicon
+.venv-lexicon/bin/pip install -r requirements-lexicon.txt
+.venv-lexicon/bin/python scripts/lexicon/export_wordfreq_candidates.py
+npm run lexicon:audit
+npm run lexicon:coverage
+```
+
+`artifacts/lexicon/` 是可重建的本地候选区，已加入 `.gitignore`。只有零阻断、已具名批准的记录才能通过 `npm run lexicon:stage`，而该命令也只生成待审 JSON，不会自动改动线上课程。
+
 跨设备同步的安全模型、合并规则和 Vercel / Upstash 配置见 [`docs/SYNC.md`](docs/SYNC.md)。
 
 ## 许可说明
 
 本项目采用 GPL-3.0。逐字母训练机制参考 Qwerty Learner，并使用了其随 GPL-3.0 发布的默认按键、错误和完成声音资源。默认机械键盘按键声在原项目中注明来自 kbsim。
 
-词频排序参考 wordfreq 数据（CC BY-SA 4.0），拼写和词形使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目原创或编辑；A1–B2 编组参考 Instituto Cervantes 的课程框架，但不是官方认证。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。
+词频排序参考 wordfreq 数据（CC BY-SA 4.0），拼写和词形使用 Kaikki / English Wiktionary 数据核对（CC BY-SA 4.0 / GFDL）。中文学习标签、例句、分级与场景分类由本项目原创或编辑；A1–C2 编组参考 Instituto Cervantes 的课程框架，但不是官方认证。内容仍需西语教师复核。详见 [`docs/WORDLIST_SOURCES.md`](docs/WORDLIST_SOURCES.md) 和 [`DATA_LICENSE.md`](DATA_LICENSE.md)。

@@ -9,6 +9,8 @@ const indexablePages = [
   { file: 'public/a2-spanish-vocabulary.html', path: '/a2-spanish-vocabulary.html' },
   { file: 'public/b1-spanish-vocabulary.html', path: '/b1-spanish-vocabulary.html' },
   { file: 'public/b2-spanish-vocabulary.html', path: '/b2-spanish-vocabulary.html' },
+  { file: 'public/c1-spanish-vocabulary.html', path: '/c1-spanish-vocabulary.html' },
+  { file: 'public/c2-spanish-vocabulary.html', path: '/c2-spanish-vocabulary.html' },
   { file: 'public/spanish-dictation-practice.html', path: '/spanish-dictation-practice.html' },
   { file: 'public/spanish-infinitive-practice.html', path: '/spanish-infinitive-practice.html' },
   { file: 'public/spanish-accent-practice.html', path: '/spanish-accent-practice.html' },

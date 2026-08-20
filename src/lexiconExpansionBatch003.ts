@@ -1,0 +1,105 @@
+import type { ExpansionDeck } from './lexiconExpansion'
+
+const A1_A2_PCIC = 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_a1-a2.htm'
+const B1_B2_PCIC = 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_b1-b2.htm'
+
+// Production batch 003: 60 frequency-backed, canonical targets. This batch
+// deliberately avoids conjugated verbs, proper names, profanity, foreign
+// tokens and productive masculine/feminine duplicates.
+export const expansionBatch003: ExpansionDeck[] = [
+  {
+    id: 'expansion-a1-months-003', level: 'A1', scene: '时间', title: '一年十二个月',
+    description: '日期、预约和旅行安排中最常用的月份',
+    frameworkReference: A1_A2_PCIC,
+    words: [
+      { spanish: 'enero', chinese: '一月', example: 'El curso empieza en enero.', exampleChinese: '课程一月开始。', lemma: 'enero', partOfSpeech: 'noun', frequencyRank: 607 },
+      { spanish: 'febrero', chinese: '二月', example: 'Febrero tiene pocos días.', exampleChinese: '二月的天数较少。', lemma: 'febrero', partOfSpeech: 'noun', frequencyRank: 626 },
+      { spanish: 'marzo', chinese: '三月', example: 'La reunión será en marzo.', exampleChinese: '会议将在三月举行。', lemma: 'marzo', partOfSpeech: 'noun', frequencyRank: 514 },
+      { spanish: 'abril', chinese: '四月', example: 'En abril suele llover.', exampleChinese: '四月通常会下雨。', lemma: 'abril', partOfSpeech: 'noun', frequencyRank: 559 },
+      { spanish: 'mayo', chinese: '五月', example: 'Viajamos en mayo.', exampleChinese: '我们五月旅行。', lemma: 'mayo', partOfSpeech: 'noun', frequencyRank: 503 },
+      { spanish: 'junio', chinese: '六月', example: 'Las clases terminan en junio.', exampleChinese: '课程六月结束。', lemma: 'junio', partOfSpeech: 'noun', frequencyRank: 575 },
+      { spanish: 'julio', chinese: '七月', example: 'En julio hace mucho calor.', exampleChinese: '七月天气很热。', lemma: 'julio', partOfSpeech: 'noun', frequencyRank: 457 },
+      { spanish: 'agosto', chinese: '八月', example: 'La oficina cierra en agosto.', exampleChinese: '办公室八月关闭。', lemma: 'agosto', partOfSpeech: 'noun', frequencyRank: 600 },
+      { spanish: 'septiembre', chinese: '九月', example: 'Volvemos en septiembre.', exampleChinese: '我们九月回来。', lemma: 'septiembre', partOfSpeech: 'noun', frequencyRank: 647 },
+      { spanish: 'octubre', chinese: '十月', example: 'El festival es en octubre.', exampleChinese: '节日在十月举行。', lemma: 'octubre', partOfSpeech: 'noun', frequencyRank: 538 },
+      { spanish: 'noviembre', chinese: '十一月', example: 'El contrato acaba en noviembre.', exampleChinese: '合同十一月到期。', lemma: 'noviembre', partOfSpeech: 'noun', frequencyRank: 592 },
+      { spanish: 'diciembre', chinese: '十二月', example: 'Diciembre es un mes frío.', exampleChinese: '十二月是寒冷的月份。', lemma: 'diciembre', partOfSpeech: 'noun', frequencyRank: 532 },
+    ],
+  },
+  {
+    id: 'expansion-a2-surroundings-003', level: 'A2', scene: '日常', title: '周围环境与日常信息',
+    description: '谈论地点、网络、建议和身边事物',
+    frameworkReference: A1_A2_PCIC,
+    words: [
+      { spanish: 'serie', chinese: '系列；电视剧', example: 'Esta serie tiene diez capítulos.', exampleChinese: '这部电视剧有十集。', lemma: 'serie', partOfSpeech: 'noun', frequencyRank: 516 },
+      { spanish: 'campo', chinese: '乡村；田野；领域', example: 'Pasamos el domingo en el campo.', exampleChinese: '我们星期天在乡下度过。', lemma: 'campo', partOfSpeech: 'noun', frequencyRank: 560 },
+      { spanish: 'internet', chinese: '互联网', example: 'Busco la dirección en internet.', exampleChinese: '我在网上查地址。', lemma: 'internet', partOfSpeech: 'noun', frequencyRank: 562 },
+      { spanish: 'resto', chinese: '其余；剩余部分', example: 'Guarda el resto para mañana.', exampleChinese: '把剩下的留到明天。', lemma: 'resto', partOfSpeech: 'noun', frequencyRank: 583 },
+      { spanish: 'consejo', chinese: '建议；忠告', example: 'Gracias por el consejo.', exampleChinese: '谢谢你的建议。', lemma: 'consejo', partOfSpeech: 'noun', frequencyRank: 585 },
+      { spanish: 'común', chinese: '常见的；共同的', example: 'Es un error muy común.', exampleChinese: '这是一个很常见的错误。', lemma: 'común', partOfSpeech: 'adjective', frequencyRank: 622 },
+      { spanish: 'pronto', chinese: '很快；早', example: 'Espero verte pronto.', exampleChinese: '希望很快见到你。', lemma: 'pronto', partOfSpeech: 'adverb', frequencyRank: 665 },
+      { spanish: 'mar', chinese: '海；海洋', example: 'El hotel está cerca del mar.', exampleChinese: '酒店靠近大海。', lemma: 'mar', partOfSpeech: 'noun', frequencyRank: 674 },
+      { spanish: 'alrededor', chinese: '周围；大约', example: 'Hay varios cafés alrededor.', exampleChinese: '周围有几家咖啡馆。', lemma: 'alrededor', partOfSpeech: 'adverb', frequencyRank: 680 },
+      { spanish: 'carrera', chinese: '职业；大学专业；比赛', example: 'Estudia una carrera de ciencias.', exampleChinese: '她攻读理科专业。', lemma: 'carrera', partOfSpeech: 'noun', frequencyRank: 682 },
+      { spanish: 'red', chinese: '网络；网', example: 'La red funciona otra vez.', exampleChinese: '网络又恢复了。', lemma: 'red', partOfSpeech: 'noun', frequencyRank: 697 },
+      { spanish: 'encuentro', chinese: '会面；相遇', example: 'El encuentro fue muy agradable.', exampleChinese: '这次会面很愉快。', lemma: 'encuentro', partOfSpeech: 'noun', frequencyRank: 891 },
+    ],
+  },
+  {
+    id: 'expansion-a2-leisure-003', level: 'A2', scene: '日常', title: '天气、休闲与学习',
+    description: '描述自然、娱乐、课程和城市生活',
+    frameworkReference: A1_A2_PCIC,
+    words: [
+      { spanish: 'sol', chinese: '太阳；阳光', example: 'Hoy hace sol.', exampleChinese: '今天阳光很好。', lemma: 'sol', partOfSpeech: 'noun', frequencyRank: 716 },
+      { spanish: 'aire', chinese: '空气；风', example: 'Necesito un poco de aire.', exampleChinese: '我需要透透气。', lemma: 'aire', partOfSpeech: 'noun', frequencyRank: 734 },
+      { spanish: 'canción', chinese: '歌曲', example: 'Esta canción es muy popular.', exampleChinese: '这首歌很流行。', lemma: 'canción', partOfSpeech: 'noun', frequencyRank: 760 },
+      { spanish: 'fiesta', chinese: '聚会；节日', example: 'La fiesta empieza a las nueve.', exampleChinese: '聚会九点开始。', lemma: 'fiesta', partOfSpeech: 'noun', frequencyRank: 893 },
+      { spanish: 'gusto', chinese: '喜好；味觉；乐意', example: 'Cada persona tiene su gusto.', exampleChinese: '每个人都有自己的喜好。', lemma: 'gusto', partOfSpeech: 'noun', frequencyRank: 914 },
+      { spanish: 'cielo', chinese: '天空', example: 'El cielo está despejado.', exampleChinese: '天空晴朗。', lemma: 'cielo', partOfSpeech: 'noun', frequencyRank: 960 },
+      { spanish: 'cine', chinese: '电影院；电影艺术', example: 'Vamos al cine esta tarde.', exampleChinese: '我们今天下午去看电影。', lemma: 'cine', partOfSpeech: 'noun', frequencyRank: 961 },
+      { spanish: 'verano', chinese: '夏天', example: 'Trabajo aquí durante el verano.', exampleChinese: '我整个夏天都在这里工作。', lemma: 'verano', partOfSpeech: 'noun', frequencyRank: 1027 },
+      { spanish: 'curso', chinese: '课程；学年', example: 'El curso dura tres meses.', exampleChinese: '课程持续三个月。', lemma: 'curso', partOfSpeech: 'noun', frequencyRank: 1031 },
+      { spanish: 'edificio', chinese: '建筑；大楼', example: 'La oficina está en ese edificio.', exampleChinese: '办公室在那栋楼里。', lemma: 'edificio', partOfSpeech: 'noun', frequencyRank: 1055 },
+      { spanish: 'lengua', chinese: '语言；舌头', example: 'El español es una lengua internacional.', exampleChinese: '西班牙语是一门国际语言。', lemma: 'lengua', partOfSpeech: 'noun', frequencyRank: 1057 },
+      { spanish: 'transporte', chinese: '交通；运输', example: 'El transporte público es cómodo.', exampleChinese: '公共交通很方便。', lemma: 'transporte', partOfSpeech: 'noun', frequencyRank: 1073 },
+    ],
+  },
+  {
+    id: 'expansion-b1-description-003', level: 'B1', scene: '学习', title: '描述信息与评价结果',
+    description: '用于报告、讨论和评价的高频词',
+    frameworkReference: B1_B2_PCIC,
+    words: [
+      { spanish: 'oficial', chinese: '官方的；正式的', example: 'Todavía no hay una respuesta oficial.', exampleChinese: '目前还没有正式答复。', lemma: 'oficial', partOfSpeech: 'adjective', frequencyRank: 505 },
+      { spanish: 'peor', chinese: '更差的；更糟', example: 'El segundo resultado fue peor.', exampleChinese: '第二个结果更差。', lemma: 'peor', partOfSpeech: 'adjective', frequencyRank: 515 },
+      { spanish: 'principal', chinese: '主要的；首要的', example: 'Este es el problema principal.', exampleChinese: '这是主要问题。', lemma: 'principal', partOfSpeech: 'adjective', frequencyRank: 541 },
+      { spanish: 'voz', chinese: '声音；嗓音', example: 'Habla con una voz tranquila.', exampleChinese: '他说话声音很平静。', lemma: 'voz', partOfSpeech: 'noun', frequencyRank: 546 },
+      { spanish: 'estudio', chinese: '研究；学习；书房', example: 'El estudio presenta nuevos datos.', exampleChinese: '这项研究提出了新数据。', lemma: 'estudio', partOfSpeech: 'noun', frequencyRank: 550 },
+      { spanish: 'región', chinese: '地区；区域', example: 'La región recibe muchos visitantes.', exampleChinese: '这个地区接待很多游客。', lemma: 'región', partOfSpeech: 'noun', frequencyRank: 568 },
+      { spanish: 'producción', chinese: '生产；制作', example: 'La producción aumentó este año.', exampleChinese: '今年产量增加了。', lemma: 'producción', partOfSpeech: 'noun', frequencyRank: 617 },
+      { spanish: 'duda', chinese: '疑问；怀疑', example: 'Tengo una duda sobre el contrato.', exampleChinese: '我对合同有一个疑问。', lemma: 'duda', partOfSpeech: 'noun', frequencyRank: 656 },
+      { spanish: 'local', chinese: '当地的；场所', example: 'Compramos productos de origen local.', exampleChinese: '我们购买本地产品。', lemma: 'local', partOfSpeech: 'adjective', frequencyRank: 673 },
+      { spanish: 'principio', chinese: '原则；开始', example: 'La igualdad es un principio básico.', exampleChinese: '平等是一项基本原则。', lemma: 'principio', partOfSpeech: 'noun', frequencyRank: 694 },
+      { spanish: 'éxito', chinese: '成功', example: 'El proyecto tuvo mucho éxito.', exampleChinese: '这个项目非常成功。', lemma: 'éxito', partOfSpeech: 'noun', frequencyRank: 731 },
+      { spanish: 'estilo', chinese: '风格；方式', example: 'Cada autor tiene su propio estilo.', exampleChinese: '每位作者都有自己的风格。', lemma: 'estilo', partOfSpeech: 'noun', frequencyRank: 742 },
+    ],
+  },
+  {
+    id: 'expansion-b2-information-003', level: 'B2', scene: '社会', title: '信息、制度与知识',
+    description: '讨论公共信息、教育和制度变化的抽象词',
+    frameworkReference: B1_B2_PCIC,
+    words: [
+      { spanish: 'recuerdo', chinese: '记忆；纪念品', example: 'Conservo un buen recuerdo de aquel viaje.', exampleChinese: '我对那次旅行保留着美好回忆。', lemma: 'recuerdo', partOfSpeech: 'noun', frequencyRank: 778 },
+      { spanish: 'decisión', chinese: '决定；决策', example: 'La decisión tendrá consecuencias.', exampleChinese: '这项决定会产生后果。', lemma: 'decisión', partOfSpeech: 'noun', frequencyRank: 890 },
+      { spanish: 'televisión', chinese: '电视；电视业', example: 'La noticia apareció en televisión.', exampleChinese: '这条新闻出现在电视上。', lemma: 'televisión', partOfSpeech: 'noun', frequencyRank: 903 },
+      { spanish: 'texto', chinese: '文本；文章', example: 'El texto analiza el problema.', exampleChinese: '这篇文章分析了问题。', lemma: 'texto', partOfSpeech: 'noun', frequencyRank: 927 },
+      { spanish: 'cuestión', chinese: '问题；事项', example: 'Es una cuestión difícil de resolver.', exampleChinese: '这是一个难以解决的问题。', lemma: 'cuestión', partOfSpeech: 'noun', frequencyRank: 962 },
+      { spanish: 'formación', chinese: '培训；形成', example: 'La empresa ofrece formación continua.', exampleChinese: '公司提供持续培训。', lemma: 'formación', partOfSpeech: 'noun', frequencyRank: 966 },
+      { spanish: 'importancia', chinese: '重要性', example: 'Entendemos la importancia del acuerdo.', exampleChinese: '我们理解这项协议的重要性。', lemma: 'importancia', partOfSpeech: 'noun', frequencyRank: 969 },
+      { spanish: 'industria', chinese: '工业；行业', example: 'La industria necesita trabajadores cualificados.', exampleChinese: '这个行业需要有资质的员工。', lemma: 'industria', partOfSpeech: 'noun', frequencyRank: 970 },
+      { spanish: 'origen', chinese: '起源；来源', example: 'No conocemos el origen del error.', exampleChinese: '我们不知道错误的来源。', lemma: 'origen', partOfSpeech: 'noun', frequencyRank: 973 },
+      { spanish: 'propiedad', chinese: '财产；所有权；性质', example: 'La propiedad cambió de dueño.', exampleChinese: '这处房产更换了主人。', lemma: 'propiedad', partOfSpeech: 'noun', frequencyRank: 1001 },
+      { spanish: 'conocimiento', chinese: '知识；了解', example: 'El conocimiento se construye con práctica.', exampleChinese: '知识通过实践积累。', lemma: 'conocimiento', partOfSpeech: 'noun', frequencyRank: 1015 },
+      { spanish: 'tecnología', chinese: '技术；科技', example: 'La tecnología transforma el trabajo.', exampleChinese: '科技正在改变工作。', lemma: 'tecnología', partOfSpeech: 'noun', frequencyRank: 1024 },
+    ],
+  },
+]
