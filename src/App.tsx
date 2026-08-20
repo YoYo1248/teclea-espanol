@@ -22,11 +22,26 @@ import {
 } from 'lucide-react'
 import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
-import { dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
+import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction } from './roundQueue'
+import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
+import {
+  activeReviewModes,
+  answerCanRecover,
+  hasActiveReview,
+  isReviewDue,
+  isTodayReview,
+  normalizeMistakeRecord,
+  mistakeSamplingWeight,
+  recordIndependentCorrect,
+  recordWrongAttempt,
+  recoveryTarget,
+  reviewAnswerMode,
+  weightedReviewOrder,
+  type MistakeRecord,
+} from './mistakeReview'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -62,14 +77,6 @@ type ActivePracticeSession = {
   followUpMode?: MasteryMode
   followUpOrder?: string[]
 }
-type MistakeRecord = {
-  lessonId: string
-  spanish: string
-  chinese: string
-  count: number
-  lastWrongAt: number
-  lastMode: Mode
-}
 type ChallengeDailyRecord = {
   cardId: string
   mode: MasteryMode
@@ -95,6 +102,8 @@ type InstallPromptEvent = Event & {
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
+const PRESS_HOLD_ACCENT_BASES: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u', ñ: 'n' }
+const PRESS_HOLD_REPLACEMENT_MS = 3000
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
@@ -478,23 +487,49 @@ function learningStreak(dailyWords: Record<string, number>) {
 
 function readMistakeBank(): Record<string, MistakeRecord> {
   try {
-    const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, MistakeRecord>
+    const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, unknown>
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
-    const validBank = Object.values(stored).reduce<Record<string, MistakeRecord>>((bank, item) => {
-      if (!item || typeof item.spanish !== 'string' || typeof item.chinese !== 'string' || typeof item.count !== 'number') return bank
+    const validBank = Object.values(stored).reduce<Record<string, MistakeRecord>>((bank, rawItem) => {
+      const item = normalizeMistakeRecord(rawItem)
+      if (!item) return bank
       if (typeof item.lessonId === 'string' && item.lessonId.startsWith('conjugation-')) return bank
       const target = getTypingTarget(item.spanish)
       const currentMatch = lessons.flatMap((lesson) => lesson.words.map((word) => ({ lesson, word }))).find(({ word }) => getTypingTarget(word.spanish) === target)
       if (!currentMatch) return bank
       const key = `${currentMatch.lesson.id}::${target}`
-      const previous = bank[key]
-      bank[key] = {
+      const remapped = normalizeMistakeRecord({
         ...item,
         lessonId: currentMatch.lesson.id,
         spanish: currentMatch.word.spanish,
         chinese: currentMatch.word.chinese,
-        count: (previous?.count ?? 0) + item.count,
-        lastWrongAt: Math.max(previous?.lastWrongAt ?? 0, item.lastWrongAt),
+      })
+      if (!remapped) return bank
+      const previous = bank[key]
+      if (!previous) {
+        bank[key] = remapped
+        return bank
+      }
+      const latest = remapped.updatedAt >= previous.updatedAt ? remapped : previous
+      bank[key] = {
+        ...latest,
+        count: previous.count + remapped.count,
+        wrongCounts: {
+          copy: previous.wrongCounts.copy + remapped.wrongCounts.copy,
+          recall: previous.wrongCounts.recall + remapped.wrongCounts.recall,
+          listen: previous.wrongCounts.listen + remapped.wrongCounts.listen,
+        },
+        independentCorrectCounts: {
+          copy: previous.independentCorrectCounts.copy + remapped.independentCorrectCounts.copy,
+          recall: previous.independentCorrectCounts.recall + remapped.independentCorrectCounts.recall,
+          listen: previous.independentCorrectCounts.listen + remapped.independentCorrectCounts.listen,
+        },
+        review: Object.fromEntries((['copy', 'recall', 'listen'] as const).flatMap((reviewMode) => {
+          const left = previous.review[reviewMode]
+          const right = remapped.review[reviewMode]
+          if (!left) return right ? [[reviewMode, right]] : []
+          if (!right) return [[reviewMode, left]]
+          return [[reviewMode, right.lastWrongAt >= left.lastWrongAt ? right : left]]
+        })),
       }
       return bank
     }, {})
@@ -702,6 +737,7 @@ function App() {
   const [speechRate, setSpeechRate] = useState<SpeechRate>(readSpeechRate)
   const [settingsOpen, setSettingsOpen] = useState(initialSyncInvite.fromHash)
   const [dailyGoalOpen, setDailyGoalOpen] = useState(false)
+  const [mistakeLogOpen, setMistakeLogOpen] = useState(false)
   const [challenge, setChallenge] = useState<ChallengeState | null>(readChallenge)
   const [challengeLevel, setChallengeLevel] = useState<LessonLevel>(() => readChallenge()?.level ?? 'A1')
   const [challengeDays, setChallengeDays] = useState(() => readChallenge()?.durationDays ?? 30)
@@ -741,7 +777,7 @@ function App() {
   const [mistakeResolvedAt, setMistakeResolvedAt] = useState<Record<string, number>>(readMistakeResolvedAt)
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(() => {
     const session = readActiveSession()
-    if (session?.lessonId === 'mistake-review' && !Object.keys(mistakeBank).length) {
+    if (session?.lessonId === 'mistake-review' && !Object.values(mistakeBank).some(hasActiveReview)) {
       return null
     }
     return session
@@ -754,6 +790,7 @@ function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const practiceMainRef = useRef<HTMLElement>(null)
   const resetTimerRef = useRef<number | undefined>(undefined)
+  const pressHoldTimerRef = useRef<number | undefined>(undefined)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
@@ -770,6 +807,8 @@ function App() {
   const settingsDialogRef = useRef<HTMLElement | null>(null)
   const dailyGoalButtonRef = useRef<HTMLButtonElement | null>(null)
   const dailyGoalDialogRef = useRef<HTMLElement | null>(null)
+  const mistakeLogButtonRef = useRef<HTMLButtonElement | null>(null)
+  const mistakeLogDialogRef = useRef<HTMLElement | null>(null)
   const completionMainRef = useRef<HTMLElement | null>(null)
   const localUpdatedAtRef = useRef(readInitialLocalUpdatedAt())
   const syncCodeRef = useRef(syncCode)
@@ -786,7 +825,7 @@ function App() {
 
   syncCodeRef.current = syncCode
   latestSnapshotRef.current = {
-    version: 2,
+    version: 3,
     updatedAt: localUpdatedAtRef.current,
     practiceState,
     mistakeBank,
@@ -872,9 +911,12 @@ function App() {
 
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
+    window.clearTimeout(pressHoldTimerRef.current)
     window.clearTimeout(revealTimerRef.current)
     window.clearTimeout(syncTimerRef.current)
   }, [])
+
+  useEffect(() => () => window.clearTimeout(pressHoldTimerRef.current), [screen, mode, index, lesson.id, accentMode])
 
   useEffect(() => {
     if (!syncCodeRef.current) return
@@ -957,6 +999,23 @@ function App() {
   }, [dailyGoalOpen])
 
   useEffect(() => {
+    if (!mistakeLogOpen) return
+    const closeButton = mistakeLogDialogRef.current?.querySelector<HTMLElement>('button')
+    const focusTimer = window.setTimeout(() => closeButton?.focus(), 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setMistakeLogOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', handleKeyDown)
+      mistakeLogButtonRef.current?.focus()
+    }
+  }, [mistakeLogOpen])
+
+  useEffect(() => {
     if (screen !== 'practice') return
     const showOnTab = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return
@@ -1020,7 +1079,7 @@ function App() {
     const completedRequired = completedRecall + completedDictations
     const remainingRequired = Math.max(0, totalRequired - completedRequired)
     const remainingDays = remainingChallengeDays(localDateKey(), challengeProgress.dueOn)
-    const eligibleMistakes = Object.keys(mistakeBank).filter((id) => ids.includes(id)).length
+    const eligibleMistakes = Object.entries(mistakeBank).filter(([id, record]) => ids.includes(id) && hasActiveReview(record)).length
     const dailyTarget = dailyChallengeTarget(remainingRequired, remainingDays, eligibleMistakes)
     return {
       cardCount: ids.length,
@@ -1033,6 +1092,32 @@ function App() {
       percentage: totalRequired ? Math.round(completedRequired / totalRequired * 100) : 0,
     }
   }, [challengeProgress, mistakeBank])
+  const challengeDraftPlan = useMemo(() => {
+    const ids = challengeCardIds(challengeLevel)
+    const existingChallenge = challengeProgress?.level === challengeLevel ? challengeProgress : null
+    const recallDone = (cardId: string) => Boolean(existingChallenge?.recallCompleted[cardId] || wordEvidence[cardId]?.recall)
+    const listenDone = (cardId: string) => Math.max(
+      existingChallenge?.dictationCounts[cardId] ?? 0,
+      wordEvidence[cardId]?.listen ? 1 : 0,
+    )
+    const remainingItems = ids.filter((cardId) => !recallDone(cardId) || listenDone(cardId) < challengeRepetitions).length
+    const remainingCopyItems = ids.filter((cardId) => (
+      !recallDone(cardId) || listenDone(cardId) < challengeRepetitions
+    ) && !hasCompletedIntroduction(wordEvidence[cardId])).length
+    const remainingRecallActions = ids.filter((cardId) => !recallDone(cardId)).length
+    const remainingListenActions = ids.reduce(
+      (total, cardId) => total + Math.max(0, challengeRepetitions - listenDone(cardId)),
+      0,
+    )
+    const eligibleMistakes = Object.entries(mistakeBank).filter(([cardId, record]) => ids.includes(cardId) && hasActiveReview(record)).length
+    return challengeDailyPlan(ids.length, challengeDays, challengeRepetitions, roundHistory, {
+      remainingItems,
+      remainingCopyItems,
+      remainingRecallActions,
+      remainingListenActions,
+      eligibleMistakes,
+    })
+  }, [challengeLevel, challengeDays, challengeRepetitions, roundHistory, challengeProgress, wordEvidence, mistakeBank])
   const todayChallengeRecords = challengeProgress?.dailyRecords?.[localDateKey()] ?? []
   const todayChallengeDetails = useMemo(() => {
     const details = new Map<string, {
@@ -1119,17 +1204,33 @@ function App() {
   const recommendedPracticeMode: Mode = (recommendedMainMastery.recall || recommendedMainMastery.listen) && recommendedPendingMode
     ? recommendedPendingMode
     : practiceState.lastMode
+  const reviewToday = localDateKey()
+  const mistakeEntries = useMemo(
+    () => Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt),
+    [mistakeBank],
+  )
+  const activeMistakeEntries = mistakeEntries.filter(([, record]) => hasActiveReview(record))
+  const dueMistakeEntries = activeMistakeEntries.filter(([, record]) => isReviewDue(record, reviewToday))
+  const todayMistakeEntries = activeMistakeEntries.filter(([, record]) => isTodayReview(record, reviewToday))
+  const laterMistakeEntries = activeMistakeEntries.filter(([, record]) => !isReviewDue(record, reviewToday) && !isTodayReview(record, reviewToday))
+  const reviewPool = dueMistakeEntries.length ? dueMistakeEntries : activeMistakeEntries
+  const plannedMistakeReviewMode: MasteryMode = reviewPool.some(([, record]) => reviewAnswerMode(record) === 'recall') ? 'recall' : 'listen'
+  const mistakeReviewMode: MasteryMode = activeSession?.lessonId === 'mistake-review' && activeSession.mode !== 'copy'
+    ? activeSession.mode
+    : plannedMistakeReviewMode
   const mistakeLesson = useMemo<Lesson | null>(() => {
-    const entries = Object.entries(mistakeBank).sort(([, left], [, right]) => right.lastWrongAt - left.lastWrongAt)
+    const entries = reviewPool.filter(([, record]) => activeReviewModes(record).some((weakMode) => answerCanRecover(weakMode, mistakeReviewMode)))
     if (!entries.length) return null
+    const reviewingDueItems = dueMistakeEntries.length > 0
+    const reviewingTodayItems = !reviewingDueItems && todayMistakeEntries.length > 0
     return {
       id: 'mistake-review',
       level: 'A1',
       scene: '基础',
       kind: '短语',
-      eyebrow: '错题库 · 本轮随机顺序',
-      title: '错题复习',
-      description: '答对一题清除一题，仍答错的继续保留',
+      eyebrow: `${reviewingDueItems ? '到期错题' : reviewingTodayItems ? '今日错题' : '稍后复查'} · ${mistakeReviewMode === 'recall' ? '看义拼写' : '听音拼写'}`,
+      title: reviewingDueItems ? '待复习错题' : reviewingTodayItems ? '今日错题巩固' : '稍后复查词巩固',
+      description: reviewingDueItems ? '跨学习日独立答对，推进恢复进度' : reviewingTodayItems ? '今天可以继续练，明日再独立复查' : '已经完成今天的确认，继续练习不会重复累计',
       color: '#b9674f',
       words: entries.map(([reviewKey, record]) => {
         const originalLesson = lessons.find((item) => item.id === record.lessonId)
@@ -1139,7 +1240,7 @@ function App() {
           : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
       }),
     }
-  }, [mistakeBank])
+  }, [dueMistakeEntries.length, mistakeReviewMode, reviewPool, todayMistakeEntries.length])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
   const continueLabel = activeSession
@@ -1191,6 +1292,9 @@ function App() {
   const weakRoundWords = masteryModeRound
     ? lesson.words.filter((item) => weakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
     : []
+  const copyWeakRoundWords = mode === 'copy' && lesson.id !== 'mistake-review'
+    ? lesson.words.filter((item) => weakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
+    : []
   const recallEvidenceCount = masteryAfterRound.recall
     ? masteryScopeWords.length
     : masteryScopeWords.filter((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall).length
@@ -1235,7 +1339,7 @@ function App() {
     const nextCompleted = readCompletedLessons()
     const nextMasteryProgress = readMasteryProgress()
     const storedActiveSession = readActiveSession()
-    const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.keys(nextMistakeBank).length ? null : storedActiveSession
+    const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.values(nextMistakeBank).some(hasActiveReview) ? null : storedActiveSession
     const nextPausedMainSession = readActiveSession(PAUSED_MAIN_SESSION_KEY)
     if (!nextActiveSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
 
@@ -1449,6 +1553,8 @@ function App() {
 
   function recordMistake() {
     const reviewKey = word.reviewKey ?? `${lesson.id}::${getTypingTarget(word.spanish)}`
+    const now = Date.now()
+    const originalLessonId = catalogWordById(reviewKey)?.lesson.id ?? lesson.id
     saveMistakeResolvedAt((current) => {
       if (!(reviewKey in current)) return current
       const nextResolvedAt = { ...current }
@@ -1457,29 +1563,27 @@ function App() {
     })
     saveMistakeBank((current) => ({
       ...current,
-      [reviewKey]: {
-        lessonId: current[reviewKey]?.lessonId ?? lesson.id,
+      [reviewKey]: recordWrongAttempt(current[reviewKey], {
+        lessonId: originalLessonId,
         spanish: word.spanish,
         chinese: word.chinese,
-        count: (current[reviewKey]?.count ?? 0) + 1,
-        lastWrongAt: Date.now(),
-        lastMode: mode,
-      },
+      }, mode, now, localDateKey(new Date(now))),
     }))
   }
 
-  function clearReviewedMistakes(reviewKeys: string[]) {
-    const resolvedAt = Date.now()
-    saveMistakeResolvedAt((current) => {
-      const nextResolvedAt = { ...current }
-      reviewKeys.forEach((reviewKey) => { nextResolvedAt[reviewKey] = resolvedAt })
-      return nextResolvedAt
-    })
-    saveMistakeBank((current) => {
-      const nextBank = { ...current }
-      reviewKeys.forEach((reviewKey) => delete nextBank[reviewKey])
-      return nextBank
-    })
+  function recordMistakeRecovery(independentAnswer: boolean) {
+    if (!independentAnswer) return false
+    const reviewKey = currentPracticeCardId()
+    const current = mistakeBank[reviewKey]
+    if (!current) return false
+    const wasActive = hasActiveReview(current)
+    const now = Date.now()
+    const result = recordIndependentCorrect(current, mode, now, localDateKey(new Date(now)))
+    saveMistakeBank((bank) => ({ ...bank, [reviewKey]: result.record }))
+    if (wasActive && result.resolved) {
+      saveMistakeResolvedAt((resolved) => ({ ...resolved, [reviewKey]: now }))
+    }
+    return result.progressed
   }
 
   function recordCompletedWord() {
@@ -1569,9 +1673,10 @@ function App() {
     const recentHistory = recentRoundQueues[queueKey] ?? []
     const recentSets = recentHistory.map((queue) => new Set(queue))
     const priorityOrder = (pool: typeof candidates) => {
-      const weakOrdered = balancedLengthOrder(pool.filter((item) => mistakeBank[item.word.reviewKey!]))
-      const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !mistakeBank[item.word.reviewKey!] && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
-      const stableOrdered = balancedLengthOrder(pool.filter((item) => !mistakeBank[item.word.reviewKey!] && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
+      const isWeak = (item: (typeof candidates)[number]) => Boolean(mistakeBank[item.word.reviewKey!] && hasActiveReview(mistakeBank[item.word.reviewKey!]))
+      const weakOrdered = weightedReviewOrder(pool.filter(isWeak), (item) => mistakeSamplingWeight(mistakeBank[item.word.reviewKey!], reviewToday))
+      const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
+      const stableOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
       const guaranteedMix = weakOrdered.length && unmasteredOrdered.length ? [weakOrdered.shift()!, unmasteredOrdered.shift()!] : []
       return [...guaranteedMix, ...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
     }
@@ -1752,6 +1857,15 @@ function App() {
     begin({ ...lesson, words: weakRoundWords }, mode, { orderedWords: shuffleWords(weakRoundWords), satisfiedModes: masteryAfterRound })
   }
 
+  function reinforceCopyWeakWords() {
+    if (!copyWeakRoundWords.length) return
+    begin({ ...lesson, words: copyWeakRoundWords }, 'copy', {
+      orderedWords: shuffleWords(copyWeakRoundWords),
+      satisfiedModes: masteryAfterRound,
+      skipIntroduction: true,
+    })
+  }
+
   async function promptInstall() {
     if (installPrompt) {
       await installPrompt.prompt()
@@ -1871,6 +1985,8 @@ function App() {
     onboarding?: boolean
     satisfiedModes?: LessonMastery
     skipIntroduction?: boolean
+    followUpMode?: MasteryMode
+    followUpOrder?: string[]
   } = {}) {
     if (nextLesson.id === 'mistake-review' && activeSession?.lessonId !== 'mistake-review') {
       if (activeSession) persistPausedMainSession(activeSession)
@@ -1904,6 +2020,9 @@ function App() {
       ...(requiresIntroduction ? {
         followUpMode: nextMode as MasteryMode,
         followUpOrder: fullOrderedWords.map((word) => sessionCardId(nextLesson.id, word)),
+      } : options.followUpMode && options.followUpOrder?.length ? {
+        followUpMode: options.followUpMode,
+        followUpOrder: options.followUpOrder,
       } : {}),
     }
     openPractice({
@@ -1970,7 +2089,7 @@ function App() {
 
   function continueMistakeReview() {
     if (activeSession?.lessonId === 'mistake-review' && resumeActivePractice()) return
-    if (mistakeLesson) begin(mistakeLesson)
+    if (mistakeLesson) begin(mistakeLesson, mistakeReviewMode, { skipIntroduction: true })
   }
 
   function continuePractice() {
@@ -2052,16 +2171,16 @@ function App() {
       ...(currentModeSatisfied && mode === 'listen' ? { listen: true } : {}),
     }
     const currentCardId = currentPracticeCardId()
-    const nextWeakWordIds = independentAnswer || weakWordIds.includes(currentCardId) ? weakWordIds : [...weakWordIds, currentCardId]
-    const cleanReviewAnswer = lesson.id === 'mistake-review' && !currentWordHadErrorRef.current && Boolean(word.reviewKey)
-    const nextReviewCorrectCount = reviewCorrectCount + (cleanReviewAnswer ? 1 : 0)
+    const currentWordIsWeak = shouldMarkWordWeak(mode, currentWordHadErrorRef.current, currentWordUsedHintRef.current)
+    const nextWeakWordIds = !currentWordIsWeak || weakWordIds.includes(currentCardId) ? weakWordIds : [...weakWordIds, currentCardId]
+    const reviewProgressed = recordMistakeRecovery(independentAnswer)
+    const nextReviewCorrectCount = reviewCorrectCount + (reviewProgressed ? 1 : 0)
     const elapsedMs = currentElapsedMs()
     setCompletedWords(nextCompletedWords)
     setIndependentCorrect(nextIndependentCorrect)
     setWeakWordIds(nextWeakWordIds)
     if (completingRound) setRoundSatisfiedModes(nextSatisfiedModes)
-    if (cleanReviewAnswer) {
-      clearReviewedMistakes([word.reviewKey!])
+    if (reviewProgressed) {
       setReviewCorrectCount(nextReviewCorrectCount)
     }
     recordCompletedWord()
@@ -2094,6 +2213,17 @@ function App() {
       && mode === 'copy'
       && activeSession?.followUpMode
       && activeSession.followUpOrder?.length) {
+      const copyWeakWords = lesson.words.filter((item) => nextWeakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
+      if (copyWeakWords.length) {
+        begin({ ...lesson, words: copyWeakWords }, 'copy', {
+          orderedWords: shuffleWords(copyWeakWords),
+          satisfiedModes: roundSatisfiedModes,
+          skipIntroduction: true,
+          followUpMode: activeSession.followUpMode,
+          followUpOrder: activeSession.followUpOrder,
+        })
+        return
+      }
       const followUpLesson = practiceLessonFromOrder(activeSession.lessonId, activeSession.followUpOrder)
       if (followUpLesson) {
         recordAdaptiveRound(elapsedMs)
@@ -2273,6 +2403,12 @@ function App() {
     inputRef.current?.focus({ preventScroll: true })
   }
 
+  function replayCurrentPronunciation() {
+    if (mode === 'recall') markMasteryHintUsed()
+    speak(word.spanish, undefined, speechRate)
+    inputRef.current?.focus({ preventScroll: true })
+  }
+
   function handleCharacters(rawValue: string) {
     if (status !== 'idle') return
 
@@ -2285,6 +2421,12 @@ function App() {
     const currentCharacters = Array.from(normalize(typed))
     const incomingValue = rawValue.toLocaleLowerCase('es-ES').normalize('NFC')
     const incomingCharacters = Array.from(incomingValue)
+    if (incomingCharacters.length === currentCharacters.length && incomingCharacters.every(
+      (character, characterIndex) => charactersMatch(character, targetCharacters[characterIndex], accentMode),
+    )) {
+      setInputDraft(incomingValue)
+      return
+    }
     if (incomingCharacters.length <= currentCharacters.length) {
       setTyped('')
       setInputDraft('')
@@ -2357,7 +2499,17 @@ function App() {
     }
   }
 
+  function shouldAwaitPressHoldReplacement(rawValue: string) {
+    if (status !== 'idle' || accentMode !== 'strict') return false
+    const currentCharacters = Array.from(normalize(typed))
+    const incomingCharacters = Array.from(normalize(rawValue))
+    if (incomingCharacters.length !== currentCharacters.length + 1) return false
+    const expected = Array.from(getTypingTarget(word.spanish))[currentCharacters.length]
+    return Boolean(expected && PRESS_HOLD_ACCENT_BASES[expected] === incomingCharacters[currentCharacters.length])
+  }
+
   function insertAccent(character: string) {
+    window.clearTimeout(pressHoldTimerRef.current)
     handleCharacters(typed + character)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
@@ -2373,6 +2525,34 @@ function App() {
   function stopTouchReveal() {
     window.clearTimeout(revealTimerRef.current)
     setRevealAnswer(false)
+  }
+
+  function mistakeRows(entries: Array<[string, MistakeRecord]>) {
+    if (!entries.length) return <p className="mistake-empty-row">这里暂时没有内容。</p>
+    return (
+      <div className="mistake-record-list">
+        {entries.map(([reviewKey, record]) => {
+          const activeModes = activeReviewModes(record)
+          const target = recoveryTarget(record.count)
+          const modeName = (reviewMode: Mode) => reviewMode === 'copy' ? '跟打' : reviewMode === 'recall' ? '看义' : '听音'
+          return (
+            <article className="mistake-record-row" key={reviewKey}>
+              <div><strong>{record.spanish}</strong><span>{record.chinese}</span></div>
+              <p>累计错 {record.count} 次 · 跟打 {record.wrongCounts.copy} · 看义 {record.wrongCounts.recall} · 听音 {record.wrongCounts.listen}</p>
+              <p>独立答对 · 看义 {record.independentCorrectCounts.recall} · 听音 {record.independentCorrectCounts.listen}</p>
+              {activeModes.length ? (
+                <div className="mistake-recovery-lines">
+                  {activeModes.map((reviewMode) => {
+                    const progress = record.review[reviewMode]!
+                    return <span key={reviewMode}>{modeName(reviewMode)}恢复 {progress.recoveryCount}/{target}<small>{progress.dueOn <= reviewToday ? '现在可确认' : `${progress.dueOn} 后确认`}</small></span>
+                  })}
+                </div>
+              ) : <b className="mistake-resolved">已完成当前短期复查 · 历史保留</b>}
+            </article>
+          )
+        })}
+      </div>
+    )
   }
 
   if (screen === 'home') {
@@ -2427,17 +2607,33 @@ function App() {
           </div>
 
           <div className="home-actions">
-            <section className={`mistake-card ${mistakeLesson ? '' : 'empty'}`}>
+            <section className={`mistake-card ${activeMistakeEntries.length ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
               <div>
-                <span className="section-kicker">错题库</span>
-                <h3>{mistakeLesson ? `${mistakeLesson.words.length} 个待复习` : '目前没有错题'}</h3>
-                <p>{mistakeLesson ? `累计错 ${mistakeAttempts} 次 · 答对一题清除一题` : '练习中输错的内容会自动出现在这里。'}</p>
+                <span className="section-kicker">错题本</span>
+                <h3>{dueMistakeEntries.length
+                  ? `${dueMistakeEntries.length} 个到期错题`
+                  : activeMistakeEntries.length
+                    ? `${activeMistakeEntries.length} 个待后续复查`
+                    : mistakeEntries.length
+                      ? '当前待复习已完成'
+                      : '目前没有错题'}</h3>
+                <p>{mistakeEntries.length
+                  ? `今日错题 ${todayMistakeEntries.length} 个 · 全部记录 ${mistakeEntries.length} 个 · 累计错 ${mistakeAttempts} 次`
+                  : '练习中输错的内容会自动出现在这里，并永久保留记录。'}</p>
+                {activeMistakeEntries.length > 0 && (
+                  <div className="mistake-statuses" aria-label="错题复习状态">
+                    <span className={dueMistakeEntries.length ? 'due' : ''}>现在复习 {dueMistakeEntries.length}</span>
+                    <span>今日／稍后 {activeMistakeEntries.length - dueMistakeEntries.length}</span>
+                    <span>历史记录 {mistakeEntries.length}</span>
+                  </div>
+                )}
+                {mistakeEntries.length > 0 && <button ref={mistakeLogButtonRef} className="mistake-record-link" onClick={() => setMistakeLogOpen(true)}>查看今日、待复习与全部记录</button>}
                 {activeSession?.lessonId === 'mistake-review' && pausedMainSession && (
                   <button className="resume-main-link" onClick={resumePausedMainPractice}>返回普通练习 · {pausedMainSession.index + 1}/{pausedMainSession.order.length}</button>
                 )}
               </div>
-              <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : '开始错题复习'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
+              <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : dueMistakeEntries.length ? '开始到期错题复习' : todayMistakeEntries.length ? '巩固今日错题' : '巩固稍后复查词'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
             </section>
           </div>
 
@@ -2540,6 +2736,39 @@ function App() {
             </div>
           </footer>
         </main>
+
+        {mistakeLogOpen && (
+          <div className="modal-backdrop mistake-log-backdrop" role="presentation" onClick={() => setMistakeLogOpen(false)}>
+            <section ref={mistakeLogDialogRef} className="settings-sheet mistake-log-sheet" role="dialog" aria-modal="true" aria-labelledby="mistake-log-title" onClick={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+              <div className="sheet-heading"><div><span className="section-kicker">错题本 + 永久错题库</span><h2 id="mistake-log-title">错题与恢复进度</h2></div><button className="icon-button" onClick={() => setMistakeLogOpen(false)} aria-label="关闭错题记录"><X size={20} /></button></div>
+              <p className="mistake-log-note">今天答对只用于即时巩固；到下一个学习日再独立答对，才会推进恢复。离开错题本后，累计历史仍保留。</p>
+
+              <section className="mistake-log-group due">
+                <div><span>待复习</span><b>{dueMistakeEntries.length}</b></div>
+                <small>昨日及更早已经到期，优先从这里开始</small>
+                {mistakeRows(dueMistakeEntries)}
+              </section>
+              <section className="mistake-log-group today">
+                <div><span>今日错题</span><b>{todayMistakeEntries.length}</b></div>
+                <small>今天可以反复巩固，但不会靠短时记忆直接清除</small>
+                {mistakeRows(todayMistakeEntries)}
+              </section>
+              {laterMistakeEntries.length > 0 && (
+                <section className="mistake-log-group later">
+                  <div><span>稍后复查</span><b>{laterMistakeEntries.length}</b></div>
+                  <small>今天已经获得一次确认，等待下一个学习日</small>
+                  {mistakeRows(laterMistakeEntries)}
+                </section>
+              )}
+              <details className="mistake-history" open={!activeMistakeEntries.length}>
+                <summary><span>全部错题库</span><b>{mistakeEntries.length} 个词 · 累计错 {mistakeAttempts} 次</b></summary>
+                {mistakeRows(mistakeEntries)}
+              </details>
+              {mistakeLesson && <button className="primary-button" onClick={() => { setMistakeLogOpen(false); continueMistakeReview() }}>{dueMistakeEntries.length ? '开始到期错题复习' : todayMistakeEntries.length ? '继续巩固今日错题' : '继续巩固稍后复查词'} <ArrowRight size={18} /></button>}
+            </section>
+          </div>
+        )}
 
         {settingsOpen && (
           <div className="modal-backdrop" role="presentation" onClick={() => setSettingsOpen(false)}>
@@ -2673,10 +2902,23 @@ function App() {
                 <>
                   <div className="challenge-form">
                     <fieldset><legend>选择等级范围</legend><div className="challenge-levels">{LEVEL_ORDER.map((level) => <button type="button" key={level} className={challengeLevel === level ? 'active' : ''} aria-pressed={challengeLevel === level} onClick={() => setChallengeLevel(level)}>{level}<small>{challengeCardIds(level).length} 项</small></button>)}</div></fieldset>
-                    <label><span>希望多少天完成</span><input type="number" min="1" max="365" value={challengeDays} onChange={(event) => setChallengeDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} /><small>天</small></label>
-                    <label><span>每个学习项听音拼写独立答对</span><input type="number" min="1" max="10" value={challengeRepetitions} onChange={(event) => setChallengeRepetitions(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} /><small>次</small></label>
+                    <div className="challenge-parameters">
+                      <label><span>希望多少天完成</span><input type="number" min="1" max="365" value={challengeDays} onChange={(event) => setChallengeDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} /><small>天</small></label>
+                      <label><span>每项听音拼写独立答对</span><input type="number" min="1" max="10" value={challengeRepetitions} onChange={(event) => setChallengeRepetitions(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} /><small>次</small></label>
+                    </div>
                   </div>
-                  <p className="challenge-estimate">每项需看义拼写独立答对 1 次，再听音拼写独立答对 {challengeRepetitions} 次；跟打不计入。共 {challengeCardIds(challengeLevel).length * (challengeRepetitions + 1)} 次达标拼写，每日目标会为错题预留缓冲并随日期自动重算。</p>
+                  <section className="challenge-budget" aria-label="每日练习预算">
+                    <span className="challenge-budget-kicker">按当前选择估算</span>
+                    <div className="challenge-budget-grid">
+                      <span><strong>{challengeDraftPlan.dailyItems}</strong><small>个不同学习项 / 天</small></span>
+                      <span><strong>{challengeDraftPlan.dailyMasteryActions}</strong><small>次有效拼写 / 天</small></span>
+                      <span><strong>约 {challengeDraftPlan.estimatedMinutes}</strong><small>分钟 / 天</small></span>
+                    </div>
+                    <p>{challengeDraftPlan.personalizedModes
+                      ? `已使用你 ${challengeDraftPlan.personalizedModes} 种模式的近期速度；缺少历史的模式采用初始估算。`
+                      : '暂无足够个人计时，先按跟打约 10 秒、看义或听音约 19 秒/项估算；积累至少两轮后会自动更新。'}</p>
+                  </section>
+                  <p className="challenge-estimate">每项需看义拼写独立答对 1 次，再听音拼写独立答对 {challengeRepetitions} 次；跟打只计时间、不计掌握。全部共 {challengeDraftPlan.totalMasteryActions} 次有效拼写，按现有进度还需 {challengeDraftPlan.remainingMasteryActions} 次；每日次数包含错题缓冲，漏练后会按剩余任务自动重算。</p>
                   <button className="primary-button" onClick={createOrUpdateChallenge}>{challenge ? '保存挑战调整' : '创建挑战'}</button>
                   {challenge && <button className="text-button" onClick={() => setEditingChallenge(false)}>取消调整</button>}
                 </>
@@ -2712,9 +2954,9 @@ function App() {
           )}
           {lesson.id === 'mistake-review' && (
             <p className={`review-result ${reviewCorrectCount === lesson.words.length ? 'clean' : ''}`}>
-              {reviewCorrectCount === lesson.words.length
-                ? '本轮全部答对，这组错题已清除。'
-                : `本轮清除 ${reviewCorrectCount} 个；答错过的 ${lesson.words.length - reviewCorrectCount} 个继续保留。`}
+              {reviewCorrectCount > 0
+                ? `本轮有 ${reviewCorrectCount} 个获得一次跨日确认；达到各自恢复次数后才会离开错题本。`
+                : '本轮完成了当天巩固；同日答对不会清除，下一学习日再独立复查。'}
             </p>
           )}
           <div className="result-grid">
@@ -2739,6 +2981,12 @@ function App() {
             </div>
           ) : lesson.id === 'mistake-review' ? (
             <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
+          ) : copyWeakRoundWords.length ? (
+            <>
+              <button className="primary-button" onClick={reinforceCopyWeakWords}>先巩固跟打错词 · {copyWeakRoundWords.length} 项 <RotateCcw size={18} /></button>
+              <p className="enter-hint">这些词先跟着再打一遍，全部打对后再进入看义拼写</p>
+              <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
+            </>
           ) : masteryModeRound && roundRecommendation === 'advance' ? (
             <>
               <button className="primary-button" onClick={advanceAdaptiveStage}>{missingMasteryMode ? `开始${masteryModeLabel(missingMasteryMode)}` : '开始下一轮'} <ArrowRight size={19} /></button>
@@ -2888,9 +3136,20 @@ function App() {
                 return
               }
               compositionCommittedValueRef.current = null
+              window.clearTimeout(pressHoldTimerRef.current)
+              if (shouldAwaitPressHoldReplacement(event.target.value)) {
+                const pendingValue = event.target.value
+                setInputDraft(pendingValue)
+                pressHoldTimerRef.current = window.setTimeout(() => {
+                  pressHoldTimerRef.current = undefined
+                  handleCharacters(pendingValue)
+                }, PRESS_HOLD_REPLACEMENT_MS)
+                return
+              }
               handleCharacters(event.target.value)
             }}
             onCompositionStart={() => {
+              window.clearTimeout(pressHoldTimerRef.current)
               isComposingRef.current = true
               compositionCommittedValueRef.current = null
             }}
@@ -2900,6 +3159,9 @@ function App() {
               handleCharacters(event.currentTarget.value)
             }}
             onBlur={() => {
+              window.clearTimeout(pressHoldTimerRef.current)
+              pressHoldTimerRef.current = undefined
+              setInputDraft(typed)
               isComposingRef.current = false
               compositionCommittedValueRef.current = null
               setInputFocused(false)
@@ -2908,7 +3170,13 @@ function App() {
               setInputFocused(true)
               window.requestAnimationFrame(() => practiceMainRef.current?.scrollTo({ top: 0, behavior: 'auto' }))
             }}
-            onKeyDown={(event) => { if (event.key === 'Backspace') event.preventDefault() }}
+            onKeyDown={(event) => {
+              if (event.key === 'Backspace') event.preventDefault()
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              if (status !== 'idle' || event.repeat || event.nativeEvent.isComposing || isComposingRef.current) return
+              replayCurrentPronunciation()
+            }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
@@ -2923,14 +3191,13 @@ function App() {
               onPointerDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 event.stopPropagation()
-                if (mode === 'recall') markMasteryHintUsed()
-                speak(word.spanish, undefined, speechRate)
-                inputRef.current?.focus({ preventScroll: true })
+                replayCurrentPronunciation()
               }}
-              aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速` : `重听西语发音，不影响听写判定，${speechRate} 倍速`}
+              aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速，快捷键 Enter` : `重听西语发音，不影响听写判定，${speechRate} 倍速，快捷键 Enter`}
             >
               <Volume2 size={19} />
               <span>{mode === 'recall' ? '发音提示' : '重听发音'}</span>
+              <kbd>Enter</kbd>
             </button>
             <button
               className="speech-rate-button"

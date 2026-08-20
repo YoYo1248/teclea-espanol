@@ -19,3 +19,7 @@ export function hasCompletedIntroduction(evidence: IntroductionEvidence | undefi
 export function itemsNeedingIntroduction<T>(items: readonly T[], getEvidence: (item: T) => IntroductionEvidence | undefined) {
   return items.filter((item) => !hasCompletedIntroduction(getEvidence(item)))
 }
+
+export function shouldMarkWordWeak(mode: 'copy' | 'recall' | 'listen', hadError: boolean, usedHint: boolean) {
+  return mode === 'copy' ? hadError : hadError || usedHint
+}
