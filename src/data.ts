@@ -2,6 +2,7 @@ import { advancedDecks } from './advancedWords'
 import { commonDecks } from './commonWords'
 import { intermediateDecks } from './intermediateWords'
 import { expansionDecks } from './lexiconExpansion'
+import { newcomerDecks } from './newcomerWords'
 
 export type LessonLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 export type LessonScene = '基础' | '日常' | '餐厅' | '旅行' | '购物' | '住宿' | '时间' | '家庭' | '城市' | '健康' | '学习' | '工作' | '社会' | '科技' | '环境' | '行政' | '情绪'
@@ -310,6 +311,25 @@ const extractedIntermediateVerbLessons: Lesson[] = (['B1', 'B2'] as const).flatM
 
 const intermediateLessons: Lesson[] = [...intermediateMainLessons, ...extractedIntermediateVerbLessons]
 
+const newcomerLessons: Lesson[] = newcomerDecks.map((deck, deckIndex) => ({
+  id: deck.id,
+  level: deck.level,
+  scene: deck.scene,
+  kind: deck.kind,
+  eyebrow: `${deck.level} · ${deck.kind} · ${deck.scene}`,
+  title: deck.title,
+  description: `${deck.description} · ${deck.words.length} 项`,
+  color: ['#397868', '#566fa3', '#9a6b55', '#78658f'][deckIndex % 4],
+  words: deck.words.map(({ spanish, chinese, example, exampleChinese, note }) => ({
+    spanish,
+    chinese,
+    example,
+    exampleChinese,
+    note,
+    source: { ...deck.source },
+  })),
+}))
+
 const advancedLessons: Lesson[] = advancedDecks.map((deck, deckIndex) => ({
   id: deck.id,
   level: deck.level,
@@ -344,7 +364,7 @@ const expansionLessons: Lesson[] = expansionDecks.map((deck, deckIndex) => ({
   })),
 }))
 
-export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons, ...advancedLessons, ...expansionLessons]
+export const lessons: Lesson[] = [...dialogueLessons, ...commonLessons, ...intermediateLessons, ...newcomerLessons, ...advancedLessons, ...expansionLessons]
 export const totalPracticeCards = lessons.reduce((sum, lesson) => sum + lesson.words.length, 0)
 export const lessonLevels: Array<'全部' | LessonLevel> = ['全部', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 export const lessonScenes: Array<'全部' | LessonScene> = ['全部', '基础', '日常', '时间', '家庭', '餐厅', '城市', '旅行', '购物', '住宿', '健康', '学习', '工作', '社会', '科技', '环境', '行政', '情绪']

@@ -3,14 +3,14 @@
   "minimumCardsByLevel": {
     "A1": 422,
     "A2": 464,
-    "B1": 558,
-    "B2": 508,
+    "B1": 590,
+    "B2": 524,
     "C1": 100,
     "C2": 100
   },
   "minimumCardsByKind": {
-    "单词": 1939,
-    "短语": 108,
+    "单词": 1971,
+    "短语": 124,
     "动词原形": 105
   },
   "maximumWordsPerTarget": 3,
@@ -19,6 +19,7 @@
   "notes": [
     "Minimum counts prevent accidental catalog regression while allowing approved expansion.",
     "These counts are an implementation baseline, not an official CEFR vocabulary target.",
+    "Spain newcomer task cards require bilingual examples and a traceable official-task source, but are not legal or administrative advice.",
     "No official completeness percentage is calculated because CEFR and PCIC do not provide a single exhaustive word-count denominator."
   ]
 }

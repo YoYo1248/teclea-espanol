@@ -31,6 +31,8 @@ export type SyncActivePracticeSession = {
   reviewCorrectCount: number
   masteryMode: Exclude<SyncMode, 'copy'> | null
   usedHint: boolean
+  followUpMode?: Exclude<SyncMode, 'copy'>
+  followUpOrder?: string[]
 }
 
 export type SyncSnapshot = {

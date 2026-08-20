@@ -1,6 +1,6 @@
 # Word data licensing
 
-The application catalog contains 2,152 practice cards: 748 edited base and candidate cards plus 1,404 source-traceable A1–B2 expansion cards produced in seventeen review batches. A separate retained research file contains 340 unique conjugated forms but is excluded from the application catalog, as are sentence-length drills.
+The application catalog contains 2,200 practice cards: 748 edited base and candidate cards, 48 Spain newcomer task-vocabulary cards checked against official public-service pages, and 1,404 source-traceable A1–B2 expansion cards produced in seventeen review batches. A separate retained research file contains 340 unique conjugated forms but is excluded from the application catalog, as are sentence-length drills.
 
 Frequency ordering for the common-word teaching selection was informed by `wordfreq`:
 

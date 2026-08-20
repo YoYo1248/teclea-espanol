@@ -9,3 +9,13 @@ export function bucketByRecentQueues<T>(items: T[], recentQueues: ReadonlyArray<
     immediate: items.filter((item) => immediateIds.has(getId(item))),
   }
 }
+
+export type IntroductionEvidence = { copyCompletedAt?: number }
+
+export function hasCompletedIntroduction(evidence: IntroductionEvidence | undefined) {
+  return typeof evidence?.copyCompletedAt === 'number' && Number.isFinite(evidence.copyCompletedAt) && evidence.copyCompletedAt > 0
+}
+
+export function itemsNeedingIntroduction<T>(items: readonly T[], getEvidence: (item: T) => IntroductionEvidence | undefined) {
+  return items.filter((item) => !hasCompletedIntroduction(getEvidence(item)))
+}

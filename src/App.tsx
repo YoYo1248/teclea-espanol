@@ -18,7 +18,6 @@ import {
   Share2,
   Timer,
   Trash2,
-  VolumeX,
   Volume2,
   X,
 } from 'lucide-react'
@@ -26,8 +25,9 @@ import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, l
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 import { dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
-import { bucketByRecentQueues } from './roundQueue'
+import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
+import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -60,6 +60,8 @@ type ActivePracticeSession = {
   independentCorrect?: number
   weakWordIds?: string[]
   satisfiedModes?: LessonMastery
+  followUpMode?: MasteryMode
+  followUpOrder?: string[]
 }
 type MistakeRecord = {
   lessonId: string
@@ -85,7 +87,6 @@ type ChallengeState = {
   dailyCompleted: Record<string, number>
   dailyRecords: Record<string, ChallengeDailyRecord[]>
 }
-type WordEvidence = Record<string, { recall?: true; listen?: true; lastCorrectAt?: number }>
 type RoundRecord = RoundTimingRecord
 type RecentRoundQueues = Record<string, string[][]>
 type InstallPromptEvent = Event & {
@@ -105,7 +106,8 @@ const MISTAKE_RESOLVED_KEY = 'teclea-mistake-resolved-at-v1'
 const LOCAL_UPDATED_KEY = 'teclea-local-updated-at-v2'
 const CHALLENGE_KEY = 'teclea-challenge-v1'
 const ONBOARDING_DONE_KEY = 'teclea-first-three-complete-v1'
-const WORD_EVIDENCE_KEY = 'teclea-word-evidence-v1'
+const WORD_EVIDENCE_KEY = 'teclea-word-evidence-v2'
+const LEGACY_WORD_EVIDENCE_KEY = 'teclea-word-evidence-v1'
 const ROUND_HISTORY_KEY = 'teclea-round-history-v1'
 const RECENT_ROUND_QUEUES_KEY = 'teclea-recent-round-queues-v1'
 const PRIMARY_ORIGIN = 'https://www.holadone.com'
@@ -257,8 +259,21 @@ function hasLearningHistory() {
 
 function readWordEvidence(): WordEvidence {
   try {
-    const stored = JSON.parse(localStorage.getItem(WORD_EVIDENCE_KEY) || '{}') as unknown
-    return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored as WordEvidence : {}
+    const currentRaw = localStorage.getItem(WORD_EVIDENCE_KEY)
+    const needsMigration = currentRaw === null
+    const legacyRaw = needsMigration ? localStorage.getItem(LEGACY_WORD_EVIDENCE_KEY) : null
+    const stored = JSON.parse(currentRaw ?? legacyRaw ?? '{}') as unknown
+    const completedCardIds = needsMigration
+      ? readCompletedLessons().flatMap((lessonId) => {
+          const completedLesson = lessons.find((item) => item.id === lessonId)
+          return completedLesson?.words.map((word) => sessionCardId(completedLesson.id, word)) ?? []
+        })
+      : []
+    const migrated = normalizeWordEvidence(stored, { legacy: needsMigration, completedCardIds })
+    if (needsMigration) {
+      localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(migrated))
+    }
+    return migrated
   } catch {
     return {}
   }
@@ -336,6 +351,18 @@ function adaptiveLessonFromOrder(lessonId: string, order: string[]): Lesson | nu
     color: '#347665',
     words,
   }
+}
+
+function practiceLessonFromOrder(lessonId: string, order: string[]): Lesson | null {
+  const adaptiveLesson = adaptiveLessonFromOrder(lessonId, order)
+  if (adaptiveLesson) return adaptiveLesson
+  const catalogLesson = lessons.find((item) => item.id === lessonId)
+  if (!catalogLesson) return null
+  const words = order.flatMap((cardId) => {
+    const matched = catalogWordById(cardId)
+    return matched ? [matched.word] : []
+  })
+  return words.length ? { ...catalogLesson, words } : null
 }
 
 function readInitialLevelFilter(): '全部' | LessonLevel {
@@ -518,6 +545,12 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
         ...(stored.satisfiedModes.recall === true ? { recall: true } : {}),
         ...(stored.satisfiedModes.listen === true ? { listen: true } : {}),
       } : {},
+      ...((stored.followUpMode === 'recall' || stored.followUpMode === 'listen')
+        && Array.isArray(stored.followUpOrder)
+        && stored.followUpOrder.every((item) => typeof item === 'string')
+        && stored.followUpOrder.length
+        ? { followUpMode: stored.followUpMode, followUpOrder: stored.followUpOrder }
+        : {}),
     }
   } catch {
     return null
@@ -1479,9 +1512,18 @@ function App() {
   }
 
   function recordWordEvidence(independentAnswer: boolean) {
-    if ((mode !== 'recall' && mode !== 'listen') || !independentAnswer) return wordEvidence
     const cardId = word.reviewKey ?? sessionCardId(lesson.id, word)
     const previous = wordEvidence[cardId] ?? {}
+    if (mode === 'copy') {
+      if (hasCompletedIntroduction(previous)) return wordEvidence
+      const nextEvidence: WordEvidence = {
+        ...wordEvidence,
+        [cardId]: { ...previous, copyCompletedAt: Date.now() },
+      }
+      saveWordEvidence(nextEvidence)
+      return nextEvidence
+    }
+    if (!independentAnswer) return wordEvidence
     const nextEvidence: WordEvidence = {
       ...wordEvidence,
       [cardId]: { ...previous, [mode]: true, lastCorrectAt: Date.now() },
@@ -1825,16 +1867,27 @@ function App() {
     setScreen('practice')
   }
 
-  function begin(nextLesson: Lesson, nextMode: Mode = mode, options: { orderedWords?: Lesson['words']; onboarding?: boolean; satisfiedModes?: LessonMastery } = {}) {
+  function begin(nextLesson: Lesson, nextMode: Mode = mode, options: {
+    orderedWords?: Lesson['words']
+    onboarding?: boolean
+    satisfiedModes?: LessonMastery
+    skipIntroduction?: boolean
+  } = {}) {
     if (nextLesson.id === 'mistake-review' && activeSession?.lessonId !== 'mistake-review') {
       if (activeSession) persistPausedMainSession(activeSession)
     } else if (nextLesson.id !== 'mistake-review') {
       persistPausedMainSession(null)
     }
-    const orderedWords = options.orderedWords ?? shuffleWords(nextLesson.words)
+    const fullOrderedWords = options.orderedWords ?? shuffleWords(nextLesson.words)
+    const introductionWords = nextMode !== 'copy' && nextLesson.id !== 'mistake-review' && !options.skipIntroduction
+      ? itemsNeedingIntroduction(fullOrderedWords, (item) => wordEvidence[item.reviewKey ?? sessionCardId(nextLesson.id, item)])
+      : []
+    const requiresIntroduction = introductionWords.length > 0
+    const orderedWords = requiresIntroduction ? introductionWords : fullOrderedWords
+    const sessionMode: Mode = requiresIntroduction ? 'copy' : nextMode
     const session: ActivePracticeSession = {
       lessonId: nextLesson.id,
-      mode: nextMode,
+      mode: sessionMode,
       order: orderedWords.map((word) => sessionCardId(nextLesson.id, word)),
       index: 0,
       elapsedMs: 0,
@@ -1843,14 +1896,22 @@ function App() {
       completedWords: 0,
       mistakeWords: {},
       reviewCorrectCount: 0,
-      masteryMode: nextMode === 'recall' || nextMode === 'listen' ? nextMode : null,
+      masteryMode: sessionMode === 'recall' || sessionMode === 'listen' ? sessionMode : null,
       usedHint: false,
       onboarding: options.onboarding === true,
       independentCorrect: 0,
       weakWordIds: [],
       satisfiedModes: options.satisfiedModes ?? {},
+      ...(requiresIntroduction ? {
+        followUpMode: nextMode as MasteryMode,
+        followUpOrder: fullOrderedWords.map((word) => sessionCardId(nextLesson.id, word)),
+      } : {}),
     }
-    openPractice({ ...nextLesson, words: orderedWords }, session)
+    openPractice({
+      ...nextLesson,
+      ...(requiresIntroduction ? { eyebrow: `${nextLesson.level} · 新词预热`, description: '先跟打本轮首次出现的内容' } : {}),
+      words: orderedWords,
+    }, session)
   }
 
   function resumePracticeSession(session: ActivePracticeSession | null) {
@@ -2030,6 +2091,21 @@ function App() {
       setScreen('complete')
       return
     }
+    if (completingRound
+      && mode === 'copy'
+      && activeSession?.followUpMode
+      && activeSession.followUpOrder?.length) {
+      const followUpLesson = practiceLessonFromOrder(activeSession.lessonId, activeSession.followUpOrder)
+      if (followUpLesson) {
+        recordAdaptiveRound(elapsedMs)
+        begin(followUpLesson, activeSession.followUpMode, {
+          orderedWords: followUpLesson.words,
+          satisfiedModes: roundSatisfiedModes,
+          skipIntroduction: true,
+        })
+        return
+      }
+    }
     if (index === lesson.words.length - 1) {
       if (isOnboardingRound) localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
       if (lesson.id === 'mistake-review' && pausedMainSession) {
@@ -2101,6 +2177,22 @@ function App() {
     currentWordUsedHintRef.current = false
     const roundIsUntouched = completedWords === 0 && correctKeystrokes === 0 && mistakes === 0 && typed.length === 0 && !roundUsedHint
     const nextMasteryMode = roundIsUntouched && (nextMode === 'recall' || nextMode === 'listen') ? nextMode : null
+    if (nextMode !== 'copy') {
+      const fullOrder = activeSession?.followUpOrder?.length
+        ? activeSession.followUpOrder
+        : activeSession?.order?.length
+          ? activeSession.order
+          : lesson.words.map((item) => sessionCardId(lesson.id, item))
+      const fullLesson = practiceLessonFromOrder(activeSession?.lessonId ?? lesson.id, fullOrder) ?? lesson
+      const unintroducedWords = itemsNeedingIntroduction(
+        fullLesson.words,
+        (item) => wordEvidence[item.reviewKey ?? sessionCardId(fullLesson.id, item)],
+      )
+      if (unintroducedWords.length) {
+        begin(fullLesson, nextMode, { orderedWords: fullLesson.words, satisfiedModes: roundSatisfiedModes })
+        return
+      }
+    }
     setMode(nextMode)
     setRoundMasteryMode(nextMasteryMode)
     if (activeSession) {
@@ -2169,6 +2261,17 @@ function App() {
     localStorage.setItem(SPEECH_RATE_KEY, String(nextRate))
     scheduleSync()
     speak('escuchar y repetir', undefined, nextRate)
+  }
+
+  function cyclePracticeSpeechRate() {
+    const currentIndex = SPEECH_RATE_OPTIONS.findIndex((option) => option.value === speechRate)
+    const nextOption = SPEECH_RATE_OPTIONS[(currentIndex + 1) % SPEECH_RATE_OPTIONS.length]
+    setSpeechRate(nextOption.value)
+    localStorage.setItem(SPEECH_RATE_KEY, String(nextOption.value))
+    scheduleSync()
+    if (mode === 'recall') markMasteryHintUsed()
+    speak(word.spanish, undefined, nextOption.value)
+    inputRef.current?.focus({ preventScroll: true })
   }
 
   function handleCharacters(rawValue: string) {
@@ -2453,7 +2556,7 @@ function App() {
                 <b>{soundEnabled ? '已开启' : '已关闭'}</b>
               </button>
               <div className="setting-rate">
-                <span><strong>西语发音速度</strong><small>跟打和听音拼写会自动朗读，也可随时点 ES 重听</small></span>
+                <span><strong>西语发音速度</strong><small>跟打和听音拼写会自动朗读；练习页可随时重听并切换语速</small></span>
                 <div className="rate-options" aria-label="西语发音速度">
                   {SPEECH_RATE_OPTIONS.map((option) => (
                     <button key={option.value} className={speechRate === option.value ? 'active' : ''} onClick={() => chooseSpeechRate(option.value)} aria-pressed={speechRate === option.value}>
@@ -2594,8 +2697,10 @@ function App() {
           <span>回到首页</span>
         </button>
         <main ref={completionMainRef}>
-          <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}><span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}</span><Check size={44} strokeWidth={2.5} /></div>
-          <p className="eyebrow">{isOnboardingRound ? '前三词已完成' : lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</p>
+          <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}>
+            <Check size={28} strokeWidth={2.7} />
+            <span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}<b>{isOnboardingRound ? '前三词已完成' : lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</b></span>
+          </div>
           <h1>{lesson.title}</h1>
           <p>你完成了 {isOnboardingRound ? completedWords : lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
           {lesson.id !== 'mistake-review' && (
@@ -2604,21 +2709,6 @@ function App() {
                 <span className={masteryAfterRound.recall ? 'passed' : ''}><Check size={15} /><b>看义拼写</b><small>{masteryAfterRound.recall ? '已通过' : recallEvidenceCount ? `${recallEvidenceCount}/${masteryScopeWords.length} 项` : '待完成'}</small></span>
                 <span className={masteryAfterRound.listen ? 'passed' : ''}><Check size={15} /><b>听音拼写</b><small>{masteryAfterRound.listen ? '已通过' : listenEvidenceCount ? `${listenEvidenceCount}/${masteryScopeWords.length} 项` : '待完成'}</small></span>
               </div>
-              <p className={`mastery-result ${cleanMasteryRound || lessonMasteredAfterRound ? 'clean' : ''}`}>
-                {lessonMasteredAfterRound
-                  ? '看义拼写和听音拼写都已通过，本轮内容已掌握。'
-                  : masteryModeRound && independentRate !== null
-                    ? `本轮 ${independentCorrect}/${completedWords} 项独立答对（${independentRate}%）。输错或查看答案的项目会保留在后续优先池；听写重播题目音频不扣分。`
-                  : mode === 'copy'
-                    ? `跟打只用于熟悉词形；接下来完成${masteryModeLabel(nextPracticeMode)}。`
-                    : roundMasteryMode === null
-                      ? `本轮切换过模式，只计练习；完整完成一轮${masteryModeLabel(nextPracticeMode)}即可获得对应勾。`
-                      : roundUsedHint
-                        ? `本轮使用过提示，只计练习；不看提示再完成一轮${masteryModeLabel(nextPracticeMode)}即可通过。`
-                        : mistakes > 0
-                          ? `本轮有 ${mistakes} 次错误；错题已经保存，再把${masteryModeLabel(nextPracticeMode)}练到整组 0 错即可通过。`
-                          : `${masteryModeLabel(mode)}整组 0 错，已通过；再完成${masteryModeLabel(nextPracticeMode)}即可掌握。`}
-              </p>
             </>
           )}
           {lesson.id === 'mistake-review' && (
@@ -2697,6 +2787,9 @@ function App() {
   }
 
   const hideSpanish = mode !== 'copy'
+  const isIntroductionPractice = mode === 'copy'
+    && activeSession?.followUpMode !== undefined
+    && Boolean(activeSession.followUpOrder?.length)
   const targetText = getTypingTarget(word.spanish)
   const targetLetters = Array.from(targetText)
   const targetTokens = targetText.split(' ')
@@ -2730,14 +2823,19 @@ function App() {
               <button aria-label="严格拼写" aria-pressed={accentMode === 'strict'} className={accentMode === 'strict' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('strict')}>严格</button>
               <button aria-label="忽略重音符号" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
             </div>
-            <button className="sound-toggle" onClick={toggleSound} aria-label={soundEnabled ? '关闭打字音效' : '开启打字音效'} aria-pressed={soundEnabled}>
-              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            </button>
           </div>
         </div>
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
-          <span className="word-label">{isOnboardingRound ? `边打边懂 · 第 ${index + 1}/3 个词` : mode === 'copy' ? '逐字母输入' : mode === 'recall' ? `根据中文拼写 · ${targetLetters.length} 个字符` : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
+          <span className="word-label">{isOnboardingRound
+            ? `边打边懂 · 第 ${index + 1}/3 个词`
+            : isIntroductionPractice
+              ? `新词预热 · ${index + 1}/${lesson.words.length}`
+              : mode === 'copy'
+                ? '逐字母输入'
+                : mode === 'recall'
+                  ? `根据中文拼写 · ${targetLetters.length} 个字符`
+                  : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
           {mode === 'recall' && <p className="recall-prompt">{word.chinese}</p>}
           <div
             className="letter-word"
@@ -2816,7 +2914,34 @@ function App() {
             autoFocus
             aria-label="逐字母输入"
           />
-          <button className="sound-button" onClick={(event) => { event.stopPropagation(); if (mode === 'recall') markMasteryHintUsed(); speak(word.spanish, undefined, speechRate); inputRef.current?.focus() }} aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速` : `重听西语发音，不影响听写判定，${speechRate} 倍速`}><Volume2 size={20} /> <span>{mode === 'recall' ? '发音提示' : 'ES'} · {speechRate}×</span></button>
+          <div className="pronunciation-controls" role="group" aria-label="西语发音控制">
+            <button
+              className="pronunciation-button"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation()
+                if (mode === 'recall') markMasteryHintUsed()
+                speak(word.spanish, undefined, speechRate)
+                inputRef.current?.focus({ preventScroll: true })
+              }}
+              aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速` : `重听西语发音，不影响听写判定，${speechRate} 倍速`}
+            >
+              <Volume2 size={19} />
+              <span>{mode === 'recall' ? '发音提示' : '重听发音'}</span>
+            </button>
+            <button
+              className="speech-rate-button"
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation()
+                cyclePracticeSpeechRate()
+              }}
+              aria-label={`切换发音速度，当前${SPEECH_RATE_OPTIONS.find((option) => option.value === speechRate)?.label ?? '标准'}${speechRate}倍；点击切换并重听`}
+            >
+              <span>语速</span>
+              <b>{speechRate}×</b>
+            </button>
+          </div>
           {(mode === 'copy' || status === 'correct') && (
             <p className={`translation ${status === 'correct' && mode !== 'copy' ? 'revealed-meaning' : ''}`}>
               {status === 'correct' && mode !== 'copy' && <span>意思</span>}
@@ -2830,7 +2955,7 @@ function App() {
           <div className="typing-feedback" aria-live="polite">
             {status === 'wrong' && <><X size={16} /><strong>这个字母错了，整词重来</strong></>}
             {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · 已显示词义</strong></>}
-            {status === 'idle' && <span>{roundMasteryMode === null && mode !== 'copy' ? '本轮切换过模式，只计练习' : roundUsedHint && mode !== 'copy' ? '本轮已使用提示，只计练习' : hideSpanish ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过' : '越快、越准，成绩越高'}</span>}
+            {status === 'idle' && <span>{roundMasteryMode === null && mode !== 'copy' ? '本轮切换过模式，只计练习' : roundUsedHint && mode !== 'copy' ? '本轮已使用提示，只计练习' : hideSpanish ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过' : '错一个字母，当前词从头重来'}</span>}
           </div>
         </section>
       </main>

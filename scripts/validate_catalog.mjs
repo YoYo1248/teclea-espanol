@@ -66,6 +66,10 @@ try {
         if (lemma && expansionLemmas.has(lemma)) errors.push(`扩库批次 lemma 重复: ${expansionLemmas.get(lemma)} / ${lesson.id} -> ${lemma}`)
         if (lemma) expansionLemmas.set(lemma, lesson.id)
       }
+      if (lesson.id.startsWith('newcomer-')) {
+        if (!word.example || !word.exampleChinese) errors.push(`新居民任务卡缺少中西例句: ${lesson.id} -> ${word.spanish}`)
+        if (!word.source?.url?.startsWith('https://')) errors.push(`新居民任务卡缺少可追踪来源: ${lesson.id} -> ${word.spanish}`)
+      }
       if (recallClues.has(recallClue)) errors.push(`看义拼写提示与字符数冲突: ${lesson.id} -> ${recallClues.get(recallClue)} / ${word.spanish} (${word.chinese})`)
       recallClues.set(recallClue, word.spanish)
       kindCounts[lesson.kind] += 1

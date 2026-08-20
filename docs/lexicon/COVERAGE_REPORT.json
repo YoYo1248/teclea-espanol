@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "generatedAt": "2026-08-20",
   "scope": {
-    "catalogCards": 2152,
-    "lessons": 203,
+    "catalogCards": 2200,
+    "lessons": 209,
     "levels": [
       "A1",
       "A2",
@@ -15,10 +15,10 @@
     "denominator": "Current application catalog after runtime lesson construction"
   },
   "headline": {
-    "uniqueTargets": 2152,
+    "uniqueTargets": 2200,
     "explicitAdvancedCandidates": 200,
-    "cardsWithTraceableSource": 2152,
-    "cardsWithExamples": 1452,
+    "cardsWithTraceableSource": 2200,
+    "cardsWithExamples": 1500,
     "cardsWithStructuredLemma": 1404,
     "cardsWithFrameworkReference": 1404,
     "cardsWithAuditableProfessionalReview": 0,
@@ -32,7 +32,7 @@
       "words": 345,
       "phrases": 44,
       "infinitives": 33,
-      "catalogShare": 19.6,
+      "catalogShare": 19.2,
       "exampleCoverage": 38.9
     },
     {
@@ -41,26 +41,26 @@
       "words": 433,
       "phrases": 24,
       "infinitives": 7,
-      "catalogShare": 21.6,
+      "catalogShare": 21.1,
       "exampleCoverage": 90.9
     },
     {
       "level": "B1",
-      "total": 558,
-      "words": 520,
-      "phrases": 10,
+      "total": 590,
+      "words": 536,
+      "phrases": 26,
       "infinitives": 28,
-      "catalogShare": 25.9,
-      "exampleCoverage": 82.1
+      "catalogShare": 26.8,
+      "exampleCoverage": 83.1
     },
     {
       "level": "B2",
-      "total": 508,
-      "words": 481,
+      "total": 524,
+      "words": 497,
       "phrases": 10,
       "infinitives": 17,
-      "catalogShare": 23.6,
-      "exampleCoverage": 80.3
+      "catalogShare": 23.8,
+      "exampleCoverage": 80.9
     },
     {
       "level": "C1",
@@ -68,7 +68,7 @@
       "words": 80,
       "phrases": 10,
       "infinitives": 10,
-      "catalogShare": 4.6,
+      "catalogShare": 4.5,
       "exampleCoverage": 0
     },
     {
@@ -77,7 +77,7 @@
       "words": 80,
       "phrases": 10,
       "infinitives": 10,
-      "catalogShare": 4.6,
+      "catalogShare": 4.5,
       "exampleCoverage": 0
     }
   ],
@@ -87,48 +87,56 @@
       "scenes": "基础、日常、时间",
       "total": 526,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 24.4
+      "catalogShare": 23.9
     },
     {
       "category": "吃住购物",
       "scenes": "餐厅、购物、住宿",
-      "total": 96,
-      "levelsPresent": "A1、A2、B1",
-      "catalogShare": 4.5
+      "total": 112,
+      "levelsPresent": "A1、A2、B1、B2",
+      "catalogShare": 5.1
     },
     {
       "category": "出行城市",
       "scenes": "城市、旅行",
-      "total": 137,
+      "total": 145,
       "levelsPresent": "A1、A2、B1、B2、C2",
-      "catalogShare": 6.4
+      "catalogShare": 6.6
     },
     {
       "category": "家庭身心",
       "scenes": "家庭、健康、情绪",
       "total": 233,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 10.8
+      "catalogShare": 10.6
     },
     {
       "category": "学习工作",
       "scenes": "学习、工作",
-      "total": 530,
+      "total": 546,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 24.6
+      "catalogShare": 24.8
     },
     {
       "category": "社会世界",
       "scenes": "社会、科技、环境、行政",
-      "total": 630,
+      "total": 638,
       "levelsPresent": "A2、B1、B2、C1、C2",
-      "catalogShare": 29.3
+      "catalogShare": 29
     }
   ],
   "sourceRows": [
     {
+      "sourceName": "Banco de España · 住房按揭、估价与关联保险用语核对",
+      "cards": 8
+    },
+    {
       "sourceName": "Kaikki / English Wiktionary",
       "cards": 48
+    },
+    {
+      "sourceName": "SEPE · 招聘、职位与劳动合同用语核对",
+      "cards": 8
     },
     {
       "sourceName": "Teclea Español B1–B2 教学选词 · 参考 Instituto Cervantes PCIC",
@@ -143,12 +151,28 @@
       "cards": 1404
     },
     {
+      "sourceName": "Teclea Español 新居民任务审计 · 西班牙教育与公共服务页面汇编",
+      "cards": 8
+    },
+    {
       "sourceName": "wordfreq + Kaikki / Wiktionary",
       "cards": 300
+    },
+    {
+      "sourceName": "西班牙政府与移民部门 · 居留登记和工作许可用语核对",
+      "cards": 8
+    },
+    {
+      "sourceName": "西班牙教育部 · 公立与政府资助私立学校入学用语核对",
+      "cards": 8
+    },
+    {
+      "sourceName": "西班牙消费者事务部门 · 住房租赁与房地产中介用语核对",
+      "cards": 8
     }
   ],
   "orthography": {
-    "targetsWithWrittenAccent": 503,
+    "targetsWithWrittenAccent": 515,
     "targetsWithEnye": 28,
     "targetsWithDiaeresis": 3
   },
@@ -178,7 +202,7 @@
       {
         "rankLimit": 6000,
         "validTokens": 5959,
-        "matchedCatalogTargets": 1825,
+        "matchedCatalogTargets": 1826,
         "coverage": 30.6
       }
     ]
