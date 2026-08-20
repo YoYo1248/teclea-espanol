@@ -4,6 +4,7 @@ import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
+import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
 import {
   hasActiveReview,
   isReviewDue,
@@ -38,6 +39,15 @@ assert(!shouldMarkWordWeak('copy', false, false), '干净完成的跟打项不�
 assert(shouldMarkWordWeak('copy', true, false), '跟打输错的项目应先留在跟打模式巩固')
 assert(shouldMarkWordWeak('recall', false, true), '看义使用提示的项目应进入薄弱集合')
 assert(shouldMarkWordWeak('listen', true, false), '听音输错的项目应进入薄弱集合')
+
+const mananaBase = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: null })
+assert(mananaBase.kind === 'wait' && mananaBase.pending.value === 'man', 'mañana 输入基础 n 时应进入等待而不是立即判错')
+const mananaRepeat = pressHoldInputDecision({ rawValue: 'mannn', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
+assert(mananaRepeat.kind === 'keep-waiting', '长按 n 产生的重复基础字母事件应继续等待')
+const mananaReplacement = pressHoldInputDecision({ rawValue: 'mañ', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
+assert(mananaReplacement.kind === 'commit' && mananaReplacement.value === 'mañ', 'n 替换为 ñ 后应立即提交正确输入')
+const mananaContinued = pressHoldInputDecision({ rawValue: 'mana', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
+assert(mananaContinued.kind === 'commit', '等待期间继续输入其他字符应立即交回正常判定')
 
 const reviewWord = { lessonId: 'a1-basics', spanish: 'hola', chinese: '你好' }
 const firstWrong = recordWrongAttempt(undefined, reviewWord, 'recall', Date.parse('2026-08-20T10:00:00'), '2026-08-20')
@@ -140,9 +150,14 @@ for (const requiredSection of ['首次跟打完成', '近期重复层', '新内�
 const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 assert(appSource.includes('const PRESS_HOLD_REPLACEMENT_MS = 3000'), '长按重音替换窗口应为 3 秒')
 assert(
-  /onBlur=\{\(\) => \{\s*window\.clearTimeout\(pressHoldTimerRef\.current\)\s*pressHoldTimerRef\.current = undefined/.test(appSource),
+  /onBlur=\{\(\) => \{\s*cancelPressHoldReplacement\(\)/.test(appSource),
   '输入框失焦时应取消长按重音等待',
 )
+assert(
+  /onCompositionEnd=\{\(event\) => \{[\s\S]*?handleCommittedInput\(event\.currentTarget\.value\)/.test(appSource),
+  '组合输入提交也必须经过长按重音等待判断',
+)
+assert(/function cancelPressHoldReplacement\(\)[\s\S]*?pressHoldPendingRef\.current = null/.test(appSource), '取消长按等待时应同时清理待替换状态')
 
 if (failures.length) {
   console.error(failures.join('\n'))

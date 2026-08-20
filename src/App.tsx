@@ -27,6 +27,7 @@ import { masteryRecommendation } from './masteryRouting'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
+import { pressHoldInputDecision, type PressHoldPending } from './pressHoldInput'
 import {
   activeReviewModes,
   answerCanRecover,
@@ -102,7 +103,6 @@ type InstallPromptEvent = Event & {
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
-const PRESS_HOLD_ACCENT_BASES: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u', ñ: 'n' }
 const PRESS_HOLD_REPLACEMENT_MS = 3000
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
@@ -791,6 +791,7 @@ function App() {
   const practiceMainRef = useRef<HTMLElement>(null)
   const resetTimerRef = useRef<number | undefined>(undefined)
   const pressHoldTimerRef = useRef<number | undefined>(undefined)
+  const pressHoldPendingRef = useRef<PressHoldPending | null>(null)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
@@ -912,11 +913,15 @@ function App() {
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
     window.clearTimeout(pressHoldTimerRef.current)
+    pressHoldPendingRef.current = null
     window.clearTimeout(revealTimerRef.current)
     window.clearTimeout(syncTimerRef.current)
   }, [])
 
-  useEffect(() => () => window.clearTimeout(pressHoldTimerRef.current), [screen, mode, index, lesson.id, accentMode])
+  useEffect(() => () => {
+    window.clearTimeout(pressHoldTimerRef.current)
+    pressHoldPendingRef.current = null
+  }, [screen, mode, index, lesson.id, accentMode])
 
   useEffect(() => {
     if (!syncCodeRef.current) return
@@ -2499,17 +2504,41 @@ function App() {
     }
   }
 
-  function shouldAwaitPressHoldReplacement(rawValue: string) {
-    if (status !== 'idle' || accentMode !== 'strict') return false
-    const currentCharacters = Array.from(normalize(typed))
-    const incomingCharacters = Array.from(normalize(rawValue))
-    if (incomingCharacters.length !== currentCharacters.length + 1) return false
-    const expected = Array.from(getTypingTarget(word.spanish))[currentCharacters.length]
-    return Boolean(expected && PRESS_HOLD_ACCENT_BASES[expected] === incomingCharacters[currentCharacters.length])
+  function cancelPressHoldReplacement() {
+    window.clearTimeout(pressHoldTimerRef.current)
+    pressHoldTimerRef.current = undefined
+    pressHoldPendingRef.current = null
+  }
+
+  function handleCommittedInput(rawValue: string) {
+    const decision = pressHoldInputDecision({
+      rawValue,
+      acceptedValue: typed,
+      targetValue: getTypingTarget(word.spanish),
+      strict: accentMode === 'strict',
+      idle: status === 'idle',
+      pending: pressHoldPendingRef.current,
+    })
+    if (decision.kind === 'keep-waiting') {
+      setInputDraft(decision.pending.value)
+      return
+    }
+    cancelPressHoldReplacement()
+    if (decision.kind === 'wait') {
+      pressHoldPendingRef.current = decision.pending
+      setInputDraft(decision.pending.value)
+      pressHoldTimerRef.current = window.setTimeout(() => {
+        pressHoldTimerRef.current = undefined
+        pressHoldPendingRef.current = null
+        handleCharacters(decision.pending.value)
+      }, PRESS_HOLD_REPLACEMENT_MS)
+      return
+    }
+    handleCharacters(decision.value)
   }
 
   function insertAccent(character: string) {
-    window.clearTimeout(pressHoldTimerRef.current)
+    cancelPressHoldReplacement()
     handleCharacters(typed + character)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
@@ -3136,31 +3165,20 @@ function App() {
                 return
               }
               compositionCommittedValueRef.current = null
-              window.clearTimeout(pressHoldTimerRef.current)
-              if (shouldAwaitPressHoldReplacement(event.target.value)) {
-                const pendingValue = event.target.value
-                setInputDraft(pendingValue)
-                pressHoldTimerRef.current = window.setTimeout(() => {
-                  pressHoldTimerRef.current = undefined
-                  handleCharacters(pendingValue)
-                }, PRESS_HOLD_REPLACEMENT_MS)
-                return
-              }
-              handleCharacters(event.target.value)
+              handleCommittedInput(event.target.value)
             }}
             onCompositionStart={() => {
-              window.clearTimeout(pressHoldTimerRef.current)
+              cancelPressHoldReplacement()
               isComposingRef.current = true
               compositionCommittedValueRef.current = null
             }}
             onCompositionEnd={(event) => {
               isComposingRef.current = false
               compositionCommittedValueRef.current = event.currentTarget.value
-              handleCharacters(event.currentTarget.value)
+              handleCommittedInput(event.currentTarget.value)
             }}
             onBlur={() => {
-              window.clearTimeout(pressHoldTimerRef.current)
-              pressHoldTimerRef.current = undefined
+              cancelPressHoldReplacement()
               setInputDraft(typed)
               isComposingRef.current = false
               compositionCommittedValueRef.current = null
