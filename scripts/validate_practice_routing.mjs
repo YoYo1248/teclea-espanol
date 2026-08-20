@@ -4,7 +4,8 @@ import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
-import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
+import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate } from '../src/pressHoldInput.ts'
+import { practiceWordClassLabel } from '../src/wordClass.ts'
 import {
   hasActiveReview,
   isReviewDue,
@@ -38,10 +39,25 @@ assert(!currentEvidence.recallOnly.copyCompletedAt, '新版看义证据不能替
 assert(!shouldMarkWordWeak('copy', false, false), '干净完成的跟打项不应进入薄弱集合')
 assert(shouldMarkWordWeak('copy', true, false), '跟打输错的项目应先留在跟打模式巩固')
 assert(shouldMarkWordWeak('recall', false, true), '看义使用提示的项目应进入薄弱集合')
+assert(practiceWordClassLabel({ spanish: 'gente', chinese: '人', partOfSpeech: 'noun', source: {} }, '单词') === '名词', '已有词性应显示中文名称')
+assert(practiceWordClassLabel({ spanish: 'hablar', chinese: '说', source: {} }, '动词原形') === '动词', '动词专项应可靠标为动词')
+assert(practiceWordClassLabel({ spanish: 'por favor', chinese: '请', source: {} }, '短语') === '固定表达', '短语课程应显示为固定表达')
+assert(practiceWordClassLabel({ spanish: 'mesa', chinese: '桌子', article: 'la', source: {} }, '单词') === '名词', '带冠词的旧词应可靠标为名词')
+assert(practiceWordClassLabel({ spanish: 'mañana', chinese: '明天', source: {} }, '单词') === '单词', '未校验的旧词不应猜测具体词性')
 assert(shouldMarkWordWeak('listen', true, false), '听音输错的项目应进入薄弱集合')
 
 const mananaBase = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: null })
 assert(mananaBase.kind === 'wait' && mananaBase.pending.value === 'man', 'mañana 输入基础 n 时应进入等待而不是立即判错')
+const mananaKeyCandidate = pressHoldKeyCandidate({ key: 'n', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true })
+assert(mananaKeyCandidate?.value === 'man', 'macOS 长按应从 keydown 阶段预先记录 ñ 替换候选')
+assert(pressHoldKeyCandidate({ key: 'x', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true }) === null, '普通错误按键不应进入长按等待')
+assert(!isConfirmedPressHold(80, false), '短按并松开基础字母应立即判错')
+assert(isConfirmedPressHold(450, false), '持续按住超过阈值应确认长按')
+assert(isConfirmedPressHold(80, true), '系统重复键或组合输入信号应确认长按')
+const mananaFromKeydown = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaKeyCandidate })
+assert(mananaFromKeydown.kind === 'keep-waiting', 'keydown 预登记后收到基础 n 输入事件应继续等待')
+const mananaCompositionCommit = pressHoldInputDecision({ rawValue: 'man\u0303', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaKeyCandidate })
+assert(mananaCompositionCommit.kind === 'commit' && mananaCompositionCommit.value === 'mañ', '组合输入的分解 ñ 应规范化并正确提交')
 const mananaRepeat = pressHoldInputDecision({ rawValue: 'mannn', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
 assert(mananaRepeat.kind === 'keep-waiting', '长按 n 产生的重复基础字母事件应继续等待')
 const mananaReplacement = pressHoldInputDecision({ rawValue: 'mañ', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
@@ -164,6 +180,10 @@ assert(
 assert(
   /onCompositionEnd=\{\(event\) => \{[\s\S]*?handleCommittedInput\(event\.currentTarget\.value\)/.test(appSource),
   '组合输入提交也必须经过长按重音等待判断',
+)
+assert(
+  !/onCompositionStart=\{\(\) => \{\s*cancelPressHoldReplacement\(\)/.test(appSource),
+  '系统开始组合输入时不应清除已登记的长按候选',
 )
 assert(/function cancelPressHoldReplacement\(\)[\s\S]*?pressHoldPendingRef\.current = null/.test(appSource), '取消长按等待时应同时清理待替换状态')
 

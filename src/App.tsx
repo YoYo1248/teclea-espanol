@@ -27,7 +27,8 @@ import { masteryRecommendation } from './masteryRouting'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
-import { pressHoldInputDecision, type PressHoldPending } from './pressHoldInput'
+import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate, type PressHoldPending } from './pressHoldInput'
+import { practiceWordClassLabel } from './wordClass'
 import {
   activeReviewModes,
   answerCanRecover,
@@ -122,6 +123,24 @@ const PRIMARY_ORIGIN = 'https://www.holadone.com'
 const LEGACY_HOST = 'teclea-espanol.vercel.app'
 const LESSON_PAGE_SIZE = 12
 const DEFAULT_LESSON = lessons[0]
+const ACCENT_QA_LESSON: Lesson = {
+  id: 'qa-accent-input',
+  level: 'A1',
+  scene: '基础',
+  kind: '单词',
+  eyebrow: '本地 QA · 长按重音',
+  title: 'macOS 长按重音测试',
+  description: '使用正式练习输入链路验证 n→ñ、u→ü 和元音重音替换',
+  color: '#347665',
+  words: [
+    { spanish: 'mañana', chinese: '明天 / 早晨', partOfSpeech: 'adverb', source: { ...WORD_SOURCE } },
+    { spanish: 'niño', chinese: '男孩 / 小孩', partOfSpeech: 'noun', source: { ...WORD_SOURCE } },
+    { spanish: 'pingüino', chinese: '企鹅', partOfSpeech: 'noun', source: { ...WORD_SOURCE } },
+    { spanish: 'canción', chinese: '歌曲', partOfSpeech: 'noun', source: { ...WORD_SOURCE } },
+    { spanish: 'café', chinese: '咖啡', partOfSpeech: 'noun', source: { ...WORD_SOURCE } },
+    { spanish: 'rápido', chinese: '快速的', partOfSpeech: 'adjective', source: { ...WORD_SOURCE } },
+  ],
+}
 const LEVEL_ORDER: LessonLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 const PRACTICE_TRACKS: Array<{ value: PracticeTrack; label: string; shortLabel: string }> = [
   { value: 'main', label: '词汇与短语', shortLabel: '词汇主线' },
@@ -792,6 +811,8 @@ function App() {
   const resetTimerRef = useRef<number | undefined>(undefined)
   const pressHoldTimerRef = useRef<number | undefined>(undefined)
   const pressHoldPendingRef = useRef<PressHoldPending | null>(null)
+  const pressHoldKeyStartedAtRef = useRef<number | null>(null)
+  const pressHoldSystemSignaledRef = useRef(false)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
@@ -823,6 +844,7 @@ function App() {
   const word = lesson.words[index]
   const progress = ((index + (status === 'correct' ? 1 : 0)) / lesson.words.length) * 100
   const isLegacyDomain = window.location.hostname === LEGACY_HOST
+  const isAccentQa = window.location.hostname === 'localhost' && new URLSearchParams(window.location.search).get('qa') === 'accent'
 
   syncCodeRef.current = syncCode
   latestSnapshotRef.current = {
@@ -864,6 +886,11 @@ function App() {
   useEffect(() => {
     if (bootHandledRef.current) return
     bootHandledRef.current = true
+    if (isAccentQa) {
+      setAccentMode('strict')
+      begin(ACCENT_QA_LESSON, 'copy', { orderedWords: ACCENT_QA_LESSON.words, skipIntroduction: true })
+      return
+    }
     if (activeSession) {
       resumePracticeSession(activeSession)
       return
@@ -2510,6 +2537,21 @@ function App() {
     window.clearTimeout(pressHoldTimerRef.current)
     pressHoldTimerRef.current = undefined
     pressHoldPendingRef.current = null
+    pressHoldKeyStartedAtRef.current = null
+    pressHoldSystemSignaledRef.current = false
+  }
+
+  function schedulePressHoldReplacement(pending: PressHoldPending) {
+    pressHoldPendingRef.current = pending
+    setInputDraft(pending.value)
+    window.clearTimeout(pressHoldTimerRef.current)
+    pressHoldTimerRef.current = window.setTimeout(() => {
+      pressHoldTimerRef.current = undefined
+      pressHoldPendingRef.current = null
+      pressHoldKeyStartedAtRef.current = null
+      pressHoldSystemSignaledRef.current = false
+      handleCharacters(pending.value)
+    }, PRESS_HOLD_REPLACEMENT_MS)
   }
 
   function handleCommittedInput(rawValue: string) {
@@ -2522,18 +2564,13 @@ function App() {
       pending: pressHoldPendingRef.current,
     })
     if (decision.kind === 'keep-waiting') {
-      setInputDraft(decision.pending.value)
+      if (pressHoldTimerRef.current === undefined) schedulePressHoldReplacement(decision.pending)
+      else setInputDraft(decision.pending.value)
       return
     }
     cancelPressHoldReplacement()
     if (decision.kind === 'wait') {
-      pressHoldPendingRef.current = decision.pending
-      setInputDraft(decision.pending.value)
-      pressHoldTimerRef.current = window.setTimeout(() => {
-        pressHoldTimerRef.current = undefined
-        pressHoldPendingRef.current = null
-        handleCharacters(decision.pending.value)
-      }, PRESS_HOLD_REPLACEMENT_MS)
+      schedulePressHoldReplacement(decision.pending)
       return
     }
     handleCharacters(decision.value)
@@ -3007,7 +3044,12 @@ function App() {
               {Object.entries(mistakeWords).map(([name, count]) => <b key={name}>{name}<small>{count} 次</small></b>)}
             </div>
           )}
-          {isOnboardingRound ? (
+          {lesson.id === ACCENT_QA_LESSON.id ? (
+            <>
+              <button className="primary-button" onClick={() => begin(ACCENT_QA_LESSON, 'copy', { orderedWords: ACCENT_QA_LESSON.words, skipIntroduction: true })}>重新测试长按重音 <RotateCcw size={18} /></button>
+              <a className="text-button qa-exit-link" href="http://127.0.0.1:5173/">退出测试，返回本地首页</a>
+            </>
+          ) : isOnboardingRound ? (
             <div className="onboarding-next">
               <div className="mode-intro"><span><Keyboard size={17} /><b>跟打</b><small>先熟悉词形，不计掌握</small></span><span><BookOpen size={17} /><b>看义拼写</b><small>确认你懂中文意思</small></span><span><Headphones size={17} /><b>听音拼写</b><small>挑战的核心证据</small></span></div>
               <button className="primary-button" onClick={continueOnboardingRound}>继续 A1 · 完成本轮 <ArrowRight size={19} /></button>
@@ -3105,6 +3147,13 @@ function App() {
       </header>
 
       <main ref={practiceMainRef} className="practice-main">
+        {isAccentQa && (
+          <aside className="accent-qa-banner">
+            <strong>长按重音专用测试</strong>
+            <span>保持“严格”模式；短按基础字母会立即判错，持续按住约 0.4 秒才进入替换等待。</span>
+            <small>mañana：输入 ma 后长按 n · pingüino：输入 ping 后长按 u</small>
+          </aside>
+        )}
         <div className="practice-controls">
           <div className="mode-switch" role="group" aria-label="练习模式">
             <button aria-pressed={mode === 'copy'} className={mode === 'copy' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => changeMode('copy')}><Keyboard size={15} />跟打</button>
@@ -3129,15 +3178,18 @@ function App() {
         </div>
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
-          <span className="word-label">{isOnboardingRound
-            ? `边打边懂 · 第 ${index + 1}/3 个词`
-            : isIntroductionPractice
-              ? `新词预热 · ${index + 1}/${lesson.words.length}`
-              : mode === 'copy'
-                ? '逐字母输入'
-                : mode === 'recall'
-                  ? `根据中文拼写 · ${targetLetters.length} 个字符`
-                  : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
+          <div className="word-heading">
+            <span className="word-label">{isOnboardingRound
+              ? `边打边懂 · 第 ${index + 1}/3 个词`
+              : isIntroductionPractice
+                ? `新词预热 · ${index + 1}/${lesson.words.length}`
+                : mode === 'copy'
+                  ? '逐字母输入'
+                  : mode === 'recall'
+                    ? `根据中文拼写 · ${targetLetters.length} 个字符`
+                    : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
+            <span className="word-class">{practiceWordClassLabel(word, lesson.kind)}</span>
+          </div>
           <p className={`meaning-slot ${mode === 'listen' && status !== 'correct' ? 'waiting' : ''} ${mode === 'listen' && status === 'correct' ? 'confirmed' : ''}`}>
             {mode === 'listen' && status !== 'correct' ? '答对后显示词义' : word.chinese}
           </p>
@@ -3192,7 +3244,7 @@ function App() {
               handleCommittedInput(event.target.value)
             }}
             onCompositionStart={() => {
-              cancelPressHoldReplacement()
+              if (pressHoldPendingRef.current) pressHoldSystemSignaledRef.current = true
               isComposingRef.current = true
               compositionCommittedValueRef.current = null
             }}
@@ -3214,10 +3266,35 @@ function App() {
             }}
             onKeyDown={(event) => {
               if (event.key === 'Backspace') event.preventDefault()
+              if (event.repeat && pressHoldPendingRef.current?.base === event.key.toLocaleLowerCase('es-ES')) {
+                pressHoldSystemSignaledRef.current = true
+              }
+              if (!event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
+                const candidate = pressHoldKeyCandidate({
+                  key: event.key,
+                  acceptedValue: typed,
+                  targetValue: getTypingTarget(word.spanish),
+                  strict: accentMode === 'strict',
+                  idle: status === 'idle',
+                })
+                if (candidate && !pressHoldPendingRef.current) {
+                  pressHoldPendingRef.current = candidate
+                  pressHoldKeyStartedAtRef.current = Date.now()
+                  pressHoldSystemSignaledRef.current = false
+                }
+              }
               if (event.key !== 'Enter') return
               event.preventDefault()
               if (status !== 'idle' || event.repeat || event.nativeEvent.isComposing || isComposingRef.current) return
               replayCurrentPronunciation()
+            }}
+            onKeyUp={(event) => {
+              const pending = pressHoldPendingRef.current
+              const startedAt = pressHoldKeyStartedAtRef.current
+              if (!pending || startedAt === null || pending.base !== event.key.toLocaleLowerCase('es-ES')) return
+              if (isConfirmedPressHold(Date.now() - startedAt, pressHoldSystemSignaledRef.current)) return
+              cancelPressHoldReplacement()
+              handleCharacters(pending.value)
             }}
             autoComplete="off"
             autoCorrect="off"
@@ -3260,7 +3337,15 @@ function App() {
           <div className="typing-feedback" aria-live="polite">
             {status === 'wrong' && <><X size={16} /><strong>这个字母错了，整词重来</strong></>}
             {status === 'correct' && <><Check size={16} /><strong>¡Perfecto! · 已显示词义</strong></>}
-            {status === 'idle' && <span>{roundMasteryMode === null && mode !== 'copy' ? '本轮切换过模式，只计练习' : roundUsedHint && mode !== 'copy' ? '本轮已使用提示，只计练习' : hideSpanish ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过' : '错一个字母，当前词从头重来'}</span>}
+            {status === 'idle' && <span>{pressHoldPendingRef.current
+              ? `正在等待 ${targetLetters[typedLength] ?? '重音字母'} 替换 · 最多 3 秒`
+              : roundMasteryMode === null && mode !== 'copy'
+                ? '本轮切换过模式，只计练习'
+                : roundUsedHint && mode !== 'copy'
+                  ? '本轮已使用提示，只计练习'
+                  : hideSpanish
+                    ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过'
+                    : '错一个字母，当前词从头重来'}</span>}
           </div>
         </section>
       </main>

@@ -6,9 +6,32 @@ type PressHoldDecision =
   | { kind: 'keep-waiting'; pending: PressHoldPending }
 
 const ACCENT_BASES: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u', ñ: 'n' }
+export const PRESS_HOLD_GESTURE_MS = 400
 
 function normalize(value: string) {
   return value.toLocaleLowerCase('es-ES').normalize('NFC')
+}
+
+export function pressHoldKeyCandidate(options: {
+  key: string
+  acceptedValue: string
+  targetValue: string
+  strict: boolean
+  idle: boolean
+}): PressHoldPending | null {
+  if (!options.strict || !options.idle) return null
+  const keyCharacters = Array.from(normalize(options.key))
+  if (keyCharacters.length !== 1) return null
+  const accepted = normalize(options.acceptedValue)
+  const acceptedCharacters = Array.from(accepted)
+  const expected = Array.from(normalize(options.targetValue))[acceptedCharacters.length]
+  const base = keyCharacters[0]
+  if (!expected || ACCENT_BASES[expected] !== base) return null
+  return { value: accepted + base, base }
+}
+
+export function isConfirmedPressHold(durationMs: number, systemSignaledHold: boolean) {
+  return systemSignaledHold || durationMs >= PRESS_HOLD_GESTURE_MS
 }
 
 export function pressHoldInputDecision(options: {
