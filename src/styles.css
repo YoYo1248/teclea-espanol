@@ -174,7 +174,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 
 .practice-screen { display: flex; flex-direction: column; min-height: 100svh; }
 .practice-header { padding: max(15px, env(safe-area-inset-top)) 17px 10px; display: flex; align-items: center; gap: 13px; }
-.practice-header .icon-button { margin: 0; flex: 0 0 auto; }
+.practice-home-button { min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.65); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; font-size: 12px; font-weight: 800; }
+.practice-home-label-short { display: none; }
 .progress-track { flex: 1; height: 5px; border-radius: 99px; overflow: hidden; background: #ddd8ce; }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--red); transition: width .35s ease; }
 .counter { font-size: 12px; font-weight: 700; color: var(--muted); }
@@ -863,7 +864,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .keyboard-open .practice-header {
     padding: max(7px, env(safe-area-inset-top)) 15px 6px;
   }
-  .keyboard-open .practice-header .icon-button { width: 36px; height: 36px; }
+  .keyboard-open .practice-home-button { width: 36px; min-height: 36px; padding: 0; }
+  .keyboard-open .practice-home-button span { display: none; }
   .keyboard-open .practice-main {
     min-height: 0;
     padding: 2px 14px 8px;
@@ -909,6 +911,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 
 @media (max-width: 599px) {
+  .practice-home-button { padding: 0 11px; }
+  .practice-home-label { display: none; }
+  .practice-home-label-short { display: inline; }
   .primary-filters > div:first-child { display: grid; grid-template-columns: 35px repeat(4, max-content); align-items: center; gap: 5px; overflow: visible; }
   .primary-filters > div:first-child > span { grid-row: 1 / span 2; align-self: start; padding-top: 10px; }
   .completion-screen { display: block; padding: 66px 16px 20px; overflow-y: auto; }

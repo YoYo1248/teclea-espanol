@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft,
   ArrowRight,
   BookOpen,
   Check,
@@ -2797,7 +2796,11 @@ function App() {
   return (
     <div className={`app-shell practice-screen ${keyboardOpen ? 'keyboard-open' : ''}`}>
       <header className="practice-header">
-        <button className="icon-button" onClick={exitPractice} aria-label="退出练习"><ArrowLeft size={22} /></button>
+        <button className="practice-home-button" onClick={exitPractice} aria-label="回到首页">
+          <Home size={18} />
+          <span className="practice-home-label">回到首页</span>
+          <span className="practice-home-label-short">首页</span>
+        </button>
         <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
         <span className="counter">{index + 1}/{lesson.words.length}</span>
       </header>
