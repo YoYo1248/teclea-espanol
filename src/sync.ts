@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { deactivateReview, normalizeMistakeRecord, type MistakeRecord } from './mistakeReview'
 
 export type SyncMode = 'copy' | 'recall' | 'listen'
 export type SyncSpeechRate = 0.55 | 0.8 | 1
@@ -9,14 +10,7 @@ export type SyncPracticeState = {
   dailyWords: Record<string, number>
 }
 
-export type SyncMistakeRecord = {
-  lessonId: string
-  spanish: string
-  chinese: string
-  count: number
-  lastWrongAt: number
-  lastMode: SyncMode
-}
+export type SyncMistakeRecord = MistakeRecord
 
 export type SyncActivePracticeSession = {
   lessonId: string
@@ -36,7 +30,7 @@ export type SyncActivePracticeSession = {
 }
 
 export type SyncSnapshot = {
-  version: 2
+  version: 3
   updatedAt: number
   practiceState: SyncPracticeState
   mistakeBank: Record<string, SyncMistakeRecord>
@@ -51,7 +45,7 @@ export type SyncSnapshot = {
 }
 
 type CompatibleSyncSnapshot = Omit<SyncSnapshot, 'version' | 'mistakeResolvedAt' | 'masteryProgress' | 'activeSession' | 'pausedMainSession' | 'speechRate'> & {
-  version: 1 | 2
+  version: 1 | 2 | 3
   mistakeResolvedAt?: SyncSnapshot['mistakeResolvedAt']
   masteryProgress?: SyncSnapshot['masteryProgress']
   activeSession?: SyncSnapshot['activeSession']
@@ -109,7 +103,7 @@ async function encryptSnapshot(snapshot: SyncSnapshot, key: CryptoKey) {
 }
 
 function validateSnapshot(value: unknown): CompatibleSyncSnapshot {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== 2) || typeof value.updatedAt !== 'number') {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== 3) || typeof value.updatedAt !== 'number') {
     throw new Error('同步数据版本不兼容')
   }
   if (!isRecord(value.practiceState)
@@ -124,7 +118,8 @@ function validateSnapshot(value: unknown): CompatibleSyncSnapshot {
       && typeof record.chinese === 'string'
       && typeof record.count === 'number'
       && typeof record.lastWrongAt === 'number'
-      && (record.lastMode === 'copy' || record.lastMode === 'recall' || record.lastMode === 'listen'))
+      && (record.lastMode === 'copy' || record.lastMode === 'recall' || record.lastMode === 'listen')
+      && (value.version !== 3 || normalizeMistakeRecord(record) !== null))
     || !Array.isArray(value.completed)
     || !value.completed.every((id) => typeof id === 'string')
     || (value.accentMode !== 'strict' && value.accentMode !== 'lenient')
@@ -178,15 +173,17 @@ function mergeMistakeState(local: SyncSnapshot, remote: CompatibleSyncSnapshot) 
   const mistakeBank = { ...local.mistakeBank }
   Object.entries(remote.mistakeBank).forEach(([key, remoteRecord]) => {
     if (!isRecord(remoteRecord) || typeof remoteRecord.lastWrongAt !== 'number' || typeof remoteRecord.count !== 'number') return
+    const normalizedRemote = normalizeMistakeRecord(remoteRecord)
+    if (!normalizedRemote) return
     const localRecord = mistakeBank[key]
-    if (!localRecord || remoteRecord.lastWrongAt > localRecord.lastWrongAt) {
-      mistakeBank[key] = remoteRecord
-    } else if (remoteRecord.lastWrongAt === localRecord.lastWrongAt) {
-      mistakeBank[key] = { ...localRecord, count: Math.max(localRecord.count, remoteRecord.count) }
+    if (!localRecord || normalizedRemote.updatedAt > localRecord.updatedAt) {
+      mistakeBank[key] = normalizedRemote
+    } else if (normalizedRemote.updatedAt === localRecord.updatedAt && normalizedRemote.count > localRecord.count) {
+      mistakeBank[key] = normalizedRemote
     }
   })
   Object.entries(mistakeBank).forEach(([key, record]) => {
-    if ((resolvedAt[key] ?? 0) >= record.lastWrongAt) delete mistakeBank[key]
+    if ((resolvedAt[key] ?? 0) >= record.updatedAt) mistakeBank[key] = deactivateReview(record, resolvedAt[key])
   })
   return { mistakeBank, mistakeResolvedAt: resolvedAt }
 }
@@ -194,9 +191,9 @@ function mergeMistakeState(local: SyncSnapshot, remote: CompatibleSyncSnapshot) 
 export function mergeSyncSnapshots(local: SyncSnapshot, remote: CompatibleSyncSnapshot): SyncSnapshot {
   const remoteIsNewer = remote.updatedAt > local.updatedAt
   const mistakeState = mergeMistakeState(local, remote)
-  const remoteHasV2State = remote.version === 2
+  const remoteHasSessionState = remote.version === 2 || remote.version === 3
   return {
-    version: 2,
+    version: 3,
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
     practiceState: {
       ...(remoteIsNewer ? remote.practiceState : local.practiceState),
@@ -205,8 +202,8 @@ export function mergeSyncSnapshots(local: SyncSnapshot, remote: CompatibleSyncSn
     ...mistakeState,
     completed: Array.from(new Set([...local.completed, ...remote.completed.filter((id): id is string => typeof id === 'string')])),
     masteryProgress: mergeMasteryProgress(local.masteryProgress, remote.masteryProgress),
-    activeSession: remoteIsNewer && remoteHasV2State ? (remote.activeSession ?? null) : local.activeSession,
-    pausedMainSession: remoteIsNewer && remoteHasV2State ? (remote.pausedMainSession ?? null) : local.pausedMainSession,
+    activeSession: remoteIsNewer && remoteHasSessionState ? (remote.activeSession ?? null) : local.activeSession,
+    pausedMainSession: remoteIsNewer && remoteHasSessionState ? (remote.pausedMainSession ?? null) : local.pausedMainSession,
     accentMode: remoteIsNewer && (remote.accentMode === 'strict' || remote.accentMode === 'lenient') ? remote.accentMode : local.accentMode,
     soundEnabled: remoteIsNewer && typeof remote.soundEnabled === 'boolean' ? remote.soundEnabled : local.soundEnabled,
     speechRate: remoteIsNewer && (remote.speechRate === 0.55 || remote.speechRate === 0.8 || remote.speechRate === 1) ? remote.speechRate : local.speechRate,

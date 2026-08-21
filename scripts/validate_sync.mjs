@@ -30,13 +30,25 @@ try {
     masteryMode: 'listen',
     usedHint: false,
   })
+  const mistake = (lessonId, spanish, chinese, count, lastWrongAt, lastMode, active = true) => ({
+    lessonId,
+    spanish,
+    chinese,
+    count,
+    lastWrongAt,
+    lastMode,
+    wrongCounts: { copy: lastMode === 'copy' ? count : 0, recall: lastMode === 'recall' ? count : 0, listen: lastMode === 'listen' ? count : 0 },
+    independentCorrectCounts: { copy: 0, recall: 0, listen: 0 },
+    updatedAt: lastWrongAt,
+    review: { [lastMode]: { active, recoveryCount: active ? 0 : 1, dueOn: '2026-08-20', lastWrongAt } },
+  })
 
   const local = {
-    version: 2,
+    version: 3,
     updatedAt: 100,
     practiceState: { lastMode: 'copy', lastLessonId: 'a1-one', dailyWords: { '2026-08-19': 2 } },
     mistakeBank: {
-      active: { lessonId: 'a1-one', spanish: 'uno', chinese: '一', count: 1, lastWrongAt: 100, lastMode: 'copy' },
+      active: mistake('a1-one', 'uno', '一', 1, 100, 'copy'),
     },
     mistakeResolvedAt: { resolved: 150 },
     completed: ['a1-zero'],
@@ -48,12 +60,12 @@ try {
     speechRate: 0.8,
   }
   const remote = {
-    version: 2,
+    version: 3,
     updatedAt: 200,
     practiceState: { lastMode: 'listen', lastLessonId: 'a1-two', dailyWords: { '2026-08-19': 3, '2026-08-18': 5 } },
     mistakeBank: {
-      active: { lessonId: 'a1-one', spanish: 'uno', chinese: '一', count: 2, lastWrongAt: 120, lastMode: 'listen' },
-      resolved: { lessonId: 'a1-two', spanish: 'dos', chinese: '二', count: 1, lastWrongAt: 140, lastMode: 'listen' },
+      active: mistake('a1-one', 'uno', '一', 2, 120, 'listen'),
+      resolved: mistake('a1-two', 'dos', '二', 1, 140, 'listen'),
     },
     mistakeResolvedAt: {},
     completed: ['a1-two'],
@@ -71,14 +83,21 @@ try {
   assert.deepEqual(merged.completed.sort(), ['a1-two', 'a1-zero'])
   assert.deepEqual(merged.masteryProgress['a1-one'], { recall: true, listen: true })
   assert.equal(merged.mistakeBank.active.count, 2)
-  assert.equal(merged.mistakeBank.resolved, undefined)
+  assert.equal(merged.mistakeBank.resolved.review.listen.active, false)
+  assert.equal(merged.mistakeBank.resolved.count, 1)
   assert.equal(merged.activeSession.lessonId, 'a1-two')
   assert.equal(merged.pausedMainSession.lessonId, 'a1-one')
   assert.equal(merged.accentMode, 'lenient')
   assert.equal(merged.soundEnabled, false)
   assert.equal(merged.speechRate, 0.55)
 
-  const legacyRemote = { ...remote, version: 1 }
+  const legacyRemote = {
+    ...remote,
+    version: 1,
+    mistakeBank: {
+      legacy: { lessonId: 'a1-two', spanish: 'dos', chinese: '二', count: 3, lastWrongAt: 180, lastMode: 'listen' },
+    },
+  }
   delete legacyRemote.masteryProgress
   delete legacyRemote.mistakeResolvedAt
   delete legacyRemote.activeSession
@@ -87,6 +106,8 @@ try {
   const legacyMerged = mergeSyncSnapshots(local, legacyRemote)
   assert.equal(legacyMerged.activeSession.lessonId, 'a1-one')
   assert.equal(legacyMerged.speechRate, 0.8)
+  assert.equal(legacyMerged.mistakeBank.legacy.wrongCounts.listen, 3)
+  assert.equal(legacyMerged.mistakeBank.legacy.review.listen.active, true)
 
   const code = generateSyncCode()
   assert.equal(code.length, 20)

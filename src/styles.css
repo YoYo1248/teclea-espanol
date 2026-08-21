@@ -160,6 +160,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .mode-card h3, .mistake-card h3 { margin: 4px 0; font-size: 16px; }
 .mode-card p, .mistake-card p { margin: 0; color: #65706a; font-size: 12px; }
 .mistake-card p { color: #796a61; }
+.mistake-statuses { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.mistake-statuses span { padding: 4px 7px; border-radius: 999px; background: rgba(255,255,255,.45); color: #806f65; font-size: 10px; font-weight: 750; line-height: 1; }
+.mistake-statuses span.due { background: #a85d48; color: white; }
+.mistake-record-link { margin: 7px 0 0; padding: 0; border: 0; background: transparent; color: #934f3d; font-size: 11px; font-weight: 750; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .mistake-card .resume-main-link { display: block; margin: 7px 0 0; padding: 0; border: 0; background: transparent; color: #934f3d; font-size: 12px; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .mode-card > button, .mistake-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--green); }
 .mistake-card > button { color: #a85d48; }
@@ -167,6 +171,31 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .mistake-card.empty { background: #ebe7df; }
 .review-result { max-width: 520px; margin: 10px auto 18px; padding: 12px 15px; border-radius: 14px; background: #f2e4dd; color: #8b503f; font-size: 14px; font-weight: 700; }
 .review-result.clean { background: #deebe5; color: #34705f; }
+.mistake-log-sheet { display: grid; gap: 12px; }
+.mistake-log-note { margin: -4px 0 1px; color: #6f6d66; font-size: 12px; line-height: 1.55; }
+.mistake-log-group { padding: 13px; border: 1px solid rgba(168,93,72,.14); border-radius: 17px; background: rgba(255,255,255,.42); }
+.mistake-log-group > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.mistake-log-group > div:first-child span { font-size: 15px; font-weight: 850; }
+.mistake-log-group > div:first-child b { min-width: 27px; padding: 4px 8px; border-radius: 999px; background: #e7ddd4; color: #85513f; font-size: 11px; text-align: center; }
+.mistake-log-group.due > div:first-child b { background: #a85d48; color: white; }
+.mistake-log-group > small { display: block; margin: 3px 0 9px; color: #89847c; font-size: 10px; line-height: 1.45; }
+.mistake-record-list { display: grid; gap: 7px; }
+.mistake-record-row { padding: 10px 11px; border-radius: 13px; background: #fffdf9; box-shadow: 0 5px 15px rgba(55,51,45,.045); }
+.mistake-record-row > div:first-child { display: flex; align-items: baseline; gap: 8px; }
+.mistake-record-row > div:first-child strong { color: #343834; font-size: 16px; }
+.mistake-record-row > div:first-child span { color: #77756f; font-size: 11px; }
+.mistake-record-row > p { margin: 5px 0 0; color: #8a8279; font-size: 10px; }
+.mistake-recovery-lines { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.mistake-recovery-lines > span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 9px; background: #f1e5de; color: #8d503e; font-size: 10px; font-weight: 800; }
+.mistake-recovery-lines small { color: #9c7569; font-size: 9px; font-weight: 650; }
+.mistake-resolved { display: block; margin-top: 7px; color: #4d806e; font-size: 10px; }
+.mistake-empty-row { margin: 8px 0 0; padding: 10px; border: 1px dashed #d7cec4; border-radius: 11px; color: #9a948c; font-size: 11px; text-align: center; }
+.mistake-history { border-top: 1px solid var(--line); padding-top: 5px; }
+.mistake-history summary { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; cursor: pointer; }
+.mistake-history summary span { font-size: 14px; font-weight: 850; }
+.mistake-history summary b { color: #817d75; font-size: 10px; }
+.mistake-history[open] summary { margin-bottom: 4px; }
+.mistake-log-sheet > .primary-button { margin-top: 2px; }
 .project-legal { margin: 27px 0 5px; display: grid; justify-items: center; gap: 9px; color: #aaa69e; font-size: 10px; }
 .project-legal a { color: #817d75; text-decoration: underline; text-underline-offset: 2px; }
 .learning-guide-links, .project-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px 12px; }
@@ -532,6 +561,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .practice-footer { bottom: 30px; border-radius: 0 0 34px 34px; }
   .daily-goal-backdrop { align-items: center; padding: 24px; }
   .daily-goal-backdrop .daily-goal-sheet { max-height: min(86svh, 760px); border-radius: 28px; box-shadow: 0 24px 70px rgba(32,32,29,.22); }
+  .mistake-log-backdrop .mistake-log-sheet { max-width: 620px; max-height: min(86svh, 760px); border-radius: 28px; box-shadow: 0 24px 70px rgba(32,32,29,.22); }
   .daily-goal-backdrop .sheet-handle { display: none; }
 }
 
@@ -670,6 +700,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .lesson-copy strong { font-size: 15px; }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 66px; padding: 10px 12px; }
   .mode-card p, .mistake-card p { display: none; }
+  .mistake-statuses { margin-top: 5px; }
+  .mistake-statuses span { padding: 3px 6px; font-size: 9px; }
   .project-legal { display: grid; gap: 0; font-size: 9px; }
   .project-meta { display: none; }
   .practice-header { padding-top: 13px; }
@@ -812,6 +844,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
   .mode-card h3, .mistake-card h3 { font-size: 19px; }
   .mode-card p, .mistake-card p { display: block; font-size: 13px; }
+  .mistake-statuses span { font-size: 10px; }
   .project-legal { grid-column: 2; grid-row: 3; margin: 0; min-height: 12px; grid-template-columns: minmax(0, 1fr) auto; justify-items: stretch; align-items: center; gap: 12px; font-size: 10px; }
   .learning-guide-links { min-width: 0; flex-wrap: nowrap; justify-content: flex-start; gap: 10px; overflow-x: auto; scrollbar-width: none; }
   .learning-guide-links::-webkit-scrollbar { display: none; }
