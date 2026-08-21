@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-20",
+  "generatedAt": "2026-08-21",
   "scope": {
-    "catalogCards": 2200,
-    "lessons": 209,
+    "catalogCards": 2636,
+    "lessons": 265,
     "levels": [
       "A1",
       "A2",
@@ -15,52 +15,186 @@
     "denominator": "Current application catalog after runtime lesson construction"
   },
   "headline": {
-    "uniqueTargets": 2200,
+    "uniqueTargets": 2636,
     "explicitAdvancedCandidates": 200,
-    "cardsWithTraceableSource": 2200,
-    "cardsWithExamples": 1500,
-    "cardsWithStructuredLemma": 1404,
-    "cardsWithFrameworkReference": 1404,
+    "advancedEditorialReadyCards": 200,
+    "advancedC1EditorialReadyCards": 96,
+    "advancedC2EditorialReadyCards": 96,
+    "commonA1EditorialReadyCards": 20,
+    "commonA1TimeEditorialReadyCards": 20,
+    "commonA1QuantityEditorialReadyCards": 20,
+    "commonA1FamilyEditorialReadyCards": 20,
+    "commonA1HomeEditorialReadyCards": 20,
+    "commonA1CityEditorialReadyCards": 20,
+    "commonA1FoodEditorialReadyCards": 20,
+    "commonA1VerbEditorialReadyCards": 20,
+    "commonA1DialogueEditorialReadyCards": 20,
+    "commonA1ShoppingHealthEditorialReadyCards": 20,
+    "commonA1StudyWorkEditorialReadyCards": 24,
+    "commonA1ActionsTwoEditorialReadyCards": 13,
+    "commonA1TravelEditorialReadyCards": 20,
+    "commonA1HealthRemainderEditorialReadyCards": 1,
+    "commonA2PracticalEditorialReadyCards": 38,
+    "intermediateB1EditorialReadyCards": 100,
+    "intermediateB2EditorialReadyCards": 100,
+    "cardsWithTraceableSource": 2636,
+    "cardsWithExamples": 2636,
+    "cardsWithStructuredLemma": 2636,
+    "cardsWithFrameworkReference": 2636,
     "cardsWithAuditableProfessionalReview": 0,
+    "professionalReview": {
+      "files": 0,
+      "records": 0,
+      "currentRecords": 0,
+      "staleRecords": 0,
+      "effectiveTargets": 0,
+      "passedTargets": 0,
+      "issueTargets": 0,
+      "passedByRoute": {
+        "exam": 0,
+        "life": 0
+      },
+      "passedByLevel": {
+        "A1": 0,
+        "A2": 0,
+        "B1": 0,
+        "B2": 0,
+        "C1": 0,
+        "C2": 0
+      }
+    },
+    "routeRows": [
+      {
+        "route": "exam",
+        "cards": 2590,
+        "exclusive": 1661
+      },
+      {
+        "route": "life",
+        "cards": 975,
+        "exclusive": 46
+      }
+    ],
+    "vidaSupermarket": {
+      "cards": 356,
+      "newCards": 278,
+      "gapBatchCards": 32,
+      "reusedCards": 78,
+      "free": 50,
+      "paid": 306,
+      "sharedWithExam": 310,
+      "lifeOnly": 46
+    },
+    "vidaMobility": {
+      "cards": 140,
+      "reusedCards": 140,
+      "free": 24,
+      "paid": 116,
+      "l1": 60,
+      "l2": 48,
+      "l3": 32,
+      "sharedWithExam": 140
+    },
+    "vidaSettling": {
+      "cards": 196,
+      "reusedCards": 196,
+      "free": 32,
+      "paid": 164,
+      "l1": 80,
+      "l2": 64,
+      "l3": 52,
+      "sharedWithExam": 196,
+      "sharedWithMobility": 8
+    },
+    "vidaDaily": {
+      "cards": 307,
+      "reusedCards": 307,
+      "rankedCards": 171,
+      "free": 41,
+      "paid": 266,
+      "l1": 171,
+      "l2": 96,
+      "l3": 40,
+      "sharedWithExam": 307,
+      "sharedWithOtherLifeModules": 16
+    },
+    "examMobilityBatch": {
+      "cards": 72,
+      "a2": 32,
+      "b1": 24,
+      "b2": 16
+    },
+    "examStructuralBatch": {
+      "cards": 72,
+      "a2": 8,
+      "b1": 8,
+      "b2": 56,
+      "sharedWithLife": 56,
+      "sharedWithSettling": 48,
+      "sharedWithDaily": 8,
+      "examOnly": 16
+    },
+    "examTransactionFunctionBatch": {
+      "cards": 32,
+      "b1": 32,
+      "transactionCards": 16,
+      "functionCards": 16,
+      "sharedWithSupermarket": 12,
+      "sharedWithSettling": 4,
+      "sharedWithDaily": 16,
+      "examOnly": 0
+    },
     "officialCompleteness": null,
     "officialCompletenessReason": "CEFR and PCIC do not publish one exhaustive official word-count denominator for each level."
   },
   "levelRows": [
     {
       "level": "A1",
-      "total": 422,
-      "words": 345,
-      "phrases": 44,
+      "total": 499,
+      "words": 419,
+      "phrases": 47,
       "infinitives": 33,
-      "catalogShare": 19.2,
-      "exampleCoverage": 38.9
+      "catalogShare": 18.9,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     },
     {
       "level": "A2",
-      "total": 464,
-      "words": 433,
-      "phrases": 24,
-      "infinitives": 7,
-      "catalogShare": 21.1,
-      "exampleCoverage": 90.9
+      "total": 647,
+      "words": 539,
+      "phrases": 93,
+      "infinitives": 15,
+      "catalogShare": 24.5,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     },
     {
       "level": "B1",
-      "total": 590,
-      "words": 536,
-      "phrases": 26,
+      "total": 694,
+      "words": 568,
+      "phrases": 98,
       "infinitives": 28,
-      "catalogShare": 26.8,
-      "exampleCoverage": 83.1
+      "catalogShare": 26.3,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     },
     {
       "level": "B2",
-      "total": 524,
-      "words": 497,
-      "phrases": 10,
+      "total": 596,
+      "words": 529,
+      "phrases": 50,
       "infinitives": 17,
-      "catalogShare": 23.8,
-      "exampleCoverage": 80.9
+      "catalogShare": 22.6,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     },
     {
       "level": "C1",
@@ -68,8 +202,11 @@
       "words": 80,
       "phrases": 10,
       "infinitives": 10,
-      "catalogShare": 4.5,
-      "exampleCoverage": 0
+      "catalogShare": 3.8,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     },
     {
       "level": "C2",
@@ -77,52 +214,55 @@
       "words": 80,
       "phrases": 10,
       "infinitives": 10,
-      "catalogShare": 4.5,
-      "exampleCoverage": 0
+      "catalogShare": 3.8,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "frameworkReferenceCoverage": 100,
+      "professionalReviewCoverage": 0
     }
   ],
   "categoryRows": [
     {
       "category": "核心表达",
       "scenes": "基础、日常、时间",
-      "total": 526,
+      "total": 599,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 23.9
+      "catalogShare": 22.7
     },
     {
       "category": "吃住购物",
       "scenes": "餐厅、购物、住宿",
-      "total": 112,
+      "total": 391,
       "levelsPresent": "A1、A2、B1、B2",
-      "catalogShare": 5.1
+      "catalogShare": 14.8
     },
     {
       "category": "出行城市",
       "scenes": "城市、旅行",
-      "total": 145,
+      "total": 213,
       "levelsPresent": "A1、A2、B1、B2、C2",
-      "catalogShare": 6.6
+      "catalogShare": 8.1
     },
     {
       "category": "家庭身心",
       "scenes": "家庭、健康、情绪",
-      "total": 233,
+      "total": 249,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 10.6
+      "catalogShare": 9.4
     },
     {
       "category": "学习工作",
       "scenes": "学习、工作",
       "total": 546,
       "levelsPresent": "A1、A2、B1、B2、C1、C2",
-      "catalogShare": 24.8
+      "catalogShare": 20.7
     },
     {
       "category": "社会世界",
       "scenes": "社会、科技、环境、行政",
       "total": 638,
       "levelsPresent": "A2、B1、B2、C1、C2",
-      "catalogShare": 29
+      "catalogShare": 24.2
     }
   ],
   "sourceRows": [
@@ -132,7 +272,7 @@
     },
     {
       "sourceName": "Kaikki / English Wiktionary",
-      "cards": 48
+      "cards": 30
     },
     {
       "sourceName": "SEPE · 招聘、职位与劳动合同用语核对",
@@ -155,8 +295,48 @@
       "cards": 8
     },
     {
+      "sourceName": "Vida 超市任务词库 · 西班牙官方、零售与 PCIC 用语核对",
+      "cards": 278
+    },
+    {
       "sourceName": "wordfreq + Kaikki / Wiktionary",
       "cards": 300
+    },
+    {
+      "sourceName": "考试路线 B1 交易任务补缺 · PCIC 购物、支付与金融服务清单",
+      "cards": 16
+    },
+    {
+      "sourceName": "考试路线住房补缺 · PCIC 与 BOE 租赁用语核对",
+      "cards": 16
+    },
+    {
+      "sourceName": "考试路线出行补缺 · Aena 机场旅客用语与 PCIC 核对",
+      "cards": 8
+    },
+    {
+      "sourceName": "考试路线出行补缺 · Renfe 旅客条件、DGT 道路用语与 PCIC 核对",
+      "cards": 40
+    },
+    {
+      "sourceName": "考试路线出行补缺 · 西班牙交通部门与 PCIC 用语核对",
+      "cards": 24
+    },
+    {
+      "sourceName": "考试路线功能表达补缺 · PCIC A1–A2 功能清单",
+      "cards": 8
+    },
+    {
+      "sourceName": "考试路线功能表达补缺 · PCIC B1–B2 功能清单",
+      "cards": 32
+    },
+    {
+      "sourceName": "考试路线医疗服务补缺 · 西班牙卫生部与 PCIC 核对",
+      "cards": 16
+    },
+    {
+      "sourceName": "考试路线消费事务补缺 · 西班牙消费者中心与 PCIC 核对",
+      "cards": 16
     },
     {
       "sourceName": "西班牙政府与移民部门 · 居留登记和工作许可用语核对",
@@ -172,8 +352,8 @@
     }
   ],
   "orthography": {
-    "targetsWithWrittenAccent": 515,
-    "targetsWithEnye": 28,
+    "targetsWithWrittenAccent": 631,
+    "targetsWithEnye": 35,
     "targetsWithDiaeresis": 3
   },
   "integrity": {
@@ -207,6 +387,7 @@
       }
     ]
   },
+  "frequencyCoverageRecomputed": false,
   "candidateAudit": {
     "inputRows": 6000,
     "readyForStaging": 0,
@@ -239,7 +420,7 @@
   "definitions": {
     "card": "One unique Spanish typing target; a fixed phrase counts as one card.",
     "sourceCoverage": "A card has name, URL, license and checked-at metadata. It does not prove professional linguistic review.",
-    "professionalReviewCoverage": "Only review records with a named reviewer and review date count. Current catalog cards do not yet carry those fields.",
+    "professionalReviewCoverage": "A target counts only when its latest review for the current content digest has decision=pass plus a named reviewer, role and ISO review date. Stale reviews remain historical records but do not count.",
     "pcicCoverage": "Broad editorial category and level mapping against PCIC domains; not copied-entry coverage or official certification."
   },
   "sourceManifest": "data/lexicon/sources.json"

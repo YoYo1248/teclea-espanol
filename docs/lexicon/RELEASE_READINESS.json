@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-21",
+  "status": {
+    "catalogValid": true,
+    "lifeV1ContentReady": true,
+    "formalPublicationReady": false,
+    "meaning": {
+      "catalogValid": "Structural and canonical invariants represented in this report pass. Run npm run check for the complete engineering validation suite.",
+      "lifeV1ContentReady": "The four Vida modules meet their current V1 source, example, structured-metadata and placement baselines; this does not include professional approval or payment implementation.",
+      "formalPublicationReady": "All formal content gates pass, including current-content professional review. False means the catalog must remain labelled candidate/editorial."
+    }
+  },
+  "scope": {
+    "cards": 2636,
+    "examCards": 2590,
+    "lifeCards": 975,
+    "advancedCandidates": 200,
+    "advancedEditorialReady": 200,
+    "commonA1EditorialReady": 20,
+    "commonA1TimeEditorialReady": 20,
+    "commonA1QuantityEditorialReady": 20,
+    "commonA1FamilyEditorialReady": 20,
+    "commonA1HomeEditorialReady": 20,
+    "commonA1CityEditorialReady": 20,
+    "commonA1FoodEditorialReady": 20,
+    "commonA1VerbEditorialReady": 20,
+    "commonA1DialogueEditorialReady": 20,
+    "commonA1ShoppingHealthEditorialReady": 20,
+    "commonA1StudyWorkEditorialReady": 24,
+    "commonA1ActionsTwoEditorialReady": 13,
+    "commonA1TravelEditorialReady": 20,
+    "commonA1EditorialReadyTotal": 258
+  },
+  "coverage": {
+    "sources": {
+      "cards": 2636,
+      "percentage": 100
+    },
+    "examples": {
+      "cards": 2636,
+      "percentage": 100
+    },
+    "structuredLexicalMetadata": {
+      "cards": 2636,
+      "percentage": 100
+    },
+    "frameworkReferences": {
+      "cards": 2636,
+      "percentage": 100
+    },
+    "professionalReview": {
+      "cards": 0,
+      "percentage": 0,
+      "staleRecords": 0,
+      "issueTargets": 0
+    }
+  },
+  "moduleRows": [
+    {
+      "module": "supermarket",
+      "label": "超市采购",
+      "cards": 356,
+      "sourceCoverage": 100,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "professionalReviewCoverage": 0
+    },
+    {
+      "module": "mobility",
+      "label": "城市出行",
+      "cards": 140,
+      "sourceCoverage": 100,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "professionalReviewCoverage": 0
+    },
+    {
+      "module": "settling",
+      "label": "在西班牙安顿",
+      "cards": 196,
+      "sourceCoverage": 100,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "professionalReviewCoverage": 0
+    },
+    {
+      "module": "daily",
+      "label": "高频日常",
+      "cards": 307,
+      "sourceCoverage": 100,
+      "exampleCoverage": 100,
+      "structuredMetadataCoverage": 100,
+      "professionalReviewCoverage": 0
+    }
+  ],
+  "gates": [
+    {
+      "id": "canonical-unique",
+      "scope": "catalog",
+      "label": "canonical 输入目标唯一",
+      "actual": 0,
+      "required": 0,
+      "passed": true,
+      "evidence": "scripts/validate_catalog.mjs"
+    },
+    {
+      "id": "target-length",
+      "scope": "catalog",
+      "label": "训练目标不超过 3 个词",
+      "actual": 0,
+      "required": 0,
+      "passed": true,
+      "evidence": "scripts/validate_catalog.mjs"
+    },
+    {
+      "id": "source-complete",
+      "scope": "formal-publication",
+      "label": "所有卡具有来源四要素",
+      "actual": 2636,
+      "required": 2636,
+      "passed": true,
+      "evidence": "docs/lexicon/COVERAGE_REPORT.json"
+    },
+    {
+      "id": "examples-complete",
+      "scope": "formal-publication",
+      "label": "所有卡具有双语例句",
+      "actual": 2636,
+      "required": 2636,
+      "passed": true,
+      "evidence": "docs/lexicon/COVERAGE_REPORT.json"
+    },
+    {
+      "id": "structured-metadata-complete",
+      "scope": "formal-publication",
+      "label": "所有卡具有 lemma 与词类",
+      "actual": 2636,
+      "required": 2636,
+      "passed": true,
+      "evidence": "docs/lexicon/COVERAGE_REPORT.json"
+    },
+    {
+      "id": "framework-reference-complete",
+      "scope": "formal-publication",
+      "label": "所有卡具有 PCIC 框架参考",
+      "actual": 2636,
+      "required": 2636,
+      "passed": true,
+      "evidence": "docs/lexicon/COVERAGE_REPORT.json"
+    },
+    {
+      "id": "professional-review-complete",
+      "scope": "formal-publication",
+      "label": "所有当前卡通过具名专业复核",
+      "actual": 0,
+      "required": 2636,
+      "passed": false,
+      "evidence": "data/lexicon/professional-reviews/*.jsonl"
+    },
+    {
+      "id": "professional-review-issues",
+      "scope": "formal-publication",
+      "label": "没有当前待修订或拒绝项",
+      "actual": 0,
+      "required": 0,
+      "passed": true,
+      "evidence": "data/lexicon/professional-reviews/*.jsonl"
+    },
+    {
+      "id": "advanced-candidate-exit",
+      "scope": "formal-publication",
+      "label": "C1–C2 候选已完成编辑与专业复核",
+      "actual": 0,
+      "required": 200,
+      "passed": false,
+      "evidence": "src/advancedWords.ts + professional review records"
+    },
+    {
+      "id": "life-source-complete",
+      "scope": "life-v1-content",
+      "label": "Vida 全部卡具有来源四要素",
+      "actual": 975,
+      "required": 975,
+      "passed": true,
+      "evidence": "docs/lexicon/LIFE_ROUTE_AUDIT.json"
+    },
+    {
+      "id": "life-examples-complete",
+      "scope": "life-v1-content",
+      "label": "Vida 全部卡具有双语例句",
+      "actual": 975,
+      "required": 975,
+      "passed": true,
+      "evidence": "docs/lexicon/LIFE_ROUTE_AUDIT.json"
+    },
+    {
+      "id": "life-structured-metadata-complete",
+      "scope": "life-v1-content",
+      "label": "Vida 全部卡具有 lemma 与词类",
+      "actual": 975,
+      "required": 975,
+      "passed": true,
+      "evidence": "docs/lexicon/LIFE_ROUTE_AUDIT.json"
+    },
+    {
+      "id": "life-placement-conflicts",
+      "scope": "life-v1-content",
+      "label": "Vida 没有访问级别或 L 等级冲突",
+      "actual": 0,
+      "required": 0,
+      "passed": true,
+      "evidence": "docs/lexicon/LIFE_ROUTE_AUDIT.json"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "professional-review-complete",
+      "scope": "formal-publication",
+      "label": "所有当前卡通过具名专业复核",
+      "actual": 0,
+      "required": 2636,
+      "passed": false,
+      "evidence": "data/lexicon/professional-reviews/*.jsonl"
+    },
+    {
+      "id": "advanced-candidate-exit",
+      "scope": "formal-publication",
+      "label": "C1–C2 候选已完成编辑与专业复核",
+      "actual": 0,
+      "required": 200,
+      "passed": false,
+      "evidence": "src/advancedWords.ts + professional review records"
+    }
+  ],
+  "interpretation": [
+    "npm run check proves engineering and catalog invariants, not formal linguistic publication readiness.",
+    "Vida V1 content readiness means its current module, source, example and placement baselines pass; it does not mean professional review or paid entitlement exists.",
+    "CEFR and PCIC do not provide an exhaustive official word-count denominator, so formalPublicationReady never means official DELE completeness."
+  ]
+}

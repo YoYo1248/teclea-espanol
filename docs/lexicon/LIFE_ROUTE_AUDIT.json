@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-21",
+  "scope": {
+    "uniqueLifeCards": 975,
+    "modulePlacements": 999,
+    "extraPlacementsFromReuse": 24,
+    "modules": [
+      "supermarket",
+      "mobility",
+      "settling",
+      "daily"
+    ],
+    "denominator": "Canonical cards carrying at least one lifePlacements entry in the current runtime catalog"
+  },
+  "routeComposition": {
+    "sharedWithExam": 929,
+    "lifeOnly": 46,
+    "uniqueFreeCards": 133,
+    "uniquePaidCards": 842
+  },
+  "moduleRows": [
+    {
+      "module": "supermarket",
+      "label": "超市采购",
+      "cards": 356,
+      "newCanonicalCards": 278,
+      "reusedCanonicalCards": 78,
+      "access": {
+        "free": 50,
+        "paid": 306
+      },
+      "tiers": {
+        "L1": 131,
+        "L2": 173,
+        "L3": 52
+      },
+      "kinds": {
+        "单词": 239,
+        "短语": 104,
+        "动词原形": 13
+      },
+      "levels": {
+        "A1": 127,
+        "A2": 175,
+        "B1": 54,
+        "B2": 0,
+        "C1": 0,
+        "C2": 0
+      },
+      "frequencyRankedCards": 28,
+      "sharedWithExam": 310,
+      "lifeOnly": 46,
+      "exampleCoverage": 100,
+      "sourceCoverage": 100
+    },
+    {
+      "module": "mobility",
+      "label": "城市出行",
+      "cards": 140,
+      "newCanonicalCards": 0,
+      "reusedCanonicalCards": 140,
+      "access": {
+        "free": 24,
+        "paid": 116
+      },
+      "tiers": {
+        "L1": 60,
+        "L2": 48,
+        "L3": 32
+      },
+      "kinds": {
+        "单词": 96,
+        "短语": 44,
+        "动词原形": 0
+      },
+      "levels": {
+        "A1": 50,
+        "A2": 42,
+        "B1": 32,
+        "B2": 16,
+        "C1": 0,
+        "C2": 0
+      },
+      "frequencyRankedCards": 32,
+      "sharedWithExam": 140,
+      "lifeOnly": 0,
+      "exampleCoverage": 100,
+      "sourceCoverage": 100
+    },
+    {
+      "module": "settling",
+      "label": "在西班牙安顿",
+      "cards": 196,
+      "newCanonicalCards": 0,
+      "reusedCanonicalCards": 196,
+      "access": {
+        "free": 32,
+        "paid": 164
+      },
+      "tiers": {
+        "L1": 80,
+        "L2": 64,
+        "L3": 52
+      },
+      "kinds": {
+        "单词": 141,
+        "短语": 55,
+        "动词原形": 0
+      },
+      "levels": {
+        "A1": 57,
+        "A2": 23,
+        "B1": 47,
+        "B2": 69,
+        "C1": 0,
+        "C2": 0
+      },
+      "frequencyRankedCards": 48,
+      "sharedWithExam": 196,
+      "lifeOnly": 0,
+      "exampleCoverage": 100,
+      "sourceCoverage": 100
+    },
+    {
+      "module": "daily",
+      "label": "高频日常",
+      "cards": 307,
+      "newCanonicalCards": 0,
+      "reusedCanonicalCards": 307,
+      "access": {
+        "free": 41,
+        "paid": 266
+      },
+      "tiers": {
+        "L1": 171,
+        "L2": 96,
+        "L3": 40
+      },
+      "kinds": {
+        "单词": 212,
+        "短语": 60,
+        "动词原形": 35
+      },
+      "levels": {
+        "A1": 140,
+        "A2": 118,
+        "B1": 49,
+        "B2": 0,
+        "C1": 0,
+        "C2": 0
+      },
+      "frequencyRankedCards": 171,
+      "sharedWithExam": 307,
+      "lifeOnly": 0,
+      "exampleCoverage": 100,
+      "sourceCoverage": 100
+    }
+  ],
+  "reuse": {
+    "multiModuleCards": 24,
+    "maximumPlacementsOnOneCard": 2,
+    "pairwiseOverlaps": [
+      {
+        "modules": [
+          "supermarket",
+          "mobility"
+        ],
+        "cards": 0,
+        "targets": []
+      },
+      {
+        "modules": [
+          "supermarket",
+          "settling"
+        ],
+        "cards": 0,
+        "targets": []
+      },
+      {
+        "modules": [
+          "supermarket",
+          "daily"
+        ],
+        "cards": 7,
+        "targets": [
+          "buscar",
+          "comprar",
+          "cuánto cuesta",
+          "dónde está",
+          "encontrar",
+          "necesitar",
+          "pagar"
+        ]
+      },
+      {
+        "modules": [
+          "mobility",
+          "settling"
+        ],
+        "cards": 8,
+        "targets": [
+          "afueras",
+          "centro de salud",
+          "cercanías",
+          "coste de vida",
+          "transporte público",
+          "vecindario",
+          "zona escolar",
+          "zona verde"
+        ]
+      },
+      {
+        "modules": [
+          "mobility",
+          "daily"
+        ],
+        "cards": 0,
+        "targets": []
+      },
+      {
+        "modules": [
+          "settling",
+          "daily"
+        ],
+        "cards": 9,
+        "targets": [
+          "adiós",
+          "bienvenido",
+          "desayuno",
+          "encantado",
+          "gracias",
+          "hasta luego",
+          "hola",
+          "perdón",
+          "por favor"
+        ]
+      }
+    ],
+    "accessConflicts": [],
+    "tierConflicts": []
+  },
+  "quality": {
+    "cardsWithExamples": 975,
+    "exampleCoverage": 100,
+    "cardsWithTraceableSources": 975,
+    "sourceCoverage": 100,
+    "cardsWithAuditableProfessionalReview": 0,
+    "professionalReviewCoverage": 0,
+    "professionalReviewRecords": 0,
+    "staleProfessionalReviewRecords": 0,
+    "professionalReviewIssueTargets": 0,
+    "duplicateNormalizedTargetsWithinLifeRoute": 0
+  },
+  "decision": {
+    "status": "v1-content-baseline-reached",
+    "bulkExpansion": "stop",
+    "rationale": "The four planned Vida V1 modules have stable content, access and tier baselines. Further additions should respond to audited framework or catalog gaps, observed task failures, or professional review rather than raw card-count growth.",
+    "nextGates": [
+      "Named Spanish-teacher review with reviewer and review-date records",
+      "Task-based QA with real learners from the intended Chinese-speaking audience",
+      "Product UI for life-route and module entry, including an explicit free/paid boundary",
+      "Analytics for module starts, task completion, return use and searched-but-missing vocabulary",
+      "Add or revise cards only when an audited framework or catalog gap, review, or observed user task identifies a concrete need"
+    ]
+  },
+  "limitations": [
+    "This report audits the current editorial catalog; it does not prove that the vocabulary is exhaustive for life in Spain.",
+    "Source and example coverage do not substitute for professional linguistic review.",
+    "The access field is content metadata only; no payment entitlement is implemented yet.",
+    "CEFR levels on life cards are difficulty guidance and do not certify exam inclusion."
+  ]
+}

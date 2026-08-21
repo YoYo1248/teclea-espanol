@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-08-20",
+  "checkedAt": "2026-08-21",
   "sources": [
     {
       "id": "cefr-coe",
@@ -57,6 +57,209 @@
       "license": "CC BY-SA 4.0 / GFDL",
       "release": "Spanish extraction dated 2026-08-16 from the 2026-08-05 English Wiktionary dump",
       "evidence": "Kaikki exposes structured Spanish entries and identifies the extraction and upstream Wiktionary provenance."
+    },
+    {
+      "id": "aesan-food-labels-2025",
+      "name": "AESAN — Lee y respeta lo que dice la etiqueta",
+      "publisher": "Agencia Española de Seguridad Alimentaria y Nutrición",
+      "url": "https://www.aesan.gob.es/AECOSAN/docs/documentos/publicaciones/seguridad_alimentaria/Lee_y_respeta_lo_que_dice_la_etiqueta.pdf",
+      "role": "supermarket-label-and-storage-task-language",
+      "allowedUse": "Use public consumer guidance to verify real Spanish label, date and storage terminology. Do not turn food-safety guidance into product guarantees.",
+      "redistributeRawData": false,
+      "release": "2025",
+      "evidence": "The guide distinguishes fecha de caducidad from consumo preferente and uses supermarket refrigeration, freezing, packaging and storage terminology."
+    },
+    {
+      "id": "aesan-label-control-2026",
+      "name": "AESAN — Programa 2.4 Control del etiquetado",
+      "publisher": "Agencia Española de Seguridad Alimentaria y Nutrición",
+      "url": "https://www.aesan.gob.es/AECOSAN/docs/documentos/seguridad_alimentaria/pncoca/2026/Programa_2.4_Etiquetado.pdf",
+      "role": "current-food-label-field-validation",
+      "allowedUse": "Use the current public control plan to verify shopper-visible label fields and terminology; do not redistribute the document or present the learning cards as regulatory advice.",
+      "redistributeRawData": false,
+      "release": "2026-2030 plan",
+      "evidence": "The plan lists denomination, ingredients, allergens, net quantity, nutrition information, storage, origin and use instructions across packaged and unpackaged foods."
+    },
+    {
+      "id": "alcampo-oriental-recipe-2024",
+      "name": "Alcampo — Pollo al estilo oriental",
+      "publisher": "Alcampo",
+      "url": "https://www.compraonline.alcampo.es/recipes/pollo-al-estilo-oriental/3Y5inVVOmLoFE6Tb9nbzfl",
+      "role": "retail-product-name-validation",
+      "allowedUse": "Use the public retailer page to verify names under which selected ingredients are presented to shoppers; do not copy commercial descriptions or images.",
+      "redistributeRawData": false,
+      "release": "2024-03-14",
+      "evidence": "The retailer recipe lists jengibre, salsa de soja, vinagre de arroz, cilantro and sésamo using current shopper-facing Spanish names."
+    },
+    {
+      "id": "rae-dle-tique-2026",
+      "name": "DLE — tique",
+      "publisher": "Real Academia Española / ASALE",
+      "url": "https://dle.rae.es/tique",
+      "role": "shopper-term-spelling-validation",
+      "allowedUse": "Use the public dictionary entry to verify the Spanish lemma and concise meaning; do not copy the full entry.",
+      "redistributeRawData": false,
+      "evidence": "The DLE records tique from English ticket with the meanings vale, bono, cédula and recibo."
+    },
+    {
+      "id": "rae-dle-datafono-2026",
+      "name": "DLE — datáfono",
+      "publisher": "Real Academia Española / ASALE",
+      "url": "https://dle.rae.es/dat%C3%A1fono",
+      "role": "checkout-terminal-term-validation",
+      "allowedUse": "Use the public dictionary entry to verify the Spanish lemma and retail-payment sense; do not copy the full entry.",
+      "redistributeRawData": false,
+      "evidence": "The DLE defines datáfono as a device used in shops and other establishments for card payments."
+    },
+    {
+      "id": "aena-passenger-controls-2026",
+      "name": "Aena — Control de seguridad",
+      "publisher": "Aena",
+      "url": "https://www.aena.es/es/pasajeros/equipajes-controles/control-seguridad.html",
+      "role": "airport-passenger-task-language",
+      "allowedUse": "Use the public passenger guidance to verify current airport-control and hand-luggage terminology; do not copy the page or imply endorsement.",
+      "redistributeRawData": false,
+      "evidence": "The passenger guidance uses control de seguridad and equipaje de mano in the real airport departure flow."
+    },
+    {
+      "id": "aena-departures-bcn-2026",
+      "name": "Aena — Zona de salidas de Barcelona-El Prat",
+      "publisher": "Aena",
+      "url": "https://www.aena.es/es/josep-tarradellas-barcelona-el-prat/servicios-del-aeropuerto/categorias-y-terminales/zona-de-salidas.html",
+      "role": "airport-departure-task-language",
+      "allowedUse": "Use the public airport guide to validate check-in, boarding-card, boarding-zone and gate terminology; do not reproduce the guide.",
+      "redistributeRawData": false,
+      "evidence": "The departure guide uses facturación, tarjeta de embarque, zona de embarque and puerta de embarque in a current passenger journey."
+    },
+    {
+      "id": "renfe-passenger-conditions-2026",
+      "name": "Renfe Viajeros — Condiciones generales",
+      "publisher": "Renfe Viajeros",
+      "url": "https://www.renfe.com/es/es/ayuda/informacion-legal-viajeros/condiciones-generales/condiciones-generales-renfe-viajeros",
+      "role": "rail-passenger-and-disruption-language",
+      "allowedUse": "Use the public conditions to validate rail passenger, delay, cancellation and ticket terminology; learning cards are not legal advice.",
+      "redistributeRawData": false,
+      "evidence": "The conditions use retraso, cancelación, horario, título de transporte, reintegro and destino in passenger-service contexts."
+    },
+    {
+      "id": "dgt-infractions-2026",
+      "name": "DGT — Tipos de infracciones y sanciones",
+      "publisher": "Dirección General de Tráfico",
+      "url": "https://www.dgt.es/nuestros-servicios/multas-y-sanciones/conoce-los-tipos-de-infracciones-y-sanciones/",
+      "role": "road-safety-and-enforcement-language",
+      "allowedUse": "Use the public road-safety page to verify current driving and infringement terms; do not present cards as driving or legal advice.",
+      "redistributeRawData": false,
+      "evidence": "The DGT page uses infracción, sanción, multa, permiso de conducir, circulación, velocidad, semáforo and sentido contrario."
+    },
+    {
+      "id": "transportes-mobility-2026",
+      "name": "Ministerio de Transportes — Movilidad sostenible",
+      "publisher": "Ministerio de Transportes y Movilidad Sostenible",
+      "url": "https://www.transportes.gob.es/transporte-terrestre/movilidad/movilidad-sostenible",
+      "role": "sustainable-and-accessible-mobility-language",
+      "allowedUse": "Use the public policy page to validate sustainable-mobility terminology; do not reproduce policy text or imply official course status.",
+      "redistributeRawData": false,
+      "evidence": "The public transport pages use movilidad sostenible, pedestrian and cycling infrastructure, and accessibility terminology."
+    },
+    {
+      "id": "boe-urban-leases-2026",
+      "name": "BOE — Ley de Arrendamientos Urbanos, texto consolidado",
+      "publisher": "Agencia Estatal Boletín Oficial del Estado",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1994-26003",
+      "role": "housing-rental-task-language",
+      "allowedUse": "Use the consolidated public text to validate rental-contract terminology; cards are language instruction, not housing or legal advice.",
+      "redistributeRawData": false,
+      "evidence": "The consolidated law uses arrendamiento, arrendador, arrendatario, contrato, renta and fianza in current housing-rental contexts."
+    },
+    {
+      "id": "cec-consumer-guarantees-2026",
+      "name": "Centro Europeo del Consumidor en España — Garantías",
+      "publisher": "Ministerio de Derechos Sociales, Consumo y Agenda 2030",
+      "url": "https://portal-cec.consumo.gob.es/es/informacion-general/temas-de-consumo/garantias",
+      "role": "consumer-guarantee-and-return-language",
+      "allowedUse": "Use the public consumer guidance to validate guarantee, withdrawal, defect and remedy terminology; cards are not consumer-rights advice.",
+      "redistributeRawData": false,
+      "evidence": "The guidance uses garantía legal, falta de conformidad, reparación, sustitución, reducción del precio, reembolso and derecho de desistimiento."
+    },
+    {
+      "id": "sanidad-primary-care-2026",
+      "name": "Ministerio de Sanidad — Cartera de atención primaria",
+      "publisher": "Ministerio de Sanidad",
+      "url": "https://www.sanidad.gob.es/profesionales/prestacionesSanitarias/CarteraDeServicios/ContenidoCS/2AtencionPrimaria/home.htm",
+      "role": "healthcare-service-pathway-language",
+      "allowedUse": "Use the public service description to validate primary care, referral, prevention, rehabilitation and mental-health terminology; cards are not medical advice.",
+      "redistributeRawData": false,
+      "evidence": "The service portfolio uses atención primaria, atención especializada, prescripción, procedimientos diagnósticos y terapéuticos, rehabilitación and salud mental."
+    },
+    {
+      "id": "carrefour-spices-2026",
+      "name": "Carrefour España — Especias y sazonadores",
+      "publisher": "Centros Comerciales Carrefour",
+      "url": "https://www.carrefour.es/supermercado/la-despensa/alimentacion/especias-y-sazonadores-laurel/cat20069/c",
+      "role": "current-supermarket-spice-name-validation",
+      "allowedUse": "Use the public retailer catalog to verify current shopper-facing Spanish product and category names; do not copy prices, descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "The catalog currently exposes pimienta negra, perejil, comino and laurel as shopper-facing spice names in Spain."
+    },
+    {
+      "id": "carrefour-household-2026",
+      "name": "Carrefour España — Conservación de alimentos y lavavajillas",
+      "publisher": "Centros Comerciales Carrefour",
+      "url": "https://www.carrefour.es/supermercado/limpieza-y-hogar-conservacion-de-alimentos-marca-carrefour/F-10gcZ11z0Z12cng/c",
+      "role": "current-household-product-name-validation",
+      "allowedUse": "Use the public retailer catalog to verify current household-product names; do not copy prices, safety claims, commercial descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "The catalog uses papel de horno and bolsas de congelación; Carrefour's dishwasher category also uses cápsulas and pastillas para lavavajillas."
+    },
+    {
+      "id": "carrefour-personal-care-2026",
+      "name": "Carrefour España — Higiene y cuidado personal",
+      "publisher": "Centros Comerciales Carrefour",
+      "url": "https://www.carrefour.es/supermercado/perfumeria-e-higiene/boca-y-sonrisa/enjuagues-bucales/cat20217/c",
+      "role": "current-personal-care-product-name-validation",
+      "allowedUse": "Use the public retailer catalog to verify current personal-care product and category names; do not copy prices, medical claims, descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "Current personal-care categories and products use enjuague bucal, acondicionador, bastoncillos de algodón, maquinilla de afeitar and crema corporal."
+    },
+    {
+      "id": "carrefour-wheat-noodles-2026",
+      "name": "Carrefour España — Fideos de trigo",
+      "publisher": "Centros Comerciales Carrefour",
+      "url": "https://www.carrefour.es/supermercado/fideos-yakisoba-con-pollo-carrefour-sensations-300-g/R-VC4AECOMM-398913/p",
+      "role": "current-asian-grocery-label-validation",
+      "allowedUse": "Use the public product label to verify the shopper-facing ingredient name; do not copy the full label, commercial description or image.",
+      "redistributeRawData": false,
+      "evidence": "The current product ingredient list uses fideos de trigo cocidos as the product component name."
+    },
+    {
+      "id": "oriental-market-pantry-2026",
+      "name": "Oriental Market España — Despensa asiática",
+      "publisher": "Oriental Market",
+      "url": "https://www.orientalmarket.es/shop/aceites-y-vinagres/",
+      "role": "chinese-and-asian-pantry-name-validation",
+      "allowedUse": "Use the public Spain-facing retailer catalog to verify product names likely encountered in an Asian-grocery aisle; do not copy prices, commercial descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "The catalog exposes vinagre negro and aceite de cacahuete; related catalog categories expose pasta de soja, pasta de sésamo and aceite de chile."
+    },
+    {
+      "id": "eci-fish-sauce-2026",
+      "name": "El Corte Inglés Supermercado — Salsa de pescado",
+      "publisher": "El Corte Inglés",
+      "url": "https://www.elcorteingles.es/supermarkt/B001018089303038-blue-dragon-fish-fischsauce-flasche-150-ml/",
+      "role": "current-asian-sauce-name-validation",
+      "allowedUse": "Use the public retailer page to verify the Spanish product name; do not copy prices, nutrition tables, descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "The Spain-facing product page names the item salsa de pescado."
+    },
+    {
+      "id": "ecoasia-rice-wine-2026",
+      "name": "EcoAsiaShop — Vino de arroz para cocinar",
+      "publisher": "EcoAsiaShop",
+      "url": "https://ecoasiashop.com/producto/vino-de-arroz-para-cocinar-750ml/",
+      "role": "current-cooking-rice-wine-name-validation",
+      "allowedUse": "Use the public Spain-facing retailer page to verify the shopper-facing product name; do not copy prices, descriptions or images.",
+      "redistributeRawData": false,
+      "evidence": "The retailer uses vino de arroz para cocinar as the current product name; the learning note warns that products and alcohol content differ."
     }
   ]
 }

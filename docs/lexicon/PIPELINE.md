@@ -10,6 +10,8 @@
 - wordfreq 生成可复算的频率候选，数据快照约截至 2021 年；
 - Kaikki / English Wiktionary 核对重音、词性、lemma 和屈折关系；
 - 中文释义、例句、宽分类与最终等级仍是 Teclea 的教学编辑结果，必须保留复核记录。
+- canonical 学习项只保存一次，再以 `life` 与 `exam` 路线标签生成不同产品视图；路线标签不复制卡片或掌握证据。
+- 学习卡身份固定为 canonical `lessonId::normalizedTarget`；`reviewKey` 只标识编辑／专业复核批次，不能作为用户进度 ID。动态轮次通过临时 `practiceId` 继续指向原 canonical 卡。
 
 来源的版本、用途、许可和禁止事项统一保存在 [`data/lexicon/sources.json`](../../data/lexicon/sources.json)。
 
@@ -24,6 +26,8 @@ Kaikki 词形核验
     ↓ lemma / 词性 / 原形 / 重音 / entry URL
 PCIC 编辑映射
     ↓ 等级候选 / 宽分类 / 细场景 / 具体清单引用
+路线编辑
+    ↓ exam / life；生活模块、L1–L3 与免费／付费边界
 中文教学编辑
     ↓ 释义 / 西语例句 / 中文例句
 批次编辑与抽检
@@ -73,7 +77,11 @@ npm run lexicon:stage
 - 与当前目录和同批候选不重复；
 - 训练目标不超过 3 个词。
 
+候选可以另外记录 `routeCandidates`。进入 `life` 的项目使用 `lifeCandidates[]` 分别记录每个模块的 `module`、`tier` 和 `access`；旧的单值 `lifeCandidate` 暂留作兼容，但新候选不得用它表达多个模块。进入 `exam` 仍必须保留等级与 PCIC 映射。详见 [`ROUTES.md`](ROUTES.md)。
+
 `approved-decks.json` 仍是待合并中间产物。把它合并进 `src/data.ts`、`src/commonWords.ts`、`src/intermediateWords.ts` 或 `src/advancedWords.ts` 时执行批量目录验证和抽样检查；不要求产品用户逐词批准。
+
+对已经进入 canonical 目录的内容，运行 `npm run lexicon:prepare-professional-review` 会生成 72 项跨路线、等级和生活模块的空白专业复核样本。填写后用 `npm run lexicon:import-professional-review -- --input <completed.csv>` 严格校验并暂存；确认过的不可变 JSONL 批次才进入 `data/lexicon/professional-reviews/`。覆盖报告只统计内容摘要仍匹配、当前有效结论为 `pass` 的具名记录；旧审核不会在卡片修改后被静默继承。填写规范和证据边界见 [`PROFESSIONAL_REVIEW.md`](PROFESSIONAL_REVIEW.md)。
 
 ## 批次批准责任
 
@@ -85,6 +93,8 @@ npm run lexicon:stage
 ## 去重原则
 
 - 精确输入目标在整个应用目录只能出现一次；
+- 名词冠词保存在 `article` 元数据，不把 `el / la / un / una + 裸词形` 建成第二张语义卡；历史重复卡必须保留显式 ID 重定向，先迁移学习证据再移除目录项；
+- 同一个目标属于两条路线时使用两个路线标签，不生成两个课程副本；
 - 同一 lemma 在候选池中重复会警告，便于选一个最合适的教学目标；
 - 单独的动词屈折形式不能作为基础词卡，必须还原为原形；
 - 固定短语作为整体保存，最多 3 个词；
@@ -101,6 +111,16 @@ npm run lexicon:stage
 - 重复、长短语、错误动词轨道和 Unicode NFC 完整性。
 
 “精确表面命中”不等于 lemma 覆盖，也不等于 CEFR 完整度。CEFR 和 PCIC 没有提供单一穷尽词数分母，因此报告禁止输出虚假的“官方覆盖百分比”。
+
+## 工程通过与正式发布不是同一个状态
+
+`npm run check` 验证代码构建、目录不变量、路线基线和复核记录格式，但不会因为真实专业复核仍为 0 而阻止日常开发。`npm run lexicon:release-readiness` 单独生成 [`RELEASE_READINESS.md`](RELEASE_READINESS.md)，明确区分：
+
+- 目录结构是否有效；
+- Vida V1 内容基线是否形成；
+- 语言内容是否达到正式发布门槛。
+
+需要把第三项作为 CI 或发布闸门时运行 `npm run validate:lexicon-release`。该严格命令在任一正式门槛未满足时返回非零；当前预期失败，不能把普通工程检查通过写成“词库已经专业审校完成”。
 
 ## 当前批次节奏
 

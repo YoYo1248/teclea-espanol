@@ -3,7 +3,7 @@ export type WordEvidence = Record<string, WordEvidenceRecord>
 
 export function normalizeWordEvidence(
   stored: unknown,
-  options: { legacy: boolean; completedCardIds?: readonly string[] } = { legacy: false },
+  options: { legacy: boolean; completedCardIds?: readonly string[]; migrateCardId?: (cardId: string) => string } = { legacy: false },
 ) {
   const normalized: WordEvidence = {}
   if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
@@ -18,16 +18,21 @@ export function normalizeWordEvidence(
         : options.legacy && (recall || listen)
           ? lastCorrectAt ?? 1
           : undefined
-      normalized[cardId] = {
-        ...(copyCompletedAt ? { copyCompletedAt } : {}),
-        ...(recall ? { recall: true } : {}),
-        ...(listen ? { listen: true } : {}),
-        ...(lastCorrectAt ? { lastCorrectAt } : {}),
+      const migratedCardId = options.migrateCardId?.(cardId) ?? cardId
+      const previous = normalized[migratedCardId]
+      const copyTimes = [previous?.copyCompletedAt, copyCompletedAt].filter((value): value is number => typeof value === 'number' && value > 0)
+      const correctTimes = [previous?.lastCorrectAt, lastCorrectAt].filter((value): value is number => typeof value === 'number' && value > 0)
+      normalized[migratedCardId] = {
+        ...(copyTimes.length ? { copyCompletedAt: Math.min(...copyTimes) } : {}),
+        ...(previous?.recall || recall ? { recall: true } : {}),
+        ...(previous?.listen || listen ? { listen: true } : {}),
+        ...(correctTimes.length ? { lastCorrectAt: Math.max(...correctTimes) } : {}),
       }
     })
   }
   options.completedCardIds?.forEach((cardId) => {
-    normalized[cardId] = { ...normalized[cardId], copyCompletedAt: normalized[cardId]?.copyCompletedAt ?? 1 }
+    const migratedCardId = options.migrateCardId?.(cardId) ?? cardId
+    normalized[migratedCardId] = { ...normalized[migratedCardId], copyCompletedAt: normalized[migratedCardId]?.copyCompletedAt ?? 1 }
   })
   return normalized
 }

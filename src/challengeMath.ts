@@ -1,5 +1,7 @@
 import type { RoundTimingRecord, TimingMode } from './roundSizing'
 
+export type ChallengePracticeMode = 'recall' | 'listen'
+
 function parseLocalDate(value: string) {
   const [year, month, day] = value.split('-').map(Number)
   return Date.UTC(year, month - 1, day)
@@ -13,6 +15,42 @@ export function dailyChallengeTarget(remainingRequired: number, remainingDays: n
   if (remainingRequired <= 0) return 0
   const mistakeBuffer = Math.max(eligibleMistakes, Math.ceil(remainingRequired * 0.1))
   return Math.ceil((remainingRequired + mistakeBuffer) / Math.max(1, remainingDays))
+}
+
+export function challengeTodayTarget(remainingRequired: number, completedToday: number, remainingDays: number, eligibleMistakes: number) {
+  return dailyChallengeTarget(
+    Math.max(0, remainingRequired) + Math.max(0, completedToday),
+    remainingDays,
+    eligibleMistakes,
+  )
+}
+
+export function challengePendingCardIds(
+  cardIds: readonly string[],
+  mode: ChallengePracticeMode,
+  recallCompleted: Readonly<Record<string, true>>,
+  dictationCounts: Readonly<Record<string, number>>,
+  dictationRepetitions: number,
+) {
+  const safeRepetitions = Math.max(1, Math.floor(dictationRepetitions))
+  const pending = cardIds.filter((cardId) => mode === 'recall'
+    ? !recallCompleted[cardId]
+    : (dictationCounts[cardId] ?? 0) < safeRepetitions)
+
+  if (mode === 'recall') return pending
+  return pending
+    .map((cardId, index) => ({ cardId, index, completed: Math.max(0, dictationCounts[cardId] ?? 0) }))
+    .sort((left, right) => left.completed - right.completed || left.index - right.index)
+    .map((item) => item.cardId)
+}
+
+export function challengeRoundSize(baseRoundSize: number, todayRemaining: number, pendingCount: number) {
+  if (pendingCount <= 0 || todayRemaining <= 0) return 0
+  return Math.min(
+    Math.max(1, Math.floor(baseRoundSize)),
+    Math.max(1, Math.floor(todayRemaining)),
+    Math.max(1, Math.floor(pendingCount)),
+  )
 }
 
 const FALLBACK_SECONDS_PER_ITEM: Record<TimingMode, number> = {

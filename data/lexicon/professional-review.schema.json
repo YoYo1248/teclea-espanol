@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Teclea canonical-card professional review record",
+  "type": "object",
+  "required": ["schemaVersion", "reviewId", "reviewScope", "normalizedTarget", "catalogDigest", "reviewedContent", "checks", "decision", "suggestions", "notes", "reviewer", "reviewedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "reviewId": { "type": "string", "minLength": 1 },
+    "reviewScope": { "type": "string", "minLength": 1 },
+    "normalizedTarget": { "type": "string", "minLength": 1 },
+    "catalogDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "reviewedContent": {
+      "type": "object",
+      "required": ["spanish", "normalizedTarget", "chinese", "level", "scene", "kind", "routes", "lifePlacements", "frameworkReference", "example", "exampleChinese"]
+    },
+    "checks": {
+      "type": "object",
+      "required": ["spelling", "spanishNaturalness", "chineseMeaning", "example", "level", "lifeTier"],
+      "additionalProperties": false,
+      "properties": {
+        "spelling": { "$ref": "#/$defs/status" },
+        "spanishNaturalness": { "$ref": "#/$defs/status" },
+        "chineseMeaning": { "$ref": "#/$defs/status" },
+        "example": { "$ref": "#/$defs/status" },
+        "level": { "$ref": "#/$defs/status" },
+        "lifeTier": { "$ref": "#/$defs/status" }
+      }
+    },
+    "decision": { "enum": ["pass", "revise", "reject"] },
+    "suggestions": { "type": "object" },
+    "notes": { "type": "string" },
+    "reviewer": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 }
+      }
+    },
+    "reviewedAt": { "type": "string", "format": "date" }
+  },
+  "$defs": {
+    "status": { "enum": ["pass", "revise", "reject", "not-applicable"] }
+  }
+}

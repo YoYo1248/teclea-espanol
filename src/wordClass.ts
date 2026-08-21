@@ -8,6 +8,8 @@ const PART_OF_SPEECH_LABELS: Record<NonNullable<LessonWord['partOfSpeech']>, str
   preposition: '介词',
   conjunction: '连词',
   verb: '动词',
+  numeral: '数词',
+  'fixed-expression': '固定表达',
 }
 
 export function practiceWordClassLabel(word: LessonWord, lessonKind: LessonKind) {

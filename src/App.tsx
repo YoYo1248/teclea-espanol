@@ -22,7 +22,15 @@ import {
 } from 'lucide-react'
 import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
-import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
+import {
+  canonicalPracticeTarget,
+  migratePracticeCardId,
+  migratePracticeCardIds as migrateCardIdList,
+  migratePracticeNumberRecord as migrateNumberCardRecord,
+  migratePracticeTrueRecord as migrateTrueCardRecord,
+  practiceCardId as sessionCardId,
+} from './cardIdentity'
+import { challengeDailyPlan, challengePendingCardIds, challengeRoundSize, challengeTodayTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation, nextStageAfterSkippedReinforcement } from './masteryRouting'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
@@ -45,6 +53,10 @@ import {
   weightedReviewOrder,
   type MistakeRecord,
 } from './mistakeReview'
+
+const examRouteCardCount = lessons.reduce((sum, lesson) => sum + lesson.words.filter((word) => word.routes?.includes('exam')).length, 0)
+const lifeRouteCardCount = lessons.reduce((sum, lesson) => sum + lesson.words.filter((word) => word.routes?.includes('life')).length, 0)
+const supermarketCardCount = lessons.reduce((sum, lesson) => sum + lesson.words.filter((word) => word.lifePlacements?.some((placement) => placement.module === 'supermarket')).length, 0)
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -206,8 +218,10 @@ function readInitialLocalUpdatedAt() {
 function readMistakeResolvedAt() {
   try {
     const stored = JSON.parse(localStorage.getItem(MISTAKE_RESOLVED_KEY) || '{}') as unknown
-    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
-    return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, number] => typeof entry[1] === 'number' && entry[1] > 0))
+    return Object.entries(migrateNumberCardRecord(stored)).reduce<Record<string, number>>((result, [cardId, timestamp]) => {
+      if (timestamp > 0) result[cardId] = timestamp
+      return result
+    }, {})
   } catch {
     return {}
   }
@@ -253,6 +267,7 @@ function readChallengeDailyRecords(value: unknown): Record<string, ChallengeDail
       && ((record as ChallengeDailyRecord).mode === 'recall' || (record as ChallengeDailyRecord).mode === 'listen')
       && Number.isFinite((record as ChallengeDailyRecord).completedAt)
       && (record as ChallengeDailyRecord).completedAt > 0)
+      .map((record) => ({ ...record, cardId: migratePracticeCardId(record.cardId) }))
     return validRecords.length ? [[date, validRecords]] : []
   }))
 }
@@ -270,8 +285,8 @@ function readChallenge(): ChallengeState | null {
       dictationRepetitions: stored.dictationRepetitions!,
       startedOn: stored.startedOn,
       dueOn: stored.dueOn,
-      recallCompleted: stored.recallCompleted && typeof stored.recallCompleted === 'object' ? stored.recallCompleted : {},
-      dictationCounts: stored.dictationCounts && typeof stored.dictationCounts === 'object' ? stored.dictationCounts : {},
+      recallCompleted: migrateTrueCardRecord(stored.recallCompleted),
+      dictationCounts: migrateNumberCardRecord(stored.dictationCounts),
       dailyCompleted: stored.dailyCompleted && typeof stored.dailyCompleted === 'object' ? stored.dailyCompleted : {},
       dailyRecords: readChallengeDailyRecords(stored.dailyRecords),
     }
@@ -297,10 +312,8 @@ function readWordEvidence(): WordEvidence {
           return completedLesson?.words.map((word) => sessionCardId(completedLesson.id, word)) ?? []
         })
       : []
-    const migrated = normalizeWordEvidence(stored, { legacy: needsMigration, completedCardIds })
-    if (needsMigration) {
-      localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(migrated))
-    }
+    const migrated = normalizeWordEvidence(stored, { legacy: needsMigration, completedCardIds, migrateCardId: migratePracticeCardId })
+    localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(migrated))
     return migrated
   } catch {
     return {}
@@ -331,7 +344,10 @@ function readRecentRoundQueues(): RecentRoundQueues {
         : value
             .filter((item): item is unknown[] => Array.isArray(item))
             .map((queue) => queue.filter((item): item is string => typeof item === 'string'))
-      const cleanQueues = migratedQueues.filter((queue) => queue.length).slice(0, 2)
+      const cleanQueues = migratedQueues
+        .map((queue) => migrateCardIdList(queue, true))
+        .filter((queue) => queue.length)
+        .slice(0, 2)
       return cleanQueues.length ? [[key, cleanQueues]] : []
     }))
   } catch {
@@ -344,7 +360,7 @@ function adaptiveRoundQueueKey(level: LessonLevel, track: PracticeTrack, categor
 }
 
 function adaptiveLevelFromLessonId(lessonId: string): LessonLevel | null {
-  const match = /^adaptive-(A1|A2|B1|B2|C1|C2)-/.exec(lessonId)
+  const match = /^(?:adaptive|challenge)-(A1|A2|B1|B2|C1|C2)-/.exec(lessonId)
   return match ? match[1] as LessonLevel : null
 }
 
@@ -353,9 +369,10 @@ function practiceSessionLevel(session: ActivePracticeSession) {
 }
 
 function catalogWordById(cardId: string) {
+  const canonicalCardId = migratePracticeCardId(cardId)
   for (const item of lessons) {
-    const matched = item.words.find((word) => sessionCardId(item.id, word) === cardId)
-    if (matched) return { lesson: item, word: { ...matched, reviewKey: cardId } }
+    const matched = item.words.find((word) => sessionCardId(item.id, word) === canonicalCardId)
+    if (matched) return { lesson: item, word: { ...matched, practiceId: canonicalCardId } }
   }
   return null
 }
@@ -513,10 +530,10 @@ function readMistakeBank(): Record<string, MistakeRecord> {
       const item = normalizeMistakeRecord(rawItem)
       if (!item) return bank
       if (typeof item.lessonId === 'string' && item.lessonId.startsWith('conjugation-')) return bank
-      const target = getTypingTarget(item.spanish)
+      const target = canonicalPracticeTarget(item.spanish)
       const currentMatch = lessons.flatMap((lesson) => lesson.words.map((word) => ({ lesson, word }))).find(({ word }) => getTypingTarget(word.spanish) === target)
       if (!currentMatch) return bank
-      const key = `${currentMatch.lesson.id}::${target}`
+      const key = sessionCardId(currentMatch.lesson.id, currentMatch.word)
       const remapped = normalizeMistakeRecord({
         ...item,
         lessonId: currentMatch.lesson.id,
@@ -570,9 +587,10 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
     if (lessonId !== 'mistake-review' && !adaptiveLevelFromLessonId(lessonId) && !lessons.some((lesson) => lesson.id === lessonId)) {
       return null
     }
-    const order = lessonId === previousLessonId
+    const lessonRedirectedOrder = lessonId === previousLessonId
       ? stored.order
       : stored.order.map((cardId) => cardId.replace(`${previousLessonId}::`, `${lessonId}::`))
+    const order = migrateCardIdList(lessonRedirectedOrder)
     return {
       lessonId,
       mode: stored.mode,
@@ -582,7 +600,7 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
       correctKeystrokes: typeof stored.correctKeystrokes === 'number' ? Math.max(0, stored.correctKeystrokes) : 0,
       mistakes: typeof stored.mistakes === 'number' ? Math.max(0, stored.mistakes) : 0,
       completedWords: typeof stored.completedWords === 'number' ? Math.max(0, stored.completedWords) : stored.index!,
-      mistakeWords: stored.mistakeWords && typeof stored.mistakeWords === 'object' ? stored.mistakeWords : {},
+      mistakeWords: migrateNumberCardRecord(stored.mistakeWords, 'sum'),
       reviewCorrectCount: typeof stored.reviewCorrectCount === 'number' ? Math.max(0, stored.reviewCorrectCount) : 0,
       masteryMode: stored.masteryMode === 'recall' || stored.masteryMode === 'listen'
         ? stored.masteryMode
@@ -594,7 +612,7 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
       usedHint: stored.usedHint === true,
       onboarding: stored.onboarding === true,
       independentCorrect: typeof stored.independentCorrect === 'number' ? Math.max(0, stored.independentCorrect) : 0,
-      weakWordIds: Array.isArray(stored.weakWordIds) ? stored.weakWordIds.filter((item): item is string => typeof item === 'string') : [],
+      weakWordIds: Array.isArray(stored.weakWordIds) ? migrateCardIdList(stored.weakWordIds.filter((item): item is string => typeof item === 'string'), true) : [],
       satisfiedModes: stored.satisfiedModes && typeof stored.satisfiedModes === 'object' ? {
         ...(stored.satisfiedModes.recall === true ? { recall: true } : {}),
         ...(stored.satisfiedModes.listen === true ? { listen: true } : {}),
@@ -603,7 +621,7 @@ function readActiveSession(storageKey = ACTIVE_SESSION_KEY): ActivePracticeSessi
         && Array.isArray(stored.followUpOrder)
         && stored.followUpOrder.every((item) => typeof item === 'string')
         && stored.followUpOrder.length
-        ? { followUpMode: stored.followUpMode, followUpOrder: stored.followUpOrder }
+        ? { followUpMode: stored.followUpMode, followUpOrder: migrateCardIdList(stored.followUpOrder) }
         : {}),
     }
   } catch {
@@ -617,10 +635,6 @@ function normalize(value: string) {
 
 function getTypingTarget(value: string) {
   return normalize(value).replace(/[¿?¡!.,;:]/g, '').replace(/\s+/g, ' ').trim()
-}
-
-function sessionCardId(lessonId: string, word: Lesson['words'][number]) {
-  return word.reviewKey ?? `${lessonId}::${getTypingTarget(word.spanish)}`
 }
 
 function shuffleArray<T>(items: T[]) {
@@ -868,8 +882,13 @@ function App() {
       localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(mistakeBank))
       localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(mistakeResolvedAt))
       localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(masteryProgress))
-      if (!activeSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
-      if (!pausedMainSession) localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
+      localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(wordEvidence))
+      localStorage.setItem(RECENT_ROUND_QUEUES_KEY, JSON.stringify(recentRoundQueues))
+      if (challenge) localStorage.setItem(CHALLENGE_KEY, JSON.stringify(challenge))
+      if (activeSession) localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(activeSession))
+      else localStorage.removeItem(ACTIVE_SESSION_KEY)
+      if (pausedMainSession) localStorage.setItem(PAUSED_MAIN_SESSION_KEY, JSON.stringify(pausedMainSession))
+      else localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
     } catch {
       // Keep the in-memory migration usable when browser storage is unavailable.
     }
@@ -1113,7 +1132,8 @@ function App() {
     const remainingRequired = Math.max(0, totalRequired - completedRequired)
     const remainingDays = remainingChallengeDays(localDateKey(), challengeProgress.dueOn)
     const eligibleMistakes = Object.entries(mistakeBank).filter(([id, record]) => ids.includes(id) && hasActiveReview(record)).length
-    const dailyTarget = dailyChallengeTarget(remainingRequired, remainingDays, eligibleMistakes)
+    const todayCompleted = challengeProgress.dailyCompleted[localDateKey()] ?? 0
+    const dailyTarget = challengeTodayTarget(remainingRequired, todayCompleted, remainingDays, eligibleMistakes)
     return {
       cardCount: ids.length,
       totalRequired,
@@ -1121,7 +1141,7 @@ function App() {
       remainingRequired,
       remainingDays,
       dailyTarget,
-      todayCompleted: challengeProgress.dailyCompleted[localDateKey()] ?? 0,
+      todayCompleted,
       percentage: totalRequired ? Math.round(completedRequired / totalRequired * 100) : 0,
     }
   }, [challengeProgress, mistakeBank])
@@ -1302,12 +1322,12 @@ function App() {
       title: reviewingDueItems ? '待复习错题' : reviewingTodayItems ? '今日错题巩固' : '稍后复查词巩固',
       description: reviewingDueItems ? '跨学习日独立答对，推进恢复进度' : reviewingTodayItems ? '今天可以继续练，明日再独立复查' : '已经完成今天的确认，继续练习不会重复累计',
       color: '#b9674f',
-      words: entries.map(([reviewKey, record]) => {
+      words: entries.map(([cardId, record]) => {
         const originalLesson = lessons.find((item) => item.id === record.lessonId)
         const originalWord = originalLesson?.words.find((item) => item.spanish === record.spanish)
         return originalWord
-          ? { ...originalWord, reviewKey }
-          : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
+          ? { ...originalWord, practiceId: cardId }
+          : { spanish: record.spanish, chinese: record.chinese, practiceId: cardId, source: { ...PHRASE_SOURCE } }
       }),
     }
   }, [mistakeReviewMode, reviewPool, reviewToday, reviewingDueMistakes, todayMistakeEntries.length])
@@ -1334,8 +1354,8 @@ function App() {
   const catalogLesson = adaptiveRound ? null : lessons.find((item) => item.id === lesson.id) ?? null
   const masteryScopeWords = catalogLesson?.words ?? lesson.words
   const itemEvidence: LessonMastery = lesson.id === 'mistake-review' ? {} : {
-    ...(masteryScopeWords.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall) ? { recall: true as const } : {}),
-    ...(masteryScopeWords.every((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.listen) ? { listen: true as const } : {}),
+    ...(masteryScopeWords.every((item) => wordEvidence[sessionCardId(lesson.id, item)]?.recall) ? { recall: true as const } : {}),
+    ...(masteryScopeWords.every((item) => wordEvidence[sessionCardId(lesson.id, item)]?.listen) ? { listen: true as const } : {}),
   }
   const legacyMastery = lesson.id === 'mistake-review' || adaptiveRound ? {} : (masteryProgress[lesson.id] ?? {})
   const masteryBeforeRound: LessonMastery = { ...itemEvidence, ...legacyMastery, ...roundSatisfiedModes }
@@ -1367,17 +1387,17 @@ function App() {
   const masteryRoundCanRoute = masteryModeRound && roundMasteryMode === mode
   const roundRecommendation = masteryRecommendation(independentRate, masteryRoundCanRoute)
   const weakRoundWords = masteryModeRound
-    ? lesson.words.filter((item) => weakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
+    ? lesson.words.filter((item) => weakWordIds.includes(sessionCardId(lesson.id, item)))
     : []
   const copyWeakRoundWords = mode === 'copy' && lesson.id !== 'mistake-review'
-    ? lesson.words.filter((item) => weakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
+    ? lesson.words.filter((item) => weakWordIds.includes(sessionCardId(lesson.id, item)))
     : []
   const recallEvidenceCount = masteryAfterRound.recall
     ? masteryScopeWords.length
-    : masteryScopeWords.filter((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.recall).length
+    : masteryScopeWords.filter((item) => wordEvidence[sessionCardId(lesson.id, item)]?.recall).length
   const listenEvidenceCount = masteryAfterRound.listen
     ? masteryScopeWords.length
-    : masteryScopeWords.filter((item) => wordEvidence[item.reviewKey ?? sessionCardId(lesson.id, item)]?.listen).length
+    : masteryScopeWords.filter((item) => wordEvidence[sessionCardId(lesson.id, item)]?.listen).length
 
   function playEffect(type: 'key' | 'wrong' | 'complete') {
     if (!soundEnabled) return
@@ -1413,16 +1433,25 @@ function App() {
 
     const nextPracticeState = readPracticeState()
     const nextMistakeBank = readMistakeBank()
+    const nextMistakeResolvedAt = readMistakeResolvedAt()
     const nextCompleted = readCompletedLessons()
     const nextMasteryProgress = readMasteryProgress()
     const storedActiveSession = readActiveSession()
     const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.values(nextMistakeBank).some(hasActiveReview) ? null : storedActiveSession
     const nextPausedMainSession = readActiveSession(PAUSED_MAIN_SESSION_KEY)
     if (!nextActiveSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
+    else localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(nextActiveSession))
+    if (nextPausedMainSession) localStorage.setItem(PAUSED_MAIN_SESSION_KEY, JSON.stringify(nextPausedMainSession))
+    else localStorage.removeItem(PAUSED_MAIN_SESSION_KEY)
+    localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(nextPracticeState))
+    localStorage.setItem(MISTAKE_BANK_KEY, JSON.stringify(nextMistakeBank))
+    localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(nextMistakeResolvedAt))
+    localStorage.setItem('teclea-completed', JSON.stringify(nextCompleted))
+    localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(nextMasteryProgress))
 
     setPracticeState(nextPracticeState)
     setMistakeBank(nextMistakeBank)
-    setMistakeResolvedAt(snapshot.mistakeResolvedAt)
+    setMistakeResolvedAt(nextMistakeResolvedAt)
     setCompleted(nextCompleted)
     setMasteryProgress(nextMasteryProgress)
     setActiveSession(nextActiveSession)
@@ -1433,6 +1462,16 @@ function App() {
     if (screen === 'home') {
       setLesson(lessons.find((item) => item.id === nextPracticeState.lastLessonId) ?? DEFAULT_LESSON)
       setMode(nextActiveSession?.mode ?? nextPracticeState.lastMode)
+    }
+    return {
+      ...snapshot,
+      practiceState: nextPracticeState,
+      mistakeBank: nextMistakeBank,
+      mistakeResolvedAt: nextMistakeResolvedAt,
+      completed: nextCompleted,
+      masteryProgress: nextMasteryProgress,
+      activeSession: nextActiveSession,
+      pausedMainSession: nextPausedMainSession,
     }
   }
 
@@ -1450,8 +1489,8 @@ function App() {
       const local = { ...latestSnapshotRef.current, updatedAt: localUpdatedAtRef.current }
       const remote = await pullSync(normalized)
       const merged = remote ? mergeSyncSnapshots(local, remote) : local
-      applySyncSnapshot(merged)
-      await pushSync(normalized, merged)
+      const normalizedMerged = applySyncSnapshot(merged)
+      await pushSync(normalized, normalizedMerged)
       setSyncCode(normalized)
       syncCodeRef.current = normalized
       localStorage.setItem(SYNC_CODE_KEY, normalized)
@@ -1629,18 +1668,18 @@ function App() {
   }
 
   function recordMistake() {
-    const reviewKey = word.reviewKey ?? `${lesson.id}::${getTypingTarget(word.spanish)}`
+    const cardId = sessionCardId(lesson.id, word)
     const now = Date.now()
-    const originalLessonId = catalogWordById(reviewKey)?.lesson.id ?? lesson.id
+    const originalLessonId = catalogWordById(cardId)?.lesson.id ?? lesson.id
     saveMistakeResolvedAt((current) => {
-      if (!(reviewKey in current)) return current
+      if (!(cardId in current)) return current
       const nextResolvedAt = { ...current }
-      delete nextResolvedAt[reviewKey]
+      delete nextResolvedAt[cardId]
       return nextResolvedAt
     })
     saveMistakeBank((current) => ({
       ...current,
-      [reviewKey]: recordWrongAttempt(current[reviewKey], {
+      [cardId]: recordWrongAttempt(current[cardId], {
         lessonId: originalLessonId,
         spanish: word.spanish,
         chinese: word.chinese,
@@ -1650,15 +1689,15 @@ function App() {
 
   function recordMistakeRecovery(independentAnswer: boolean) {
     if (!independentAnswer) return false
-    const reviewKey = currentPracticeCardId()
-    const current = mistakeBank[reviewKey]
+    const cardId = currentPracticeCardId()
+    const current = mistakeBank[cardId]
     if (!current) return false
     const wasActive = hasActiveReview(current)
     const now = Date.now()
     const result = recordIndependentCorrect(current, mode, now, localDateKey(new Date(now)))
-    saveMistakeBank((bank) => ({ ...bank, [reviewKey]: result.record }))
+    saveMistakeBank((bank) => ({ ...bank, [cardId]: result.record }))
     if (wasActive && result.resolved) {
-      saveMistakeResolvedAt((resolved) => ({ ...resolved, [reviewKey]: now }))
+      saveMistakeResolvedAt((resolved) => ({ ...resolved, [cardId]: now }))
     }
     return result.progressed
   }
@@ -1683,7 +1722,7 @@ function App() {
   }
 
   function currentPracticeCardId() {
-    return word.reviewKey ?? sessionCardId(lesson.id, word)
+    return sessionCardId(lesson.id, word)
   }
 
   function markCurrentWordWeak() {
@@ -1692,7 +1731,7 @@ function App() {
   }
 
   function recordWordEvidence(independentAnswer: boolean) {
-    const cardId = word.reviewKey ?? sessionCardId(lesson.id, word)
+    const cardId = sessionCardId(lesson.id, word)
     const previous = wordEvidence[cardId] ?? {}
     if (mode === 'copy') {
       if (hasCompletedIntroduction(previous)) return wordEvidence
@@ -1732,7 +1771,11 @@ function App() {
     return mixed
   }
 
-  function beginAdaptiveRound(nextLevel: LessonLevel, nextTrack: PracticeTrack, nextMode: Mode, category: '全部' | LessonCategory = '全部', scene: '全部' | LessonScene = '全部') {
+  function beginAdaptiveRound(nextLevel: LessonLevel, nextTrack: PracticeTrack, nextMode: Mode, category: '全部' | LessonCategory = '全部', scene: '全部' | LessonScene = '全部', options: {
+    eligibleCardIds?: ReadonlySet<string>
+    maxItems?: number
+    challengeMode?: MasteryMode
+  } = {}) {
     const seenTargets = new Set<string>()
     const candidates = lessons
       .filter((item) => item.level === nextLevel
@@ -1743,37 +1786,46 @@ function App() {
         const target = getTypingTarget(word.spanish)
         if (seenTargets.has(target)) return []
         seenTargets.add(target)
-        return [{ lesson: item, word: { ...word, reviewKey: sessionCardId(item.id, word) } }]
+        const cardId = sessionCardId(item.id, word)
+        if (options.eligibleCardIds && !options.eligibleCardIds.has(cardId)) return []
+        return [{ lesson: item, word: { ...word, practiceId: cardId } }]
       }))
     if (!candidates.length) return
     const queueKey = adaptiveRoundQueueKey(nextLevel, nextTrack, category, scene)
     const recentHistory = recentRoundQueues[queueKey] ?? []
     const recentSets = recentHistory.map((queue) => new Set(queue))
-    const reviewPriorityOrder = (pool: typeof candidates) => {
-      const isWeak = (item: (typeof candidates)[number]) => Boolean(mistakeBank[item.word.reviewKey!] && hasActiveReview(mistakeBank[item.word.reviewKey!]))
-      const weakOrdered = weightedReviewOrder(pool.filter(isWeak), (item) => mistakeSamplingWeight(mistakeBank[item.word.reviewKey!], reviewToday))
-      const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
-      const stableOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
+    const reviewPriorityWithinSameAttempts = (pool: typeof candidates) => {
+      const isWeak = (item: (typeof candidates)[number]) => Boolean(mistakeBank[item.word.practiceId!] && hasActiveReview(mistakeBank[item.word.practiceId!]))
+      const weakOrdered = weightedReviewOrder(pool.filter(isWeak), (item) => mistakeSamplingWeight(mistakeBank[item.word.practiceId!], reviewToday))
+      const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && !(wordEvidence[item.word.practiceId!]?.recall && wordEvidence[item.word.practiceId!]?.listen)))
+      const stableOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && wordEvidence[item.word.practiceId!]?.recall && wordEvidence[item.word.practiceId!]?.listen))
       return [...weakOrdered, ...unmasteredOrdered, ...stableOrdered]
     }
-    const { fresh: freshCandidates, earlier: earlierCandidates, immediate: immediateCandidates } = bucketByRecentQueues(candidates, recentSets, (item) => item.word.reviewKey!)
-    const roundSize = adaptiveRoundSize(nextMode, roundHistory)
+    const reviewPriorityOrder = (pool: typeof candidates) => {
+      if (options.challengeMode !== 'listen' || !challengeProgress) return reviewPriorityWithinSameAttempts(pool)
+      const attemptCounts = Array.from(new Set(pool.map((item) => challengeProgress.dictationCounts[item.word.practiceId!] ?? 0))).sort((left, right) => left - right)
+      return attemptCounts.flatMap((attemptCount) => reviewPriorityWithinSameAttempts(pool.filter((item) => (challengeProgress.dictationCounts[item.word.practiceId!] ?? 0) === attemptCount)))
+    }
+    const { fresh: freshCandidates, earlier: earlierCandidates, immediate: immediateCandidates } = bucketByRecentQueues(candidates, recentSets, (item) => item.word.practiceId!)
+    const roundSize = Math.min(adaptiveRoundSize(nextMode, roundHistory), options.maxItems ?? Number.POSITIVE_INFINITY)
     const recencyBuckets = [freshCandidates, earlierCandidates, immediateCandidates]
-    const newOrdered = recencyBuckets.flatMap((pool) => balancedLengthOrder(pool.filter((item) => !hasCompletedIntroduction(wordEvidence[item.word.reviewKey!]))))
-    const reviewOrdered = recencyBuckets.flatMap((pool) => reviewPriorityOrder(pool.filter((item) => hasCompletedIntroduction(wordEvidence[item.word.reviewKey!]))))
+    const newOrdered = recencyBuckets.flatMap((pool) => balancedLengthOrder(pool.filter((item) => !hasCompletedIntroduction(wordEvidence[item.word.practiceId!]))))
+    const reviewOrdered = recencyBuckets.flatMap((pool) => reviewPriorityOrder(pool.filter((item) => hasCompletedIntroduction(wordEvidence[item.word.practiceId!]))))
     const roundWords = mixAdaptiveRound(newOrdered, reviewOrdered, roundSize).map((item) => item.word)
-    const currentQueue = roundWords.map((item) => item.reviewKey ?? sessionCardId(`adaptive-${nextLevel}-${nextTrack}`, item))
+    const currentQueue = roundWords.map((item) => sessionCardId(`adaptive-${nextLevel}-${nextTrack}`, item))
     const nextRecentQueues = { ...recentRoundQueues, [queueKey]: [currentQueue, ...recentHistory].slice(0, 2) }
     setRecentRoundQueues(nextRecentQueues)
     localStorage.setItem(RECENT_ROUND_QUEUES_KEY, JSON.stringify(nextRecentQueues))
     const adaptiveLesson: Lesson = {
-      id: `adaptive-${nextLevel}-${nextTrack}`,
+      id: `${options.challengeMode ? 'challenge' : 'adaptive'}-${nextLevel}-${nextTrack}`,
       level: nextLevel,
       scene: scene === '全部' ? '基础' : scene,
       kind: nextTrack === 'verbs' ? '动词原形' : '单词',
       eyebrow: `${nextLevel} · ${practiceTrackLabel(nextTrack, true)} · 本轮`,
       title: `${nextLevel} 本轮练习`,
-      description: '新词约占三分之二，复习位优先安排薄弱词',
+      description: options.challengeMode
+        ? '只安排挑战中尚欠当前次数的学习项，并优先补齐练习次数较少的词'
+        : '新词约占三分之二，复习位优先安排薄弱词',
       color: '#347665',
       words: roundWords,
     }
@@ -1782,7 +1834,7 @@ function App() {
 
   function recordChallengeSuccess(independentAnswer: boolean) {
     if (!challenge || (mode !== 'recall' && mode !== 'listen') || !independentAnswer) return
-    const cardId = word.reviewKey ?? sessionCardId(lesson.id, word)
+    const cardId = sessionCardId(lesson.id, word)
     if (!challengeIds.has(cardId)) return
     let earnedUnit = false
     const challengeWithEvidence = challengeWithExistingEvidence(challenge, wordEvidence)
@@ -1841,47 +1893,36 @@ function App() {
       && practiceSessionLevel(activeSession) === targetLevel
       && resumePracticeSession(activeSession)) return
 
-    const exactQueueKey = adaptiveRoundQueueKey(targetLevel, trackFilter, categoryFilter, sceneFilter)
-    const matchingQueueKeys = Object.keys(recentRoundQueues)
-      .filter((key) => key.startsWith(`${targetLevel}:`) && key !== exactQueueKey)
-      .reverse()
-    for (const queueKey of [exactQueueKey, ...matchingQueueKeys]) {
-      const latestQueue = recentRoundQueues[queueKey]?.[0] ?? []
-      const queueIds = latestQueue.filter((cardId) => challengeIds.has(cardId))
-      if (!queueIds.length) continue
-      const recallPending = queueIds.filter((cardId) => !challengeProgress.recallCompleted[cardId])
-      const listenPending = queueIds.filter((cardId) => (challengeProgress.dictationCounts[cardId] ?? 0) < challengeProgress.dictationRepetitions)
-      const targetMode: MasteryMode | null = recallPending.length ? 'recall' : listenPending.length ? 'listen' : null
-      const targetOrder = targetMode === 'recall' ? recallPending : listenPending
-      if (!targetMode || !targetOrder.length) continue
-      const queueTrack: PracticeTrack = queueKey.split(':')[1] === 'verbs' ? 'verbs' : 'main'
-      const roundLesson = adaptiveLessonFromOrder(`adaptive-${targetLevel}-${queueTrack}`, targetOrder)
-      if (!roundLesson) continue
-      setLevelFilter(targetLevel)
-      setTrackFilter(queueTrack)
-      setCategoryFilter('全部')
-      setSceneFilter('全部')
-      begin(roundLesson, targetMode, { orderedWords: roundLesson.words })
-      return
-    }
-
     const allIds = challengeCardIds(targetLevel)
-    const recallPending = allIds.filter((cardId) => !challengeProgress.recallCompleted[cardId])
-    const listenPending = allIds.filter((cardId) => (challengeProgress.dictationCounts[cardId] ?? 0) < challengeProgress.dictationRepetitions)
+    const recallPending = challengePendingCardIds(allIds, 'recall', challengeProgress.recallCompleted, challengeProgress.dictationCounts, challengeProgress.dictationRepetitions)
+    const listenPending = challengePendingCardIds(allIds, 'listen', challengeProgress.recallCompleted, challengeProgress.dictationCounts, challengeProgress.dictationRepetitions)
     const targetMode: MasteryMode = recallPending.length ? 'recall' : 'listen'
     const pendingIds = recallPending.length ? recallPending : listenPending
     if (!pendingIds.length) return
-    const currentTrackPending = pendingIds.filter((cardId) => {
+    const pendingByTrack = (candidateTrack: PracticeTrack) => pendingIds.filter((cardId) => {
       const matched = catalogWordById(cardId)
-      return matched && practiceTrackForLesson(matched.lesson) === trackFilter
+      return matched && practiceTrackForLesson(matched.lesson) === candidateTrack
     })
-    const firstPending = catalogWordById((currentTrackPending[0] ?? pendingIds[0])!)
-    const targetTrack = firstPending ? practiceTrackForLesson(firstPending.lesson) : 'main'
+    const totalByTrack = (candidateTrack: PracticeTrack) => allIds.filter((cardId) => {
+      const matched = catalogWordById(cardId)
+      return matched && practiceTrackForLesson(matched.lesson) === candidateTrack
+    }).length
+    const targetTrack = [...(['main', 'verbs'] as const)].sort((left, right) => {
+      const leftRemainingShare = pendingByTrack(left).length / Math.max(1, totalByTrack(left))
+      const rightRemainingShare = pendingByTrack(right).length / Math.max(1, totalByTrack(right))
+      return rightRemainingShare - leftRemainingShare
+    })[0]
     setLevelFilter(targetLevel)
     setTrackFilter(targetTrack)
     setCategoryFilter('全部')
     setSceneFilter('全部')
-    beginAdaptiveRound(targetLevel, targetTrack, targetMode)
+    const targetTrackPending = pendingByTrack(targetTrack)
+    const maxItems = challengeRoundSize(adaptiveRoundSize(targetMode, roundHistory), challengeTodayRemaining, targetTrackPending.length)
+    beginAdaptiveRound(targetLevel, targetTrack, targetMode, '全部', '全部', {
+      eligibleCardIds: new Set(targetTrackPending),
+      maxItems,
+      challengeMode: targetMode,
+    })
   }
 
   function openChallengeCreator() {
@@ -1923,6 +1964,10 @@ function App() {
       const adaptiveRoundLesson = adaptiveLessonFromOrder(lesson.id, recentRoundQueues[queueKey]?.[0] ?? [])
       const fullRound = catalogRound ?? adaptiveRoundLesson ?? lesson
       begin(fullRound, missingMasteryMode, { orderedWords: shuffleWords(fullRound.words), satisfiedModes: masteryAfterRound })
+      return
+    }
+    if (lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0) {
+      startOrContinueChallenge()
       return
     }
     beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'recall', categoryFilter, sceneFilter)
@@ -2078,7 +2123,7 @@ function App() {
     }
     const fullOrderedWords = options.orderedWords ?? shuffleWords(nextLesson.words)
     const introductionWords = nextMode !== 'copy' && nextLesson.id !== 'mistake-review' && !options.skipIntroduction
-      ? itemsNeedingIntroduction(fullOrderedWords, (item) => wordEvidence[item.reviewKey ?? sessionCardId(nextLesson.id, item)])
+      ? itemsNeedingIntroduction(fullOrderedWords, (item) => wordEvidence[sessionCardId(nextLesson.id, item)])
       : []
     const requiresIntroduction = introductionWords.length > 0
     const orderedWords = requiresIntroduction ? introductionWords : fullOrderedWords
@@ -2217,6 +2262,10 @@ function App() {
   function skipReinforcementAndAdvance() {
     const target = nextStageAfterSkippedReinforcement(mode)
     if (target.startNewRound) {
+      if (lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0) {
+        startOrContinueChallenge()
+        return
+      }
       beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), target.mode, categoryFilter, sceneFilter)
       return
     }
@@ -2317,7 +2366,7 @@ function App() {
       && mode === 'copy'
       && activeSession?.followUpMode
       && activeSession.followUpOrder?.length) {
-      const copyWeakWords = lesson.words.filter((item) => nextWeakWordIds.includes(item.reviewKey ?? sessionCardId(lesson.id, item)))
+      const copyWeakWords = lesson.words.filter((item) => nextWeakWordIds.includes(sessionCardId(lesson.id, item)))
       if (copyWeakWords.length) {
         begin({ ...lesson, words: copyWeakWords }, 'copy', {
           orderedWords: shuffleWords(copyWeakWords),
@@ -2418,7 +2467,7 @@ function App() {
       const fullLesson = practiceLessonFromOrder(activeSession?.lessonId ?? lesson.id, fullOrder) ?? lesson
       const unintroducedWords = itemsNeedingIntroduction(
         fullLesson.words,
-        (item) => wordEvidence[item.reviewKey ?? sessionCardId(fullLesson.id, item)],
+        (item) => wordEvidence[sessionCardId(fullLesson.id, item)],
       )
       if (unintroducedWords.length) {
         begin(fullLesson, nextMode, { orderedWords: fullLesson.words, satisfiedModes: roundSatisfiedModes })
@@ -2668,12 +2717,12 @@ function App() {
     if (!entries.length) return <p className="mistake-empty-row">这里暂时没有内容。</p>
     return (
       <div className="mistake-record-list">
-        {entries.map(([reviewKey, record]) => {
+        {entries.map(([cardId, record]) => {
           const activeModes = activeReviewModes(record)
           const target = recoveryTarget(record.count)
           const modeName = (reviewMode: Mode) => reviewMode === 'copy' ? '跟打' : reviewMode === 'recall' ? '看义' : '听音'
           return (
-            <article className="mistake-record-row" key={reviewKey}>
+            <article className="mistake-record-row" key={cardId}>
               <div><strong>{record.spanish}</strong><span>{record.chinese}</span></div>
               <p>累计错 {record.count} 次 · 跟打 {record.wrongCounts.copy} · 看义 {record.wrongCounts.recall} · 听音 {record.wrongCounts.listen}</p>
               <p>独立答对 · 看义 {record.independentCorrectCounts.recall} · 听音 {record.independentCorrectCounts.listen}</p>
@@ -2755,14 +2804,20 @@ function App() {
                   <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
                   <p className="eyebrow">BUENOS DÍAS · 早上好</p>
                   <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-                  <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张单词、短语与动词原形练习卡，练对重音和真实表达。</p>
+                  <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张不重复练习卡，共用同一份学习进度。</p>
+                  <p className="hero-lexicon-meta">考试路线 {examRouteCardCount} · Vida 生活 {lifeRouteCardCount} · 超市专题 {supermarketCardCount}</p>
                   <button className="primary-button" onClick={continuePractice}>
                     {continueLabel} <ArrowRight size={19} />
                   </button>
                 </section>
-                <button ref={dailyGoalButtonRef} type="button" className="daily-row" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={() => setDailyGoalOpen(true)}>
-                  <div><span className="section-kicker">今日练习</span><strong>{todayDone}<small> 项</small></strong><span className="daily-hint">还没创建挑战 · 按自己的节奏练</span></div>
-                  <div className="mini-ring no-goal"><span>{todayDone ? '已练' : '开始'}</span></div>
+                <button ref={dailyGoalButtonRef} type="button" className="challenge-invite-card" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={openChallengeCreator}>
+                  <div className="challenge-invite-copy">
+                    <span className="section-kicker">制定学习挑战</span>
+                    <strong>每天打开，就知道今天该练什么</strong>
+                    <small>选等级、期限和听写次数，系统按剩余进度自动安排。</small>
+                    <span className="challenge-invite-steps">定等级 · 定期限 · 每日动态重算</span>
+                  </div>
+                  <span className="challenge-invite-action"><b>创建挑战</b><ArrowRight size={18} /></span>
                 </button>
               </>
             )}
@@ -2814,7 +2869,7 @@ function App() {
           </div>
 
           <section className="course-section" id="courses">
-            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张不重复练习卡</span><h2>{trackFilter === 'main' ? '先选等级，再选分类' : '选好等级，直接刷动词'}</h2></div><button onClick={resetFilters}>重置</button></div>
+            <div className="section-heading"><div><span className="section-kicker">开放词库 · {totalPracticeCards} 张 · 考试 {examRouteCardCount} · Vida {lifeRouteCardCount} · 超市 {supermarketCardCount}</span><h2>{trackFilter === 'main' ? '先选等级，再选分类' : '选好等级，直接刷动词'}</h2></div><button onClick={resetFilters}>重置</button></div>
             <div className="course-filters primary-filters" role="group" aria-label="刷词主线筛选">
               <div><span>等级</span>{lessonLevels.map((level) => <button key={level} aria-pressed={levelFilter === level} className={levelFilter === level ? 'active' : ''} onClick={() => chooseLevelFilter(level)}>{level === '全部' ? '全部等级' : level}</button>)}</div>
               <div><span>主线</span>{PRACTICE_TRACKS.map((track) => <button key={track.value} aria-pressed={trackFilter === track.value} className={trackFilter === track.value ? 'active' : ''} onClick={() => chooseTrackFilter(track.value)}>{track.label}</button>)}</div>
@@ -3182,8 +3237,12 @@ function App() {
             </>
           ) : masteryModeRound && roundRecommendation === 'advance' ? (
             <>
-              <button className="primary-button" onClick={advanceAdaptiveStage}>{missingMasteryMode ? `开始${masteryModeLabel(missingMasteryMode)}` : '开始下一轮'} <ArrowRight size={19} /></button>
-              <p className="enter-hint">已独立答对 {independentRate}% · 按 Enter 直接继续</p>
+              <button className="primary-button" onClick={advanceAdaptiveStage}>{missingMasteryMode
+                ? `开始${masteryModeLabel(missingMasteryMode)}`
+                : lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0
+                  ? '继续今日挑战'
+                  : '开始下一轮'} <ArrowRight size={19} /></button>
+              <p className="enter-hint">已独立答对 {independentRate}%</p>
               <button className="text-button" onClick={repeatAdaptiveMode}>再巩固一次</button>
             </>
           ) : masteryModeRound && roundRecommendation === 'reinforce' ? (
@@ -3221,7 +3280,9 @@ function App() {
             </>
           ) : lessonMasteredAfterRound && adaptiveRound ? (
             <>
-              <button className="primary-button" onClick={() => beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'recall', categoryFilter, sceneFilter)}>开始下一轮 <ArrowRight size={19} /></button>
+              <button className="primary-button" onClick={lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0
+                ? startOrContinueChallenge
+                : () => beginAdaptiveRound(lesson.level, practiceTrackForLesson(lesson), 'recall', categoryFilter, sceneFilter)}>{lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0 ? '继续今日挑战' : '开始下一轮'} <ArrowRight size={19} /></button>
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
           ) : lessonMasteredAfterRound && nextLesson ? (
@@ -3238,6 +3299,7 @@ function App() {
               <button className="text-button" onClick={() => setScreen('home')}><Home size={17} /> 暂时回到首页</button>
             </>
           )}
+          <p className="completion-enter-shortcut"><kbd>Enter</kbd><span>直接继续</span></p>
         </main>
       </div>
     )
@@ -3305,7 +3367,7 @@ function App() {
                   : mode === 'recall'
                     ? `根据中文拼写 · ${targetLetters.length} 个字符`
                     : `仅凭发音拼写 · ${targetLetters.length} 个字符`}</span>
-            <span className="word-class">{practiceWordClassLabel(word, lesson.kind)}</span>
+            <span className="word-class">{practiceWordClassLabel(word, lesson.kind)}{word.article ? ` · ${word.article}` : ''}</span>
           </div>
           <p className={`meaning-slot ${mode === 'listen' && status !== 'correct' ? 'waiting' : ''} ${mode === 'listen' && status === 'correct' ? 'confirmed' : ''}`}>
             {mode === 'listen' && status !== 'correct' ? '答对后显示词义' : word.chinese}

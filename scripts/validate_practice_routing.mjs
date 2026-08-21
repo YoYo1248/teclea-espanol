@@ -1,11 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { masteryRecommendation, nextStageAfterSkippedReinforcement } from '../src/masteryRouting.ts'
-import { challengeDailyPlan } from '../src/challengeMath.ts'
+import { challengeDailyPlan, challengePendingCardIds, challengeRoundSize, challengeTodayTarget } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
 import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate } from '../src/pressHoldInput.ts'
 import { practiceWordClassLabel } from '../src/wordClass.ts'
+import {
+  canonicalPracticeTarget,
+  LEGACY_PRACTICE_CARD_ID_REDIRECTS,
+  migratePracticeCardId,
+  migratePracticeCardIds,
+  migratePracticeNumberRecord,
+  migratePracticeTrueRecord,
+  practiceCardId,
+} from '../src/cardIdentity.ts'
 import {
   hasActiveReview,
   isReviewDue,
@@ -23,6 +32,7 @@ const failures = []
 const assert = (condition, message) => {
   if (!condition) failures.push(message)
 }
+const catalogPolicy = JSON.parse(readFileSync(new URL('../data/lexicon/catalog-policy.json', import.meta.url), 'utf8'))
 
 assert(!hasCompletedIntroduction(undefined), '缺少证据时不应视为已完成首次跟打')
 assert(!hasCompletedIntroduction({ copyCompletedAt: 0 }), '无效时间戳不应视为已完成首次跟打')
@@ -37,6 +47,58 @@ assert(migratedEvidence.newRecall.copyCompletedAt === 1, '旧版无时间戳证�
 assert(migratedEvidence.legacyCompleted.copyCompletedAt === 1, '旧版已完成课程应保留首次跟打状态')
 const currentEvidence = normalizeWordEvidence({ recallOnly: { recall: true } }, { legacy: false })
 assert(!currentEvidence.recallOnly.copyCompletedAt, '新版看义证据不能替代首次跟打证据')
+
+const firstDialogueCardId = practiceCardId('common-dialogue-a1-1', { spanish: 'buenos días' })
+const secondDialogueCardId = practiceCardId('common-dialogue-a1-1', { spanish: 'buenas tardes' })
+assert(firstDialogueCardId !== secondDialogueCardId, '同一编辑批次中的不同词必须拥有不同学习卡 ID')
+assert(
+  practiceCardId('adaptive-A1-main', { spanish: 'buenos días', practiceId: firstDialogueCardId }) === firstDialogueCardId,
+  '动态轮次必须保留原 canonical 学习卡 ID',
+)
+assert(
+  practiceCardId('common-dialogue-a1-1', { spanish: 'buenos días', reviewKey: 'common-a1-dialogue-editorial-009' }) === firstDialogueCardId,
+  '专业复核批次键不得替代用户学习卡 ID',
+)
+assert(
+  Object.keys(LEGACY_PRACTICE_CARD_ID_REDIRECTS).length === catalogPolicy.expectedLegacyPracticeCardRedirects,
+  `带冠词旧卡应有 ${catalogPolicy.expectedLegacyPracticeCardRedirects} 条显式学习证据重定向`,
+)
+assert(canonicalPracticeTarget('El menú') === 'menú', '带冠词旧目标应解析为裸词形 canonical 目标')
+assert(canonicalPracticeTarget('el ascensor') === 'ascensor', '酒店旧电梯目标应解析为裸词形 canonical 目标')
+assert(migratePracticeCardId('de-viaje::la estación') === 'common-travel-a1-1::estación', '旧出行卡 ID 应迁移到 canonical 车站卡')
+assert(migratePracticeCardId('en-el-hotel::el ascensor') === 'en-el-hotel::ascensor', '旧酒店电梯卡 ID 应迁移到规范化卡')
+assert(
+  practiceCardId('en-el-restaurante', { spanish: 'el agua' }) === 'common-food-a1-1::agua',
+  '运行时遇到旧场景卡时也必须沿重定向复用 canonical 学习证据',
+)
+const mergedCanonicalEvidence = normalizeWordEvidence({
+  'en-el-restaurante::el menú': { recall: true, copyCompletedAt: 20, lastCorrectAt: 100 },
+  'common-food-a1-2::menú': { listen: true, copyCompletedAt: 10, lastCorrectAt: 200 },
+}, { legacy: false, migrateCardId: migratePracticeCardId })
+assert(Object.keys(mergedCanonicalEvidence).length === 1, '旧卡和 canonical 卡的证据应合并为一条')
+assert(
+  mergedCanonicalEvidence['common-food-a1-2::menú']?.recall
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.listen
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.copyCompletedAt === 10
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.lastCorrectAt === 200,
+  '证据合并应保留两个能力通道、最早首次跟打和最新独立答对时间',
+)
+assert(
+  Object.keys(migratePracticeTrueRecord({ 'de-viaje::la estación': true, 'common-travel-a1-1::estación': true })).join(',') === 'common-travel-a1-1::estación',
+  '挑战看义完成记录应合并旧卡与 canonical 卡',
+)
+assert(
+  migratePracticeNumberRecord({ 'de-viaje::la estación': 2, 'common-travel-a1-1::estación': 1 })['common-travel-a1-1::estación'] === 2,
+  '挑战听写次数迁移应取较大值，避免重复卡被相加后虚假达标',
+)
+assert(
+  migratePracticeNumberRecord({ 'de-viaje::la estación': 2, 'common-travel-a1-1::estación': 1 }, 'sum')['common-travel-a1-1::estación'] === 3,
+  '错题次数迁移应能合并旧卡与 canonical 卡的累计次数',
+)
+assert(
+  migratePracticeCardIds(['de-viaje::la estación', 'common-travel-a1-1::estación'], true).length === 1,
+  '近期轮次和薄弱队列迁移后应能去除同一卡的旧 ID 重复',
+)
 
 assert(!shouldMarkWordWeak('copy', false, false), '干净完成的跟打项不应进入薄弱集合')
 assert(shouldMarkWordWeak('copy', true, false), '跟打输错的项目应先留在跟打模式巩固')
@@ -191,6 +253,13 @@ assert(inProgressChallengePlan.dailyItems === 4, '已有进度时每天学习项
 assert(inProgressChallengePlan.dailyMasteryActions === 7, '已有进度时每日拼写应只按剩余动作和缓冲计算')
 assert(inProgressChallengePlan.remainingMasteryActions === 60, '已有进度时应显示准确剩余动作数')
 
+const challengeCards = ['one', 'two', 'three', 'four']
+assert(challengePendingCardIds(challengeCards, 'recall', { one: true }, {}, 2).join(',') === 'two,three,four', '挑战看义轮只能抽尚未完成看义证据的词')
+assert(challengePendingCardIds(challengeCards, 'listen', {}, { one: 1, two: 0, three: 2, four: 1 }, 2).join(',') === 'two,one,four', '挑战听写应排除已达次数的词并优先练完成次数更少的词')
+assert(challengeRoundSize(8, 3, 20) === 3, '挑战轮不应超过今日剩余目标')
+assert(challengeRoundSize(8, 10, 4) === 4, '挑战轮不应超过当前待完成词数')
+assert(challengeTodayTarget(90, 10, 10, 0) === 11, '今日挑战目标不应因当天刚完成的次数被重复扣减而缩水')
+
 const recommendationDoc = readFileSync(new URL('../docs/PRACTICE_RECOMMENDATION.md', import.meta.url), 'utf8')
 for (const requiredSection of ['首次跟打完成', '近期重复层', '新内容预热', '模式推进阈值', '队列持久化', '跨学习日错题恢复']) {
   assert(recommendationDoc.includes(requiredSection), `抽取规则文档缺少章节：${requiredSection}`)
@@ -215,13 +284,21 @@ assert(appSource.includes('按住 <kbd>Tab</kbd> 或鼠标长按上方字母区�
 assert(appSource.includes('长按上方字母区查看答案'), '触屏练习页应明确提示长按查看答案')
 assert(/className="letter-word"[\s\S]*?onPointerDown=\{startTouchReveal\}[\s\S]*?onPointerUp=\{stopTouchReveal\}/.test(appSource), '字母区应保留按住显示、松开隐藏答案的交互')
 assert(appSource.includes('暂不巩固，进入看义拼写') && appSource.includes('暂不巩固，进入听音拼写') && appSource.includes('暂不巩固，开始下一组'), '完成页应清楚标出跳过巩固后的下一阶段')
+assert(appSource.includes("word.article ? ` · ${word.article}` : ''"), '名词冠词元数据应显示在练习页，但不进入拼写目标')
+assert(appSource.includes('const normalizedMerged = applySyncSnapshot(merged)') && appSource.includes('pushSync(normalized, normalizedMerged)'), '云同步必须上传完成旧卡 ID 迁移后的快照')
 assert(/function openLevelPath\(nextLevel: LessonLevel\) \{\s*setLevelFilter\(nextLevel\)\s*beginAdaptiveRound/.test(appSource), '首页等级卡应按当前选择开新一组，而不是自动恢复旧练习')
 assert(appSource.includes("'challenge-active-home'") && appSource.includes('challenge-home-card'), '进行中的挑战应切换为挑战优先首页')
 assert(appSource.includes('今天还需 <strong>{challengeTodayRemaining}</strong> 次') && appSource.includes('challengeMinutesRemaining'), '挑战首页应突出今日剩余次数与预计时间')
 assert(appSource.includes('onClick={openChallengeSummary}>计划与明细</button>'), '挑战首页应保留计划与每日明细入口')
-assert(appSource.includes('还没创建挑战 · 按自己的节奏练'), '未创建挑战时应保留原有自由练习首页')
+assert(appSource.includes('制定学习挑战') && appSource.includes('继续自由练习'), '未创建挑战时应同时保留自由练习与挑战入口')
+assert(appSource.includes('每天打开，就知道今天该练什么') && appSource.includes('challenge-invite-card'), '未创建挑战时首页应提供清晰的计划型挑战入口')
+assert(appSource.includes('hero-lexicon-meta') && appSource.includes('考试路线 {examRouteCardCount}') && appSource.includes('Vida 生活 {lifeRouteCardCount}') && appSource.includes('超市专题 {supermarketCardCount}'), '首页应显示动态双词库与 Vida 超市规模')
+assert(appSource.includes('考试 {examRouteCardCount} · Vida {lifeRouteCardCount} · 超市 {supermarketCardCount}'), '挑战用户的首页词库栏也应显示 Vida 超市规模')
+assert(appSource.includes('rightRemainingShare - leftRemainingShare'), '挑战入口应按主线与动词专项的相对欠账调度，不继承首页临时筛选')
+assert(appSource.includes("lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0"), '挑战完成页继续操作应回到挑战欠账调度，而不是退回普通抽词')
 assert(appSource.includes("? '今日复习'") && appSource.includes('个错题已经到期'), '到期错题应在首页获得更明确的复习提醒')
 assert(appSource.includes('continueRemainingMistakeReview') && appSource.includes('继续{masteryModeLabel(mistakeReviewMode)}错题'), '错题本完成当前通道后应优先继续仍到期的下一通道')
+assert(appSource.includes('<p className="completion-enter-shortcut"><kbd>Enter</kbd><span>直接继续</span></p>'), '所有完成页都应提示桌面用户可按 Enter 执行主操作')
 
 if (failures.length) {
   console.error(failures.join('\n'))
