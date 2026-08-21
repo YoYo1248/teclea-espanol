@@ -22,11 +22,12 @@ import {
 } from 'lucide-react'
 import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, lessonScenes, lessons, PHRASE_SOURCE, totalPracticeCards, WORD_SOURCE, type Lesson, type LessonLevel, type LessonScene } from './data'
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
-import { dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
+import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
+import { initializeAnalytics, isAnalyticsConfigured, readAnalyticsConsent, trackAnalytics, updateAnalyticsConsent, type AnalyticsConsent } from './analytics'
 
 type Screen = 'home' | 'practice' | 'complete'
 type Mode = 'copy' | 'recall' | 'listen'
@@ -95,6 +96,8 @@ type InstallPromptEvent = Event & {
 
 const ACCENTS = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ']
 const LENIENT_ACCENTS: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u' }
+const PRESS_HOLD_ACCENT_BASES: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u', ñ: 'n' }
+const PRESS_HOLD_REPLACEMENT_MS = 1200
 const PRACTICE_STATE_KEY = 'teclea-practice-state'
 const MISTAKE_BANK_KEY = 'teclea-mistake-bank'
 const ACTIVE_SESSION_KEY = 'teclea-active-session-v2'
@@ -677,6 +680,8 @@ function speak(text: string, onDone?: () => void, rate: SpeechRate = 0.8) {
 }
 
 function App() {
+  const analyticsConfigured = isAnalyticsConfigured()
+  const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(readAnalyticsConsent)
   const [isFreshLearner] = useState(() => !hasLearningHistory())
   const [initialSyncInvite] = useState(readInitialSyncInvite)
   const initialPracticeStateRef = useRef<PracticeState | null>(null)
@@ -754,6 +759,7 @@ function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const practiceMainRef = useRef<HTMLElement>(null)
   const resetTimerRef = useRef<number | undefined>(undefined)
+  const pressHoldTimerRef = useRef<number | undefined>(undefined)
   const revealTimerRef = useRef<number | undefined>(undefined)
   const isComposingRef = useRef(false)
   const compositionCommittedValueRef = useRef<string | null>(null)
@@ -813,6 +819,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    void initializeAnalytics()
+  }, [])
+
+  useEffect(() => {
     const captureInstallPrompt = (event: Event) => {
       event.preventDefault()
       setInstallPrompt(event as InstallPromptEvent)
@@ -824,6 +834,15 @@ function App() {
   useEffect(() => {
     if (bootHandledRef.current) return
     bootHandledRef.current = true
+    trackAnalytics('app_opened', {
+      has_learning_history: !isFreshLearner,
+      has_active_session: Boolean(activeSession),
+      domain_kind: window.location.hostname === LEGACY_HOST
+        ? 'legacy'
+        : window.location.origin === PRIMARY_ORIGIN
+          ? 'primary'
+          : 'other',
+    })
     if (activeSession) {
       resumePracticeSession(activeSession)
       return
@@ -872,9 +891,12 @@ function App() {
 
   useEffect(() => () => {
     window.clearTimeout(resetTimerRef.current)
+    window.clearTimeout(pressHoldTimerRef.current)
     window.clearTimeout(revealTimerRef.current)
     window.clearTimeout(syncTimerRef.current)
   }, [])
+
+  useEffect(() => () => window.clearTimeout(pressHoldTimerRef.current), [screen, mode, index, lesson.id, accentMode])
 
   useEffect(() => {
     if (!syncCodeRef.current) return
@@ -1033,6 +1055,32 @@ function App() {
       percentage: totalRequired ? Math.round(completedRequired / totalRequired * 100) : 0,
     }
   }, [challengeProgress, mistakeBank])
+  const challengeDraftPlan = useMemo(() => {
+    const ids = challengeCardIds(challengeLevel)
+    const existingChallenge = challengeProgress?.level === challengeLevel ? challengeProgress : null
+    const recallDone = (cardId: string) => Boolean(existingChallenge?.recallCompleted[cardId] || wordEvidence[cardId]?.recall)
+    const listenDone = (cardId: string) => Math.max(
+      existingChallenge?.dictationCounts[cardId] ?? 0,
+      wordEvidence[cardId]?.listen ? 1 : 0,
+    )
+    const remainingItems = ids.filter((cardId) => !recallDone(cardId) || listenDone(cardId) < challengeRepetitions).length
+    const remainingCopyItems = ids.filter((cardId) => (
+      !recallDone(cardId) || listenDone(cardId) < challengeRepetitions
+    ) && !hasCompletedIntroduction(wordEvidence[cardId])).length
+    const remainingRecallActions = ids.filter((cardId) => !recallDone(cardId)).length
+    const remainingListenActions = ids.reduce(
+      (total, cardId) => total + Math.max(0, challengeRepetitions - listenDone(cardId)),
+      0,
+    )
+    const eligibleMistakes = Object.keys(mistakeBank).filter((cardId) => ids.includes(cardId)).length
+    return challengeDailyPlan(ids.length, challengeDays, challengeRepetitions, roundHistory, {
+      remainingItems,
+      remainingCopyItems,
+      remainingRecallActions,
+      remainingListenActions,
+      eligibleMistakes,
+    })
+  }, [challengeLevel, challengeDays, challengeRepetitions, roundHistory, challengeProgress, wordEvidence, mistakeBank])
   const todayChallengeRecords = challengeProgress?.dailyRecords?.[localDateKey()] ?? []
   const todayChallengeDetails = useMemo(() => {
     const details = new Map<string, {
@@ -1206,6 +1254,22 @@ function App() {
     void audio.play().catch(() => undefined)
   }
 
+  function analyticsPracticeContext(targetLesson = lesson, targetMode = mode, session = activeSession) {
+    return {
+      level: targetLesson.level,
+      mode: targetMode,
+      track: practiceTrackForLesson(targetLesson),
+      onboarding: session?.onboarding === true,
+      mistake_review: targetLesson.id === 'mistake-review',
+      queue_size: targetLesson.words.length,
+    }
+  }
+
+  function chooseAnalyticsConsent(nextConsent: Exclude<AnalyticsConsent, 'pending'>) {
+    setAnalyticsConsent(nextConsent)
+    void updateAnalyticsConsent(nextConsent)
+  }
+
   function scheduleSync() {
     localUpdatedAtRef.current = Math.max(Date.now(), localUpdatedAtRef.current + 1)
     localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
@@ -1318,7 +1382,9 @@ function App() {
     syncCodeRef.current = code
     localStorage.setItem(SYNC_CODE_KEY, code)
     setShowSyncCode(true)
-    void syncNow(code, true)
+    void syncNow(code, true).then((synced) => {
+      if (synced) trackAnalytics('sync_enabled', { method: 'created' })
+    })
   }
 
   function connectSyncSpace() {
@@ -1333,7 +1399,9 @@ function App() {
     localStorage.setItem(SYNC_CODE_KEY, code)
     setSyncInput('')
     setShowSyncCode(false)
-    void syncNow(code, true)
+    void syncNow(code, true).then((synced) => {
+      if (synced) trackAnalytics('sync_enabled', { method: 'connected' })
+    })
   }
 
   function stopSync() {
@@ -1387,7 +1455,7 @@ function App() {
     const url = createSyncLink(syncCode, isLegacyDomain ? `${PRIMARY_ORIGIN}/` : window.location.href)
     const canShare = typeof navigator.share === 'function'
     try {
-      if (canShare) await navigator.share({ title: 'Teclea Español 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
+      if (canShare) await navigator.share({ title: 'HolaDone 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
       else await navigator.clipboard.writeText(url)
       setSyncMessage(canShare ? '已完成系统分享，请只发送给自己的设备。' : '私密同步链接已复制。')
     } catch (error) {
@@ -1644,6 +1712,12 @@ function App() {
     }
     const nextChallenge = challengeWithExistingEvidence(challengeDraft, wordEvidence)
     saveChallenge(nextChallenge)
+    trackAnalytics('challenge_saved', {
+      level: challengeLevel,
+      duration_days: challengeDays,
+      dictation_repetitions: challengeRepetitions,
+      is_update: Boolean(challenge),
+    })
     setEditingChallenge(false)
   }
 
@@ -1756,10 +1830,12 @@ function App() {
     if (installPrompt) {
       await installPrompt.prompt()
       const choice = await installPrompt.userChoice
+      trackAnalytics('install_result', { outcome: choice.outcome })
       if (choice.outcome === 'accepted') setInstallHint('已添加，以后可以从主屏幕直接打开。')
       setInstallPrompt(null)
       return
     }
+    trackAnalytics('install_result', { outcome: 'manual_instructions' })
     setInstallHint('在浏览器的“分享”菜单中选择“添加到主屏幕”。')
   }
 
@@ -1824,7 +1900,7 @@ function App() {
     if (nextScene !== '全部') setCategoryFilter(categoryForScene(nextScene))
   }
 
-  function openPractice(nextLesson: Lesson, session: ActivePracticeSession) {
+  function openPractice(nextLesson: Lesson, session: ActivePracticeSession, startKind: 'new' | 'resume') {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
@@ -1863,6 +1939,12 @@ function App() {
     setWrongAt(null)
     setRevealAnswer(false)
     setInputFocused(false)
+    trackAnalytics('practice_started', {
+      ...analyticsPracticeContext(nextLesson, session.mode, session),
+      start_kind: startKind,
+      introduction: Boolean(session.followUpMode && session.followUpOrder?.length),
+      progress_index: session.index,
+    })
     setScreen('practice')
   }
 
@@ -1910,7 +1992,7 @@ function App() {
       ...nextLesson,
       ...(requiresIntroduction ? { eyebrow: `${nextLesson.level} · 新词预热`, description: '先跟打本轮首次出现的内容' } : {}),
       words: orderedWords,
-    }, session)
+    }, session, 'new')
   }
 
   function resumePracticeSession(session: ActivePracticeSession | null) {
@@ -1953,7 +2035,7 @@ function App() {
           usedHint: false,
         }
       : { ...session, index: validPriorCount }
-    openPractice({ ...baseLesson, words: orderedWords }, restoredSession)
+    openPractice({ ...baseLesson, words: orderedWords }, restoredSession, 'resume')
     return true
   }
 
@@ -2014,12 +2096,20 @@ function App() {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
+    const elapsedMs = currentElapsedMs()
+    trackAnalytics('practice_exited', {
+      ...analyticsPracticeContext(),
+      completed_items: completedWords,
+      mistakes,
+      elapsed_seconds: Math.round(elapsedMs / 1000),
+      progress_percent: Math.round(completedWords / Math.max(1, lesson.words.length) * 100),
+    })
     if (activeSession) {
       persistActiveSession({
         ...activeSession,
         mode,
         index,
-        elapsedMs: currentElapsedMs(),
+        elapsedMs,
         correctKeystrokes,
         mistakes,
         completedWords,
@@ -2068,6 +2158,12 @@ function App() {
     const nextWordEvidence = recordWordEvidence(independentAnswer)
     recordChallengeSuccess(independentAnswer)
     if (isOnboardingRound && index === 2 && lesson.words.length > 3 && activeSession) {
+      trackAnalytics('onboarding_checkpoint_completed', {
+        ...analyticsPracticeContext(),
+        completed_items: nextCompletedWords,
+        mistakes,
+        elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
+      })
       localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
       persistActiveSession({
         ...activeSession,
@@ -2096,6 +2192,16 @@ function App() {
       && activeSession.followUpOrder?.length) {
       const followUpLesson = practiceLessonFromOrder(activeSession.lessonId, activeSession.followUpOrder)
       if (followUpLesson) {
+        trackAnalytics('practice_round_completed', {
+          ...analyticsPracticeContext(),
+          completion_kind: 'introduction',
+          completed_items: nextCompletedWords,
+          mistakes,
+          elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
+          used_hint: roundUsedHint,
+          independent_correct: nextIndependentCorrect,
+          independent_rate: nextIndependentRate,
+        })
         recordAdaptiveRound(elapsedMs)
         begin(followUpLesson, activeSession.followUpMode, {
           orderedWords: followUpLesson.words,
@@ -2116,6 +2222,16 @@ function App() {
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
+      trackAnalytics('practice_round_completed', {
+        ...analyticsPracticeContext(),
+        completion_kind: 'round',
+        completed_items: nextCompletedWords,
+        mistakes,
+        elapsed_seconds: seconds,
+        used_hint: roundUsedHint,
+        independent_correct: nextIndependentCorrect,
+        independent_rate: nextIndependentRate,
+      })
       recordAdaptiveRound(elapsedMs)
       const completedCatalogLesson = lessons.find((item) => item.id === lesson.id)
       if (completedCatalogLesson && (mode === 'recall' || mode === 'listen')) {
@@ -2273,10 +2389,20 @@ function App() {
     inputRef.current?.focus({ preventScroll: true })
   }
 
+  function replayCurrentPronunciation() {
+    if (mode === 'recall') markMasteryHintUsed()
+    speak(word.spanish, undefined, speechRate)
+    inputRef.current?.focus({ preventScroll: true })
+  }
+
   function handleCharacters(rawValue: string) {
     if (status !== 'idle') return
 
     if (sessionStartedAtRef.current === null) {
+      trackAnalytics('practice_input_started', {
+        ...analyticsPracticeContext(),
+        progress_index: index,
+      })
       sessionStartedAtRef.current = Date.now()
       setTimerNow(Date.now())
     }
@@ -2285,6 +2411,12 @@ function App() {
     const currentCharacters = Array.from(normalize(typed))
     const incomingValue = rawValue.toLocaleLowerCase('es-ES').normalize('NFC')
     const incomingCharacters = Array.from(incomingValue)
+    if (incomingCharacters.length === currentCharacters.length && incomingCharacters.every(
+      (character, characterIndex) => charactersMatch(character, targetCharacters[characterIndex], accentMode),
+    )) {
+      setInputDraft(incomingValue)
+      return
+    }
     if (incomingCharacters.length <= currentCharacters.length) {
       setTyped('')
       setInputDraft('')
@@ -2357,7 +2489,17 @@ function App() {
     }
   }
 
+  function shouldAwaitPressHoldReplacement(rawValue: string) {
+    if (status !== 'idle' || accentMode !== 'strict') return false
+    const currentCharacters = Array.from(normalize(typed))
+    const incomingCharacters = Array.from(normalize(rawValue))
+    if (incomingCharacters.length !== currentCharacters.length + 1) return false
+    const expected = Array.from(getTypingTarget(word.spanish))[currentCharacters.length]
+    return Boolean(expected && PRESS_HOLD_ACCENT_BASES[expected] === incomingCharacters[currentCharacters.length])
+  }
+
   function insertAccent(character: string) {
+    window.clearTimeout(pressHoldTimerRef.current)
     handleCharacters(typed + character)
     requestAnimationFrame(() => inputRef.current?.focus())
   }
@@ -2375,12 +2517,25 @@ function App() {
     setRevealAnswer(false)
   }
 
+  const analyticsConsentBanner = analyticsConfigured && analyticsConsent === 'pending' ? (
+    <aside className="analytics-consent" aria-label="匿名使用统计选择">
+      <div>
+        <strong>帮助改进练习</strong>
+        <p>只记录练习开始、完成、退出、模式和汇总表现；不记录输入内容、具体词条或同步码。<a href="/privacy.html">查看隐私说明</a></p>
+      </div>
+      <div className="analytics-consent-actions">
+        <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>仅必要功能</button>
+        <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>允许匿名统计</button>
+      </div>
+    </aside>
+  ) : null
+
   if (screen === 'home') {
     return (
       <div className="app-shell">
         <header className="topbar">
-          <div className="brand-mark">T</div>
-          <div className="brand-copy"><strong>Teclea Español</strong><span>每天敲进一点西语</span></div>
+          <div className="brand-mark">H</div>
+          <div className="brand-copy"><strong>HolaDone</strong><span>每天敲进一点西语</span></div>
           <button ref={settingsButtonRef} className="icon-button" aria-label="设置" aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
         </header>
 
@@ -2564,6 +2719,12 @@ function App() {
                   ))}
                 </div>
               </div>
+              {analyticsConfigured && (
+                <button className="setting-row" aria-pressed={analyticsConsent === 'granted'} onClick={() => chooseAnalyticsConsent(analyticsConsent === 'granted' ? 'denied' : 'granted')}>
+                  <span><strong>匿名使用统计</strong><small>只记录行为事件与汇总表现，不记录输入内容</small></span>
+                  <b>{analyticsConsent === 'granted' ? '已允许' : '未启用'}</b>
+                </button>
+              )}
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
               <div className="sync-box">
                 <div className="sync-heading">
@@ -2673,10 +2834,23 @@ function App() {
                 <>
                   <div className="challenge-form">
                     <fieldset><legend>选择等级范围</legend><div className="challenge-levels">{LEVEL_ORDER.map((level) => <button type="button" key={level} className={challengeLevel === level ? 'active' : ''} aria-pressed={challengeLevel === level} onClick={() => setChallengeLevel(level)}>{level}<small>{challengeCardIds(level).length} 项</small></button>)}</div></fieldset>
-                    <label><span>希望多少天完成</span><input type="number" min="1" max="365" value={challengeDays} onChange={(event) => setChallengeDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} /><small>天</small></label>
-                    <label><span>每个学习项听音拼写独立答对</span><input type="number" min="1" max="10" value={challengeRepetitions} onChange={(event) => setChallengeRepetitions(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} /><small>次</small></label>
+                    <div className="challenge-parameters">
+                      <label><span>希望多少天完成</span><input type="number" min="1" max="365" value={challengeDays} onChange={(event) => setChallengeDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} /><small>天</small></label>
+                      <label><span>每项听音拼写独立答对</span><input type="number" min="1" max="10" value={challengeRepetitions} onChange={(event) => setChallengeRepetitions(Math.min(10, Math.max(1, Number(event.target.value) || 1)))} /><small>次</small></label>
+                    </div>
                   </div>
-                  <p className="challenge-estimate">每项需看义拼写独立答对 1 次，再听音拼写独立答对 {challengeRepetitions} 次；跟打不计入。共 {challengeCardIds(challengeLevel).length * (challengeRepetitions + 1)} 次达标拼写，每日目标会为错题预留缓冲并随日期自动重算。</p>
+                  <section className="challenge-budget" aria-label="每日练习预算">
+                    <span className="challenge-budget-kicker">按当前选择估算</span>
+                    <div className="challenge-budget-grid">
+                      <span><strong>{challengeDraftPlan.dailyItems}</strong><small>个不同学习项 / 天</small></span>
+                      <span><strong>{challengeDraftPlan.dailyMasteryActions}</strong><small>次有效拼写 / 天</small></span>
+                      <span><strong>约 {challengeDraftPlan.estimatedMinutes}</strong><small>分钟 / 天</small></span>
+                    </div>
+                    <p>{challengeDraftPlan.personalizedModes
+                      ? `已使用你 ${challengeDraftPlan.personalizedModes} 种模式的近期速度；缺少历史的模式采用初始估算。`
+                      : '暂无足够个人计时，先按跟打约 10 秒、看义或听音约 19 秒/项估算；积累至少两轮后会自动更新。'}</p>
+                  </section>
+                  <p className="challenge-estimate">每项需看义拼写独立答对 1 次，再听音拼写独立答对 {challengeRepetitions} 次；跟打只计时间、不计掌握。全部共 {challengeDraftPlan.totalMasteryActions} 次有效拼写，按现有进度还需 {challengeDraftPlan.remainingMasteryActions} 次；每日次数包含错题缓冲，漏练后会按剩余任务自动重算。</p>
                   <button className="primary-button" onClick={createOrUpdateChallenge}>{challenge ? '保存挑战调整' : '创建挑战'}</button>
                   {challenge && <button className="text-button" onClick={() => setEditingChallenge(false)}>取消调整</button>}
                 </>
@@ -2684,6 +2858,7 @@ function App() {
             </section>
           </div>
         )}
+        {analyticsConsentBanner}
       </div>
     )
   }
@@ -2781,6 +2956,7 @@ function App() {
             </>
           )}
         </main>
+        {analyticsConsentBanner}
       </div>
     )
   }
@@ -2888,9 +3064,20 @@ function App() {
                 return
               }
               compositionCommittedValueRef.current = null
+              window.clearTimeout(pressHoldTimerRef.current)
+              if (shouldAwaitPressHoldReplacement(event.target.value)) {
+                const pendingValue = event.target.value
+                setInputDraft(pendingValue)
+                pressHoldTimerRef.current = window.setTimeout(() => {
+                  pressHoldTimerRef.current = undefined
+                  handleCharacters(pendingValue)
+                }, PRESS_HOLD_REPLACEMENT_MS)
+                return
+              }
               handleCharacters(event.target.value)
             }}
             onCompositionStart={() => {
+              window.clearTimeout(pressHoldTimerRef.current)
               isComposingRef.current = true
               compositionCommittedValueRef.current = null
             }}
@@ -2908,7 +3095,13 @@ function App() {
               setInputFocused(true)
               window.requestAnimationFrame(() => practiceMainRef.current?.scrollTo({ top: 0, behavior: 'auto' }))
             }}
-            onKeyDown={(event) => { if (event.key === 'Backspace') event.preventDefault() }}
+            onKeyDown={(event) => {
+              if (event.key === 'Backspace') event.preventDefault()
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              if (status !== 'idle' || event.repeat || event.nativeEvent.isComposing || isComposingRef.current) return
+              replayCurrentPronunciation()
+            }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
@@ -2923,14 +3116,13 @@ function App() {
               onPointerDown={(event) => event.preventDefault()}
               onClick={(event) => {
                 event.stopPropagation()
-                if (mode === 'recall') markMasteryHintUsed()
-                speak(word.spanish, undefined, speechRate)
-                inputRef.current?.focus({ preventScroll: true })
+                replayCurrentPronunciation()
               }}
-              aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速` : `重听西语发音，不影响听写判定，${speechRate} 倍速`}
+              aria-label={mode === 'recall' ? `播放发音提示，当前项不计独立答对，${speechRate} 倍速，快捷键 Enter` : `重听西语发音，不影响听写判定，${speechRate} 倍速，快捷键 Enter`}
             >
               <Volume2 size={19} />
               <span>{mode === 'recall' ? '发音提示' : '重听发音'}</span>
+              <kbd>Enter</kbd>
             </button>
             <button
               className="speech-rate-button"
@@ -2969,6 +3161,7 @@ function App() {
           <span>{status === 'wrong' ? '正在重置…' : status === 'correct' ? '正确，查看词义后进入下一个…' : inputFocused ? '键盘已就绪，直接输入' : '键盘未出现？点一下继续'}</span>
         </button>
       </footer>
+      {analyticsConsentBanner}
     </div>
   )
 }

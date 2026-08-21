@@ -16,7 +16,7 @@ Spanish lexical forms and conjugations were checked against the Kaikki machine-r
 - Relevant upstream terms: CC BY-SA 4.0 and GFDL
 - Verification date recorded in the data: 2026-08-14
 
-Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for Teclea Español. A1–C2 topic and communicative-function boundaries were informed by the corresponding Instituto Cervantes Plan Curricular inventories; the 200 B1–B2 cards and 200 C1–C2 candidate cards are original teaching selections rather than official or exhaustive Instituto Cervantes word lists. C1–C2 entries still require qualified language review. Labels remain learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki, Instituto Cervantes or their contributors.
+Chinese glosses, example sentences, CEFR labels and scene groupings were created or editorially assigned for HolaDone. A1–C2 topic and communicative-function boundaries were informed by the corresponding Instituto Cervantes Plan Curricular inventories; the 200 B1–B2 cards and 200 C1–C2 candidate cards are original teaching selections rather than official or exhaustive Instituto Cervantes word lists. C1–C2 entries still require qualified language review. Labels remain learning-order suggestions, not official certifications. These modifications and additions do not imply endorsement by wordfreq, Wiktionary, Kaikki, Instituto Cervantes or their contributors.
 
 The application code remains available under GPL-3.0 as stated in `LICENSE`. This notice preserves the attribution and licensing information for the lexical-data portion.
 

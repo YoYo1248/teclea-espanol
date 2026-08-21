@@ -1,4 +1,4 @@
-# Teclea Español — 西语拼写练习
+# HolaDone — 西语拼写练习
 
 一个兼容手机与电脑的西语学习 MVP，基于 Qwerty Learner 的训练机制进行修改，并加入独立设计的响应式界面、西语词库与重音输入流程。
 
@@ -80,7 +80,7 @@ npm run lexicon:coverage
 
 `artifacts/lexicon/` 是可重建的本地候选区，已加入 `.gitignore`。只有零阻断、已具名批准的记录才能通过 `npm run lexicon:stage`，而该命令也只生成待审 JSON，不会自动改动线上课程。
 
-跨设备同步的安全模型、合并规则和 Vercel / Upstash 配置见 [`docs/SYNC.md`](docs/SYNC.md)。
+跨设备同步的安全模型、合并规则和 Vercel / Upstash 配置见 [`docs/SYNC.md`](docs/SYNC.md)。可选的 PostHog EU 匿名行为统计、事件字典和后台漏斗配置见 [`docs/ANALYTICS.md`](docs/ANALYTICS.md)。
 
 ## 许可说明
 

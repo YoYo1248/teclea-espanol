@@ -12,16 +12,18 @@
     "validate:sync": "node scripts/validate_sync.mjs",
     "validate:practice": "node --experimental-strip-types scripts/validate_practice_routing.mjs",
     "validate:seo": "node scripts/validate_seo.mjs",
+    "validate:analytics": "node scripts/validate_analytics.mjs",
     "lexicon:export-frequency": "python3 scripts/lexicon/export_wordfreq_candidates.py --limit 6000 --output artifacts/lexicon/wordfreq-es-top-6000.jsonl",
     "lexicon:audit": "node scripts/lexicon/audit_candidates.mjs --input artifacts/lexicon/wordfreq-es-top-6000.jsonl --output artifacts/lexicon/candidate-audit.json",
     "lexicon:prepare-review": "node scripts/lexicon/prepare_review_queue.mjs --limit 300",
     "lexicon:stage": "node scripts/lexicon/stage_approved_candidates.mjs --input artifacts/lexicon/reviewed-candidates.jsonl --output artifacts/lexicon/approved-decks.json",
     "lexicon:coverage": "node scripts/lexicon/generate_coverage_report.mjs --candidates artifacts/lexicon/wordfreq-es-top-6000.jsonl",
-    "check": "npm run validate:catalog && npm run validate:lexicon && npm run validate:practice && npm run validate:sync && npm run validate:seo && npm run build"
+    "check": "npm run validate:catalog && npm run validate:lexicon && npm run validate:practice && npm run validate:sync && npm run validate:seo && npm run validate:analytics && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
+    "posthog-js": "^1.418.10",
     "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",

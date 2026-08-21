@@ -217,6 +217,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .pronunciation-controls button:active { background: #e7f1ed; transform: translateY(1px); }
 .pronunciation-controls .pronunciation-button { border-color: rgba(52,118,101,.25); background: #e7f1ed; }
 .pronunciation-button span { font-size: 11px; }
+.pronunciation-button kbd { display: none; padding: 2px 5px; border: 1px solid rgba(52,118,101,.22); border-radius: 5px; background: rgba(255,255,255,.58); color: #5f7e74; font: 700 9px/1.2 inherit; box-shadow: 0 1px 0 rgba(52,118,101,.12); }
 .pronunciation-controls .speech-rate-button { gap: 4px; }
 .speech-rate-button span { font-size: 9px; color: var(--muted); }
 .speech-rate-button b { font-size: 12px; color: var(--green); }
@@ -406,6 +407,15 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .install-link { margin-top: 9px; padding: 0 14px; }
 .install-hint { margin: 7px 4px 0 !important; color: var(--muted); font-size: 11px !important; line-height: 1.5; }
 
+.analytics-consent { position: fixed; z-index: 50; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 456px); transform: translateX(-50%); padding: 15px; border: 1px solid rgba(52,118,101,.23); border-radius: 18px; background: rgba(255,253,248,.98); box-shadow: 0 18px 52px rgba(32,32,29,.22); backdrop-filter: blur(12px); color: var(--ink); text-align: left; }
+.analytics-consent strong { font-size: 15px; }
+.analytics-consent p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.analytics-consent a { color: var(--green); font-weight: 750; text-decoration: underline; text-underline-offset: 2px; }
+.analytics-consent-actions { margin-top: 12px; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 8px; }
+.analytics-consent-actions button { min-height: 42px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+.analytics-decline { border: 1px solid var(--line); background: var(--paper); color: #6d6962; }
+.analytics-accept { border: 1px solid var(--green); background: var(--green); color: white; }
+
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; width: min(100%, 480px); margin: auto; background: rgba(28,27,24,.42); backdrop-filter: blur(5px); display: flex; align-items: end; }
 .settings-sheet { width: 100%; max-height: min(92svh, 760px); overflow-y: auto; border-radius: 28px 28px 0 0; background: var(--cream); padding: 10px 18px max(25px, env(safe-area-inset-bottom)); box-shadow: 0 -18px 55px rgba(32,32,29,.16); }
 .sheet-handle { width: 38px; height: 4px; margin: 0 auto 17px; border-radius: 99px; background: #c7c2b9; }
@@ -460,7 +470,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .legal-box p { margin: 5px 0 7px; font-size: 10px; line-height: 1.55; }
 .legal-box a { color: #4f6fae; font-size: 11px; font-weight: 700; }
 .legal-links { display: flex; flex-wrap: wrap; gap: 8px 13px; }
-.daily-goal-sheet { max-width: 520px; margin: 0 auto; }
+.daily-goal-sheet { max-width: 620px; margin: 0 auto; }
 .goal-definition { margin-top: 9px; padding: 16px; border: 1px solid rgba(239,106,76,.18); border-radius: 18px; background: #fff7f2; text-align: left; }
 .goal-definition.mastery { border-color: rgba(52,118,101,.2); background: #e7f0ec; }
 .goal-definition b { display: block; color: var(--red); font-size: 11px; letter-spacing: .12em; }
@@ -506,6 +516,14 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .challenge-form label > span { margin-bottom: 6px; }
 .challenge-form input { width: 88px; height: 38px; padding: 0 30px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: #f4f0e8; font-weight: 800; }
 .challenge-form label > small { margin-left: -25px; color: var(--muted); font-size: 11px; pointer-events: none; }
+.challenge-parameters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.challenge-budget { padding: 14px; border: 1px solid rgba(52,118,101,.2); border-radius: 17px; background: #e7f0ec; text-align: left; }
+.challenge-budget-kicker { display: block; margin-bottom: 9px; color: var(--green); font-size: 10px; font-weight: 850; letter-spacing: .08em; }
+.challenge-budget-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.challenge-budget-grid > span { min-width: 0; padding: 10px 6px; border-radius: 12px; background: rgba(255,255,255,.7); display: flex; flex-direction: column; align-items: center; text-align: center; }
+.challenge-budget-grid strong { color: var(--green); font-size: 22px; line-height: 1.1; }
+.challenge-budget-grid small { margin-top: 4px; color: var(--muted); font-size: 9px; }
+.challenge-budget p { margin: 9px 1px 0; color: #6d7e77; font-size: 10px; line-height: 1.55; }
 .challenge-estimate { margin: 11px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: left; }
 
 @media (min-width: 600px) {
@@ -812,6 +830,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .word-label { font-size: 13px; }
   .translation { font-size: 17px; }
   .pronunciation-button span { font-size: 12px; }
+  .pronunciation-button kbd { display: inline-block; }
   .typing-stage .translation.revealed-meaning span { font-size: 11px; }
   .typing-feedback { font-size: 14px; }
   .keyboard-prompt { font-size: 15px; }
@@ -911,6 +930,9 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 
 @media (max-width: 599px) {
+  .challenge-parameters { grid-template-columns: 1fr; }
+  .challenge-budget-grid strong { font-size: 19px; }
+  .challenge-budget-grid small { font-size: 8px; }
   .practice-home-button { padding: 0 11px; }
   .practice-home-label { display: none; }
   .practice-home-label-short { display: inline; }

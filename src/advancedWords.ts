@@ -8,7 +8,7 @@ export type AdvancedDeck = {
   words: Array<[spanish: string, chinese: string]>
 }
 
-// Original candidate selection for Teclea Español. Topic and level boundaries
+// Original candidate selection for HolaDone. Topic and level boundaries
 // were checked against the Instituto Cervantes PCIC C1-C2 inventories. The
 // selection, Chinese glosses and grouping are editorial and still require a
 // qualified Spanish-language review before being treated as a finished list.

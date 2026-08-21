@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { masteryRecommendation } from '../src/masteryRouting.ts'
+import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction } from '../src/roundQueue.ts'
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
@@ -58,6 +59,33 @@ assert(adaptiveRoundSize('listen', [
   { mode: 'listen', items: 6, elapsedMs: 300_000, completedAt: 1 },
   { mode: 'listen', items: 6, elapsedMs: 300_000, completedAt: 2 },
 ]) === 6, '慢速用户的轮次应受 6 项下限约束')
+
+const defaultChallengePlan = challengeDailyPlan(422, 30, 2, [])
+assert(defaultChallengePlan.dailyItems === 15, 'A1 30 天计划应估算每天 15 个不同学习项')
+assert(defaultChallengePlan.dailyMasteryActions === 47, 'A1 30 天计划应包含 10% 错题缓冲')
+assert(defaultChallengePlan.estimatedMinutes === 18, '无历史时应使用透明的初始时间估算')
+assert(defaultChallengePlan.personalizedModes === 0, '无历史时不应标记为个人速度')
+
+const personalizedChallengePlan = challengeDailyPlan(100, 10, 2, [
+  { mode: 'copy', items: 10, elapsedMs: 100_000, completedAt: 1 },
+  { mode: 'copy', items: 10, elapsedMs: 100_000, completedAt: 2 },
+  { mode: 'recall', items: 10, elapsedMs: 200_000, completedAt: 3 },
+  { mode: 'recall', items: 10, elapsedMs: 200_000, completedAt: 4 },
+  { mode: 'listen', items: 10, elapsedMs: 300_000, completedAt: 5 },
+  { mode: 'listen', items: 10, elapsedMs: 300_000, completedAt: 6 },
+])
+assert(personalizedChallengePlan.estimatedMinutes === 17, '个人模式速度应参与每日时间估算')
+assert(personalizedChallengePlan.personalizedModes === 3, '三种模式历史充分时应标记为完整个人速度')
+
+const inProgressChallengePlan = challengeDailyPlan(100, 10, 2, [], {
+  remainingItems: 40,
+  remainingCopyItems: 10,
+  remainingRecallActions: 20,
+  remainingListenActions: 40,
+})
+assert(inProgressChallengePlan.dailyItems === 4, '已有进度时每天学习项应只按剩余项目计算')
+assert(inProgressChallengePlan.dailyMasteryActions === 7, '已有进度时每日拼写应只按剩余动作和缓冲计算')
+assert(inProgressChallengePlan.remainingMasteryActions === 60, '已有进度时应显示准确剩余动作数')
 
 const recommendationDoc = readFileSync(new URL('../docs/PRACTICE_RECOMMENDATION.md', import.meta.url), 'utf8')
 for (const requiredSection of ['首次跟打完成', '近期重复层', '新内容预热', '模式推进阈值', '队列持久化']) {

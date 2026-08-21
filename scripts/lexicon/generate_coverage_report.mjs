@@ -166,7 +166,7 @@ try {
     )}\n\n该指标会低估 lemma 覆盖（例如屈折形式尚未归并），也会被功能词、专名和语料噪声影响。它只用于决定“下一批候选从哪里挑”，不能写成“已经掌握了多少 CEFR 词汇”。${candidateAudit ? ` 原始 ${candidateAudit.inputRows} 条候选中有 ${candidateAudit.alreadyInCatalog} 条已在目录；剩余候选必须补齐词形、框架映射和批次编辑字段才能进入生产目录，不能直接发布。` : ''}\n\n`
     : '## 词频候选池尚未生成，当前只能报告目录结构\n\n安装 `requirements-lexicon.txt` 并运行 `npm run lexicon:export-frequency` 后，本报告会增加 wordfreq 前 1,000 / 3,000 / 6,000 项的精确表面命中诊断。缺少这一输入不影响目录完整性检查。\n\n'
 
-  const markdown = `# Teclea Español 词库覆盖基线（${sourceManifest.checkedAt}）
+  const markdown = `# HolaDone 词库覆盖基线（${sourceManifest.checkedAt}）
 
 ## 技术摘要
 
@@ -190,7 +190,7 @@ ${markdownTable(
     categoryRows.map((row) => [row.category, row.scenes, row.total, row.levelsPresent || '无', `${row.catalogShare}%`]),
   )}
 
-六类是 Teclea 的产品浏览层，不是 Instituto Cervantes 的官方栏目。每个新候选仍需保存具体 PCIC 清单链接或章节引用，才能说明为什么把它放进某个等级和领域。
+六类是 HolaDone 的产品浏览层，不是 Instituto Cervantes 的官方栏目。每个新候选仍需保存具体 PCIC 清单链接或章节引用，才能说明为什么把它放进某个等级和领域。
 
 ${frequencySection}## 目录仍有明显的结构化元数据缺口
 

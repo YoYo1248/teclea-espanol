@@ -35,7 +35,7 @@ export type ExpansionDeck = {
 // First production expansion batch. Targets come from the wordfreq candidate
 // queue, use editorial lemma/canonical forms rather than observed inflections,
 // and were mapped conservatively against the linked PCIC level inventories.
-// Chinese glosses, examples and grouping are original Teclea editorial content;
+// Chinese glosses, examples and grouping are original HolaDone editorial content;
 // this batch is not labelled as external professional review.
 const expansionBatches001And002: ExpansionDeck[] = [
   {

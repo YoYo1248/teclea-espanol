@@ -16,7 +16,7 @@ const w = (spanish: string, chinese: string, example: string, exampleChinese: st
 // Practical-gap batch for people settling in Spain. These cards are based on
 // vocabulary that recurs in official housing, education, employment and
 // residence procedures. They supplement rather than replace the wordfreq/PCIC
-// expansion pipeline and remain Teclea editorial learning-order suggestions.
+// expansion pipeline and remain HolaDone editorial learning-order suggestions.
 export const newcomerDecks: NewcomerDeck[] = [
   {
     id: 'newcomer-renting-b1', level: 'B1', scene: '住宿', kind: '单词', title: '租房签约与交接',
@@ -117,7 +117,7 @@ export const newcomerDecks: NewcomerDeck[] = [
     id: 'newcomer-area-choice-b1', level: 'B1', scene: '城市', kind: '短语', title: '城市与居住区域选择',
     description: '比较通勤、学校、医疗和生活环境时常用的表达',
     source: {
-      name: 'Teclea Español 新居民任务审计 · 西班牙教育与公共服务页面汇编',
+      name: 'HolaDone 新居民任务审计 · 西班牙教育与公共服务页面汇编',
       url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/NEWCOMER_UTILITY_AUDIT.md',
       license: editorialLicense, checkedAt,
     },
