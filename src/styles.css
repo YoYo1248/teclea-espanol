@@ -71,6 +71,27 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .hero-subtitle { width: 92%; color: #b8bbb5; font-size: 15px; line-height: 1.7; margin: 18px 0 24px; }
 .primary-button { width: 100%; min-height: 54px; border: 0; border-radius: 17px; padding: 0 19px; display: flex; align-items: center; justify-content: center; gap: 9px; background: var(--red); color: white; font-size: 15px; font-weight: 700; box-shadow: 0 9px 24px rgba(239, 106, 76, .22); }
 .hero-card .primary-button { width: auto; min-width: 174px; position: relative; z-index: 1; }
+.challenge-home-card { min-height: 440px; border-radius: 30px; padding: 22px 22px 24px; color: #fffaf4; background: #242823; position: relative; overflow: hidden; }
+.challenge-home-card::after { content: 'ñ'; position: absolute; right: -22px; bottom: -75px; font: italic 220px/1 'Playfair Display', serif; color: rgba(255,255,255,.035); transform: rotate(-10deg); pointer-events: none; }
+.challenge-home-card > *:not(.hero-glow) { position: relative; z-index: 1; }
+.challenge-home-topline, .challenge-dayline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.challenge-plan-link { min-height: 34px; padding: 0 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(255,255,255,.055); color: #d5d7d1; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.challenge-brand-line { margin: 25px 0 14px; color: #b8bbb5; font-size: 14px; font-weight: 650; }
+.challenge-brand-line em { color: #ff927a; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; font-weight: 700; }
+.challenge-dayline { color: #ff9b84; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.challenge-dayline b { color: #b6bbb4; font-size: 11px; letter-spacing: 0; }
+.challenge-home-card h1 { margin: 12px 0 5px; font-size: clamp(34px, 9vw, 48px); line-height: 1.08; letter-spacing: -.045em; }
+.challenge-home-card h1 strong { color: #ff8266; font-size: 1.16em; }
+.challenge-home-summary { margin: 0; color: #b9bdb7; font-size: 12px; line-height: 1.55; }
+.challenge-today-progress { height: 9px; margin: 20px 0 17px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+.challenge-today-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff7558, #ff9a80); box-shadow: 0 0 18px rgba(255,130,102,.28); transition: width .25s ease; }
+.challenge-home-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 20px; }
+.challenge-home-meta span { min-width: 0; padding: 11px 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); display: flex; flex-direction: column; gap: 3px; text-align: center; }
+.challenge-home-meta strong { color: #fffaf4; font-size: 18px; }
+.challenge-home-meta small { color: #aeb3ad; font-size: 9px; line-height: 1.25; }
+.challenge-home-card .primary-button { position: relative; z-index: 1; }
+.challenge-home-card.today-complete .challenge-today-progress span { background: #73ac98; }
+.challenge-home-card.today-complete h1 { color: #c7e3d8; }
 .primary-button:disabled { background: #d8d3ca; color: #9c9992; box-shadow: none; }
 
 .daily-row { width: calc(100% - 4px); margin: 17px 2px 28px; border: 0; border-bottom: 1px solid var(--line); padding: 8px 4px 22px; background: transparent; color: inherit; display: flex; align-items: center; justify-content: space-between; text-align: left; }
@@ -168,6 +189,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .mode-card > button, .mistake-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--green); }
 .mistake-card > button { color: #a85d48; }
 .mistake-card > button:disabled { color: #a99d95; opacity: .55; }
+.mistake-card.due { border: 1px solid rgba(206,77,49,.24); background: #f6ddd2; box-shadow: 0 12px 30px rgba(184,82,57,.12); }
+.mistake-card.due .mistake-icon { background: #c9563e; box-shadow: 0 7px 18px rgba(169,64,42,.18); }
+.mistake-card.due .section-kicker { color: #bd4933; }
+.mistake-card.today { background: #eee2d8; }
+.mistake-card.scheduled { background: #ece7df; }
 .mistake-card.empty { background: #ebe7df; }
 .review-result { max-width: 520px; margin: 10px auto 18px; padding: 12px 15px; border-radius: 14px; background: #f2e4dd; color: #8b503f; font-size: 14px; font-weight: 700; }
 .review-result.clean { background: #deebe5; color: #34705f; }
@@ -617,6 +643,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .hero-card h1 { max-width: 540px; font-size: clamp(48px, 5vw, 67px); }
   .hero-subtitle { max-width: 460px; font-size: 15px; }
   .hero-card .primary-button { min-width: 210px; min-height: 58px; }
+  .challenge-home-card { min-height: 520px; padding: 32px 30px; }
+  .challenge-home-card h1 { font-size: clamp(43px, 5vw, 58px); }
+  .challenge-home-card .primary-button { min-height: 58px; }
+  .challenge-active-home .challenge-home-overview { grid-column: 1; grid-row: 1 / span 3; }
   .daily-row {
     grid-column: 2;
     grid-row: 1;
@@ -640,6 +670,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .lesson-copy strong { font-size: 18px; }
   .lesson-copy > span { font-size: 11px; }
   .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: minmax(0, 1fr); }
+  .challenge-active-home .home-actions { grid-row: 1; }
+  .challenge-active-home .course-section { grid-row: 2; }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 82px; padding: 17px 16px; }
   .mode-card h3, .mistake-card h3 { font-size: 16px; }
   .mode-card p, .mistake-card p { font-size: 11px; }
@@ -745,6 +777,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     gap: 14px 28px;
     align-items: stretch;
   }
+  .challenge-active-home { grid-template-rows: auto minmax(0, 1fr) auto; }
   .home-overview {
     grid-column: 1;
     grid-row: 1 / -1;
@@ -755,6 +788,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     display: flex;
     flex-direction: column;
   }
+  .challenge-home-overview { background: transparent; }
   .hero-card {
     flex: 1;
     min-height: 0;
@@ -768,6 +802,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .hero-card h1 { font-size: clamp(42px, 3.35vw, 48px); }
   .hero-subtitle { width: 100%; max-width: 315px; margin: 17px 0 23px; font-size: 16px; line-height: 1.65; }
   .hero-card .primary-button { width: 100%; min-width: 0; }
+  .challenge-home-card { flex: 1; min-height: 0; border-radius: 28px; padding: clamp(25px, 3.6vh, 42px) 27px 26px; display: flex; flex-direction: column; }
+  .challenge-home-card::after { right: -36px; bottom: -74px; font-size: 250px; }
+  .challenge-home-card .challenge-brand-line { margin: clamp(24px, 5vh, 50px) 0 15px; }
+  .challenge-home-card h1 { font-size: clamp(40px, 3.15vw, 47px); }
+  .challenge-home-card .challenge-home-meta { margin-bottom: 18px; }
+  .challenge-home-card .primary-button { margin-top: auto; }
   .primary-button { font-size: 16px; }
   .home-overview .daily-row {
     flex: 0 0 auto;
@@ -851,6 +891,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     margin: 0;
     grid-template-columns: minmax(0, 1fr);
   }
+  .challenge-active-home .home-actions { grid-row: 1; align-self: start; }
+  .challenge-active-home .course-section { grid-row: 2; }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
   .mode-card h3, .mistake-card h3 { font-size: 19px; }
   .mode-card p, .mistake-card p { display: block; font-size: 13px; }

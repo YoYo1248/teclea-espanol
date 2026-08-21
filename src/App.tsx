@@ -1150,6 +1150,39 @@ function App() {
       eligibleMistakes,
     })
   }, [challengeLevel, challengeDays, challengeRepetitions, roundHistory, challengeProgress, wordEvidence, mistakeBank])
+  const activeChallengePlan = useMemo(() => {
+    if (!challenge || !challengeProgress) return null
+    const ids = challengeCardIds(challenge.level)
+    const recallDone = (cardId: string) => Boolean(challengeProgress.recallCompleted[cardId] || wordEvidence[cardId]?.recall)
+    const listenDone = (cardId: string) => Math.max(
+      challengeProgress.dictationCounts[cardId] ?? 0,
+      wordEvidence[cardId]?.listen ? 1 : 0,
+    )
+    const remainingItems = ids.filter((cardId) => !recallDone(cardId) || listenDone(cardId) < challenge.dictationRepetitions).length
+    const remainingCopyItems = ids.filter((cardId) => (
+      !recallDone(cardId) || listenDone(cardId) < challenge.dictationRepetitions
+    ) && !hasCompletedIntroduction(wordEvidence[cardId])).length
+    const remainingRecallActions = ids.filter((cardId) => !recallDone(cardId)).length
+    const remainingListenActions = ids.reduce(
+      (total, cardId) => total + Math.max(0, challenge.dictationRepetitions - listenDone(cardId)),
+      0,
+    )
+    const eligibleMistakes = Object.entries(mistakeBank).filter(([cardId, record]) => ids.includes(cardId) && hasActiveReview(record)).length
+    return challengeDailyPlan(ids.length, challenge.durationDays, challenge.dictationRepetitions, roundHistory, {
+      remainingItems,
+      remainingCopyItems,
+      remainingRecallActions,
+      remainingListenActions,
+      eligibleMistakes,
+    })
+  }, [challenge, challengeProgress, roundHistory, wordEvidence, mistakeBank])
+  const challengeTodayRemaining = Math.max(0, (challengeStats?.dailyTarget ?? 0) - (challengeStats?.todayCompleted ?? 0))
+  const challengeDayNumber = challenge && challengeStats
+    ? Math.min(challenge.durationDays, Math.max(1, challenge.durationDays - challengeStats.remainingDays + 1))
+    : 1
+  const challengeMinutesRemaining = challengeStats?.dailyTarget
+    ? Math.max(0, Math.ceil((activeChallengePlan?.estimatedMinutes ?? 0) * challengeTodayRemaining / challengeStats.dailyTarget))
+    : 0
   const todayChallengeRecords = challengeProgress?.dailyRecords?.[localDateKey()] ?? []
   const todayChallengeDetails = useMemo(() => {
     const details = new Map<string, {
@@ -1849,6 +1882,11 @@ function App() {
   function openChallengeCreator() {
     setScreen('home')
     setEditingChallenge(!challenge)
+    setDailyGoalOpen(true)
+  }
+
+  function openChallengeSummary() {
+    setEditingChallenge(false)
     setDailyGoalOpen(true)
   }
 
@@ -2668,49 +2706,88 @@ function App() {
           </aside>
         )}
 
-        <main className="home-content">
-          <div className="home-overview">
-            <section className="hero-card">
-              <div className="hero-glow" />
-              <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
-              <p className="eyebrow">BUENOS DÍAS · 早上好</p>
-              <h1>让西语从<br /><em>手指</em>进入记忆</h1>
-              <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张单词、短语与动词原形练习卡，练对重音和真实表达。</p>
-              <button className="primary-button" onClick={continuePractice}>
-                {continueLabel} <ArrowRight size={19} />
-              </button>
-            </section>
-
-            <button ref={dailyGoalButtonRef} type="button" className="daily-row" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={() => setDailyGoalOpen(true)}>
-              {challenge && challengeStats ? (
-                <>
-                  <div><span className="section-kicker">{challenge.level} 挑战</span><strong>{challengeStats.todayCompleted}<small> / {challengeStats.dailyTarget} 次</small></strong><span className="daily-hint">今日达标次数动态重算 · 剩余 {challengeStats.remainingDays} 天</span></div>
-                  <div className="mini-ring" style={{ '--percent': `${Math.min(challengeStats.todayCompleted / Math.max(1, challengeStats.dailyTarget), 1) * 360}deg` } as React.CSSProperties}><span>{challengeStats.dailyTarget === 0 ? '已完成' : `${Math.round(Math.min(challengeStats.todayCompleted / challengeStats.dailyTarget, 1) * 100)}%`}</span></div>
-                </>
-              ) : (
-                <>
+        <main className={`home-content ${challenge && challengeStats ? 'challenge-active-home' : ''}`}>
+          <div className={`home-overview ${challenge && challengeStats ? 'challenge-home-overview' : ''}`}>
+            {challenge && challengeStats ? (
+              <section className={`challenge-home-card ${challengeTodayRemaining === 0 ? 'today-complete' : ''}`}>
+                <div className="hero-glow" />
+                <div className="challenge-home-topline">
+                  <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
+                  <button ref={dailyGoalButtonRef} type="button" className="challenge-plan-link" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={openChallengeSummary}>计划与明细</button>
+                </div>
+                <p className="challenge-brand-line">让西语从 <em>手指</em>进入记忆</p>
+                <div className="challenge-dayline"><span>{challenge.level} 学习挑战</span><b>第 {challengeDayNumber} / {challenge.durationDays} 天</b></div>
+                <h1>{challengeStats.remainingRequired === 0
+                  ? '挑战已完成'
+                  : challengeTodayRemaining === 0
+                    ? '今天已完成'
+                    : <>今天还需 <strong>{challengeTodayRemaining}</strong> 次</>}</h1>
+                <p className="challenge-home-summary">{challengeStats.todayCompleted} / {challengeStats.dailyTarget} 次达标拼写{challengeTodayRemaining > 0 ? ' · 今日目标动态重算' : ' · 可以安心收工'}</p>
+                <div className="challenge-today-progress" aria-label={`今日挑战已完成 ${challengeStats.todayCompleted} / ${challengeStats.dailyTarget}`}>
+                  <span style={{ width: `${Math.min(challengeStats.todayCompleted / Math.max(1, challengeStats.dailyTarget), 1) * 100}%` }} />
+                </div>
+                <div className="challenge-home-meta">
+                  <span><strong>{challengeTodayRemaining > 0 ? `约 ${challengeMinutesRemaining}` : '✓'}</strong><small>{challengeTodayRemaining > 0 ? '分钟可完成' : '今日已达标'}</small></span>
+                  <span><strong>{challengeStats.percentage}%</strong><small>挑战总进度</small></span>
+                  <span><strong>{challengeStats.remainingDays}</strong><small>剩余天数</small></span>
+                </div>
+                <button className="primary-button" onClick={challengeStats.remainingRequired > 0 && challengeTodayRemaining > 0 ? startOrContinueChallenge : continuePractice}>
+                  {challengeStats.remainingRequired === 0 || challengeTodayRemaining === 0
+                    ? '继续自由练习'
+                    : challengeStats.todayCompleted > 0
+                      ? '继续今日挑战'
+                      : '开始今日挑战'} <ArrowRight size={19} />
+                </button>
+              </section>
+            ) : (
+              <>
+                <section className="hero-card">
+                  <div className="hero-glow" />
+                  <div className="streak-pill"><Flame size={15} fill="currentColor" /> {streak > 0 ? `连续学习 ${streak} 天` : '从今天开始连续学习'}</div>
+                  <p className="eyebrow">BUENOS DÍAS · 早上好</p>
+                  <h1>让西语从<br /><em>手指</em>进入记忆</h1>
+                  <p className="hero-subtitle">听、看、完整拼写。{totalPracticeCards} 张单词、短语与动词原形练习卡，练对重音和真实表达。</p>
+                  <button className="primary-button" onClick={continuePractice}>
+                    {continueLabel} <ArrowRight size={19} />
+                  </button>
+                </section>
+                <button ref={dailyGoalButtonRef} type="button" className="daily-row" aria-haspopup="dialog" aria-expanded={dailyGoalOpen} onClick={() => setDailyGoalOpen(true)}>
                   <div><span className="section-kicker">今日练习</span><strong>{todayDone}<small> 项</small></strong><span className="daily-hint">还没创建挑战 · 按自己的节奏练</span></div>
                   <div className="mini-ring no-goal"><span>{todayDone ? '已练' : '开始'}</span></div>
-                </>
-              )}
-            </button>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="home-actions">
-            <section className={`mistake-card ${activeMistakeEntries.length ? '' : 'empty'}`}>
+            <section className={`mistake-card ${dueMistakeEntries.length
+              ? 'due'
+              : todayMistakeEntries.length
+                ? 'today'
+                : activeMistakeEntries.length
+                  ? 'scheduled'
+                  : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
               <div>
-                <span className="section-kicker">错题本</span>
+                <span className="section-kicker">{dueMistakeEntries.length ? '今日复习' : '错题本'}</span>
                 <h3>{dueMistakeEntries.length
-                  ? `${dueMistakeEntries.length} 个到期错题`
-                  : activeMistakeEntries.length
-                    ? `${activeMistakeEntries.length} 个待后续复查`
+                  ? `${dueMistakeEntries.length} 个错题已经到期`
+                  : todayMistakeEntries.length
+                    ? `今天新增 ${todayMistakeEntries.length} 个错题`
+                    : activeMistakeEntries.length
+                      ? `${activeMistakeEntries.length} 个已安排复查`
                     : mistakeEntries.length
-                      ? '当前待复习已完成'
+                      ? '当前复习已完成'
                       : '目前没有错题'}</h3>
-                <p>{mistakeEntries.length
-                  ? `今日错题 ${todayMistakeEntries.length} 个 · 全部记录 ${mistakeEntries.length} 个 · 累计错 ${mistakeAttempts} 次`
-                  : '练习中输错的内容会自动出现在这里，并永久保留记录。'}</p>
+                <p>{dueMistakeEntries.length
+                  ? `建议先完成跨日确认 · 全部记录 ${mistakeEntries.length} 个 · 累计错 ${mistakeAttempts} 次`
+                  : todayMistakeEntries.length
+                    ? `已安排下一学习日复查，今天无需反复清除 · 全部记录 ${mistakeEntries.length} 个`
+                    : activeMistakeEntries.length
+                      ? `暂未到复查时间，系统会在合适的学习日提醒 · 累计错 ${mistakeAttempts} 次`
+                      : mistakeEntries.length
+                        ? `历史记录仍完整保留 · 累计错 ${mistakeAttempts} 次`
+                        : '练习中输错的内容会自动出现在这里，并永久保留记录。'}</p>
                 {activeMistakeEntries.length > 0 && (
                   <div className="mistake-statuses" aria-label="错题复习状态">
                     <span className={dueMistakeEntries.length ? 'due' : ''}>现在复习 {dueMistakeEntries.length}</span>

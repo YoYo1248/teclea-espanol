@@ -203,6 +203,11 @@ assert(appSource.includes('长按上方字母区查看答案'), '触屏练习页
 assert(/className="letter-word"[\s\S]*?onPointerDown=\{startTouchReveal\}[\s\S]*?onPointerUp=\{stopTouchReveal\}/.test(appSource), '字母区应保留按住显示、松开隐藏答案的交互')
 assert(appSource.includes('暂不巩固，进入看义拼写') && appSource.includes('暂不巩固，进入听音拼写') && appSource.includes('暂不巩固，开始下一组'), '完成页应清楚标出跳过巩固后的下一阶段')
 assert(/function openLevelPath\(nextLevel: LessonLevel\) \{\s*setLevelFilter\(nextLevel\)\s*beginAdaptiveRound/.test(appSource), '首页等级卡应按当前选择开新一组，而不是自动恢复旧练习')
+assert(appSource.includes("'challenge-active-home'") && appSource.includes('challenge-home-card'), '进行中的挑战应切换为挑战优先首页')
+assert(appSource.includes('今天还需 <strong>{challengeTodayRemaining}</strong> 次') && appSource.includes('challengeMinutesRemaining'), '挑战首页应突出今日剩余次数与预计时间')
+assert(appSource.includes('onClick={openChallengeSummary}>计划与明细</button>'), '挑战首页应保留计划与每日明细入口')
+assert(appSource.includes('还没创建挑战 · 按自己的节奏练'), '未创建挑战时应保留原有自由练习首页')
+assert(appSource.includes("? '今日复习'") && appSource.includes('个错题已经到期'), '到期错题应在首页获得更明确的复习提醒')
 
 if (failures.length) {
   console.error(failures.join('\n'))
