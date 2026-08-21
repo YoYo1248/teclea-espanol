@@ -2977,9 +2977,9 @@ function App() {
                 <strong>开源与修改声明</strong>
                 <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>
                 <div className="legal-links">
-                  <a href="https://github.com/YoYo1248/teclea-espanol" target="_blank" rel="noreferrer">本项目源代码</a>
+                  <a href="https://github.com/YoYo1248/holadone" target="_blank" rel="noreferrer">本项目源代码</a>
                   <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">上游项目</a>
-                  <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
+                  <a href="https://github.com/YoYo1248/holadone/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
                 </div>
               </div>
             </section>

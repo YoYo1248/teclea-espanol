@@ -118,7 +118,7 @@ export const newcomerDecks: NewcomerDeck[] = [
     description: '比较通勤、学校、医疗和生活环境时常用的表达',
     source: {
       name: 'HolaDone 新居民任务审计 · 西班牙教育与公共服务页面汇编',
-      url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/NEWCOMER_UTILITY_AUDIT.md',
+      url: 'https://github.com/YoYo1248/holadone/blob/main/docs/lexicon/NEWCOMER_UTILITY_AUDIT.md',
       license: editorialLicense, checkedAt,
     },
     words: [

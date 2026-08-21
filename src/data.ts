@@ -56,7 +56,7 @@ export const FREQUENCY_SOURCE = {
 
 export const PHRASE_SOURCE = {
   name: 'HolaDone 生活表达教学编辑',
-  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/WORDLIST_SOURCES.md',
+  url: 'https://github.com/YoYo1248/holadone/blob/main/docs/WORDLIST_SOURCES.md',
   license: 'GPL-3.0（原创教学内容）',
   checkedAt: '2026-08-14',
 } as const
@@ -77,7 +77,7 @@ export const ADVANCED_SOURCE = {
 
 export const EXPANSION_SOURCE = {
   name: 'HolaDone 扩库批次 · wordfreq + PCIC 编辑映射',
-  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/PIPELINE.md',
+  url: 'https://github.com/YoYo1248/holadone/blob/main/docs/lexicon/PIPELINE.md',
   license: '频率与词典数据依各来源许可；中文释义、例句与编组 GPL-3.0',
   checkedAt: '2026-08-20',
 } as const
