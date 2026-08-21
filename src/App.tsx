@@ -34,6 +34,7 @@ import {
   answerCanRecover,
   hasActiveReview,
   isReviewDue,
+  isReviewModeDue,
   isTodayReview,
   normalizeMistakeRecord,
   mistakeSamplingWeight,
@@ -1279,12 +1280,16 @@ function App() {
   const todayMistakeEntries = activeMistakeEntries.filter(([, record]) => isTodayReview(record, reviewToday))
   const laterMistakeEntries = activeMistakeEntries.filter(([, record]) => !isReviewDue(record, reviewToday) && !isTodayReview(record, reviewToday))
   const reviewPool = dueMistakeEntries.length ? dueMistakeEntries : activeMistakeEntries
-  const plannedMistakeReviewMode: MasteryMode = reviewPool.some(([, record]) => reviewAnswerMode(record) === 'recall') ? 'recall' : 'listen'
+  const reviewingDueMistakes = dueMistakeEntries.length > 0
+  const plannedMistakeReviewMode: MasteryMode = reviewPool.some(([, record]) => reviewAnswerMode(record, reviewingDueMistakes ? reviewToday : undefined) === 'recall') ? 'recall' : 'listen'
   const mistakeReviewMode: MasteryMode = activeSession?.lessonId === 'mistake-review' && activeSession.mode !== 'copy'
     ? activeSession.mode
     : plannedMistakeReviewMode
   const mistakeLesson = useMemo<Lesson | null>(() => {
-    const entries = reviewPool.filter(([, record]) => activeReviewModes(record).some((weakMode) => answerCanRecover(weakMode, mistakeReviewMode)))
+    const entries = reviewPool.filter(([, record]) => activeReviewModes(record).some((weakMode) => (
+      answerCanRecover(weakMode, mistakeReviewMode)
+      && (!reviewingDueMistakes || isReviewModeDue(record, weakMode, reviewToday))
+    )))
     if (!entries.length) return null
     const reviewingDueItems = dueMistakeEntries.length > 0
     const reviewingTodayItems = !reviewingDueItems && todayMistakeEntries.length > 0
@@ -1305,7 +1310,7 @@ function App() {
           : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
       }),
     }
-  }, [dueMistakeEntries.length, mistakeReviewMode, reviewPool, todayMistakeEntries.length])
+  }, [mistakeReviewMode, reviewPool, reviewToday, reviewingDueMistakes, todayMistakeEntries.length])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
   const resumableMainSession = activeSession ?? pausedMainSession
@@ -2167,6 +2172,10 @@ function App() {
 
   function continueMistakeReview() {
     if (activeSession?.lessonId === 'mistake-review' && resumeActivePractice()) return
+    if (mistakeLesson) begin(mistakeLesson, mistakeReviewMode, { skipIntroduction: true })
+  }
+
+  function continueRemainingMistakeReview() {
     if (mistakeLesson) begin(mistakeLesson, mistakeReviewMode, { skipIntroduction: true })
   }
 
@@ -3147,11 +3156,17 @@ function App() {
             </div>
           ) : lesson.id === 'mistake-review' ? (
             <>
-              {pausedMainSession
-                ? <button className="primary-button" onClick={resumePausedMainPractice}>继续之前的练习 <ArrowRight size={19} /></button>
-                : <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>}
-              {pausedMainSession && (
+              {mistakeLesson && mistakeReviewMode !== mode
+                ? <button className="primary-button" onClick={continueRemainingMistakeReview}>继续{masteryModeLabel(mistakeReviewMode)}错题 · {mistakeLesson.words.length} 项 <ArrowRight size={19} /></button>
+                : pausedMainSession
+                  ? <button className="primary-button" onClick={resumePausedMainPractice}>继续之前的练习 <ArrowRight size={19} /></button>
+                  : <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>}
+              {mistakeLesson && mistakeReviewMode !== mode && (
+                <p className="enter-hint">当前错题通道已完成，先处理仍到期的{masteryModeLabel(mistakeReviewMode)}，再返回普通练习。</p>
+              )}
+              {(pausedMainSession || (mistakeLesson && mistakeReviewMode !== mode)) && (
                 <div className="completion-alternatives">
+                  {mistakeLesson && mistakeReviewMode !== mode && pausedMainSession && <button className="text-button" onClick={resumePausedMainPractice}>暂时返回之前的练习</button>}
                   <button className="text-button" onClick={openPracticeChooser}>选择其他内容</button>
                 </div>
               )}

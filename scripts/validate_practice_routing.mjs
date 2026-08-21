@@ -9,11 +9,13 @@ import { practiceWordClassLabel } from '../src/wordClass.ts'
 import {
   hasActiveReview,
   isReviewDue,
+  isReviewModeDue,
   mistakeSamplingWeight,
   normalizeMistakeRecord,
   recordIndependentCorrect,
   recordWrongAttempt,
   recoveryTarget,
+  reviewAnswerMode,
   weightedReviewOrder,
 } from '../src/mistakeReview.ts'
 
@@ -100,6 +102,17 @@ assert(recoveryTwo.resolved, '累计错两次应在两个不同学习日确认�
 assert(recoveryTarget(10) === 3, '反复错误的恢复次数应封顶三次')
 assert(mistakeSamplingWeight(secondWrong, '2026-08-22') > mistakeSamplingWeight(firstWrong, '2026-08-20'), '错误更多且已到期的词应获得更高抽取权重')
 assert(weightedReviewOrder([firstWrong, secondWrong], (item) => mistakeSamplingWeight(item, '2026-08-22'), () => .5)[0] === secondWrong, '加权排序应让高权重错词更容易排在前面')
+
+const mixedModeReview = {
+  ...secondWrong,
+  review: {
+    recall: { active: true, recoveryCount: 1, lastRecoveryDay: '2026-08-22', dueOn: '2026-08-23', lastWrongAt: secondWrong.lastWrongAt },
+    listen: { active: true, recoveryCount: 0, dueOn: '2026-08-22', lastWrongAt: secondWrong.lastWrongAt },
+  },
+}
+assert(isReviewModeDue(mixedModeReview, 'listen', '2026-08-22'), '应能识别词内具体到期的能力通道')
+assert(!isReviewModeDue(mixedModeReview, 'recall', '2026-08-22'), '尚未到期的看义通道不应被当作今日任务')
+assert(reviewAnswerMode(mixedModeReview, '2026-08-22') === 'listen', '看义尚未到期但听音已到期时应进入听音拼写')
 
 const legacyMistake = normalizeMistakeRecord({ ...reviewWord, count: 4, lastWrongAt: Date.parse('2026-08-19T10:00:00'), lastMode: 'listen' })
 assert(legacyMistake?.wrongCounts.listen === 4 && legacyMistake.review.listen?.active, '旧错题数据应迁移为永久统计与活跃复习状态')
@@ -208,6 +221,7 @@ assert(appSource.includes('今天还需 <strong>{challengeTodayRemaining}</stron
 assert(appSource.includes('onClick={openChallengeSummary}>计划与明细</button>'), '挑战首页应保留计划与每日明细入口')
 assert(appSource.includes('还没创建挑战 · 按自己的节奏练'), '未创建挑战时应保留原有自由练习首页')
 assert(appSource.includes("? '今日复习'") && appSource.includes('个错题已经到期'), '到期错题应在首页获得更明确的复习提醒')
+assert(appSource.includes('continueRemainingMistakeReview') && appSource.includes('继续{masteryModeLabel(mistakeReviewMode)}错题'), '错题本完成当前通道后应优先继续仍到期的下一通道')
 
 if (failures.length) {
   console.error(failures.join('\n'))

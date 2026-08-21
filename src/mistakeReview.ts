@@ -142,7 +142,15 @@ export function activeReviewModes(record: MistakeRecord) {
   return (['copy', 'recall', 'listen'] as const).filter((mode) => record.review[mode]?.active)
 }
 
-export function reviewAnswerMode(record: MistakeRecord): Exclude<ReviewMode, 'copy'> {
+export function isReviewModeDue(record: MistakeRecord, mode: ReviewMode, today: string) {
+  const progress = record.review[mode]
+  return Boolean(progress?.active && progress.dueOn <= today)
+}
+
+export function reviewAnswerMode(record: MistakeRecord, today?: string): Exclude<ReviewMode, 'copy'> {
+  const isEligible = (mode: ReviewMode) => record.review[mode]?.active && (!today || isReviewModeDue(record, mode, today))
+  if (isEligible('recall') || isEligible('copy')) return 'recall'
+  if (isEligible('listen')) return 'listen'
   if (record.review.recall?.active || record.review.copy?.active) return 'recall'
   return 'listen'
 }
