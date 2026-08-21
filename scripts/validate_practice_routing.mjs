@@ -65,6 +65,15 @@ assert(mananaReplacement.kind === 'commit' && mananaReplacement.value === 'mañ'
 const mananaContinued = pressHoldInputDecision({ rawValue: 'mana', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
 assert(mananaContinued.kind === 'commit', '等待期间继续输入其他字符应立即交回正常判定')
 
+const lenientMananaBase = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: false, idle: true, pending: null })
+assert(lenientMananaBase.kind === 'wait', '忽略元音重音时 n→ñ 仍应进入长按替换等待')
+assert(pressHoldKeyCandidate({ key: 'n', acceptedValue: 'ma', targetValue: 'mañana', strict: false, idle: true })?.base === 'n', '宽松模式应从 keydown 识别 ñ 长按候选')
+const lenientUmlautBase = pressHoldInputDecision({ rawValue: 'pingu', acceptedValue: 'ping', targetValue: 'pingüino', strict: false, idle: true, pending: null })
+assert(lenientUmlautBase.kind === 'wait', '忽略元音重音时 u→ü 仍应进入长按替换等待')
+assert(pressHoldKeyCandidate({ key: 'u', acceptedValue: 'ping', targetValue: 'pingüino', strict: false, idle: true })?.base === 'u', '宽松模式应从 keydown 识别 ü 长按候选')
+assert(pressHoldInputDecision({ rawValue: 'cafe', acceptedValue: 'caf', targetValue: 'café', strict: false, idle: true, pending: null }).kind === 'commit', '宽松模式下 e→é 应直接提交，不进入长按等待')
+assert(pressHoldKeyCandidate({ key: 'e', acceptedValue: 'caf', targetValue: 'café', strict: false, idle: true }) === null, '宽松模式不应拦截可忽略的元音重音')
+
 const reviewWord = { lessonId: 'a1-basics', spanish: 'hola', chinese: '你好' }
 const firstWrong = recordWrongAttempt(undefined, reviewWord, 'recall', Date.parse('2026-08-20T10:00:00'), '2026-08-20')
 assert(firstWrong.count === 1 && firstWrong.wrongCounts.recall === 1, '首次错误应永久累计到对应模式')
@@ -189,6 +198,9 @@ assert(
   '系统开始组合输入时不应清除已登记的长按候选',
 )
 assert(/function cancelPressHoldReplacement\(\)[\s\S]*?pressHoldPendingRef\.current = null/.test(appSource), '取消长按等待时应同时清理待替换状态')
+assert(appSource.includes('按住 <kbd>Tab</kbd> 或鼠标长按上方字母区查看答案'), '桌面练习页应明确提示 Tab 和鼠标长按查看答案')
+assert(appSource.includes('长按上方字母区查看答案'), '触屏练习页应明确提示长按查看答案')
+assert(/className="letter-word"[\s\S]*?onPointerDown=\{startTouchReveal\}[\s\S]*?onPointerUp=\{stopTouchReveal\}/.test(appSource), '字母区应保留按住显示、松开隐藏答案的交互')
 assert(appSource.includes('暂不巩固，进入看义拼写') && appSource.includes('暂不巩固，进入听音拼写') && appSource.includes('暂不巩固，开始下一组'), '完成页应清楚标出跳过巩固后的下一阶段')
 assert(/function openLevelPath\(nextLevel: LessonLevel\) \{\s*setLevelFilter\(nextLevel\)\s*beginAdaptiveRound/.test(appSource), '首页等级卡应按当前选择开新一组，而不是自动恢复旧练习')
 

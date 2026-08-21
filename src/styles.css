@@ -344,6 +344,21 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   background: var(--red);
   animation: cursor-pulse 1s ease-in-out infinite;
 }
+.answer-reveal-hint {
+  margin: -5px 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  color: #817d75;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.answer-reveal-hint svg { flex: 0 0 auto; }
+.answer-reveal-hint kbd { min-width: 30px; padding: 2px 6px; border: 1px solid #d7d1c7; border-bottom-width: 2px; border-radius: 6px; background: #f5f1ea; color: #5f5b54; font: 800 9px/1.2 system-ui, sans-serif; }
+.answer-reveal-hint small { color: #a09b92; font-size: 9px; }
+.answer-reveal-hint.revealing { color: var(--green); }
 .keyboard-capture {
   position: absolute;
   left: 50%;
@@ -951,6 +966,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .keyboard-open .meaning-slot.waiting { font-size: 11px; }
   .keyboard-open .letter-word { min-height: 59px; padding: 9px 0 8px; }
   .keyboard-open .letter-slot { font-size: clamp(30px, 9vw, 39px); }
+  .keyboard-open .answer-reveal-hint { margin: -2px 0 3px; gap: 3px 5px; font-size: 9px; }
+  .keyboard-open .answer-reveal-hint small { font-size: 8px; }
   .keyboard-open .pronunciation-controls { margin-bottom: 5px; gap: 6px; }
   .keyboard-open .pronunciation-controls button { height: 30px; }
   .keyboard-open .typing-stage .accent-strip { display: none; }

@@ -3175,7 +3175,7 @@ function App() {
         {isAccentQa && (
           <aside className="accent-qa-banner">
             <strong>长按重音专用测试</strong>
-            <span>保持“严格”模式；短按基础字母会立即判错，持续按住约 0.4 秒才进入替换等待。</span>
+            <span>严格和忽略重音模式都要求正确输入 ñ、ü；短按基础字母立即判错，长按约 0.4 秒进入替换等待。</span>
             <small>mañana：输入 ma 后长按 n · pingüino：输入 ping 后长按 u</small>
           </aside>
         )}
@@ -3197,7 +3197,7 @@ function App() {
             <div className="rule-heading"><span>重音</span><small>判定规则</small></div>
             <div className="rule-options" role="group" aria-label="重音判定规则">
               <button aria-label="严格拼写" aria-pressed={accentMode === 'strict'} className={accentMode === 'strict' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('strict')}>严格</button>
-              <button aria-label="忽略重音符号" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
+              <button aria-label="忽略 á é í ó ú；ñ 和 ü 仍需正确输入" aria-pressed={accentMode === 'lenient'} className={accentMode === 'lenient' ? 'active' : ''} onPointerDown={(event) => event.preventDefault()} onClick={() => chooseAccentMode('lenient')}>忽略重音</button>
             </div>
           </div>
         </div>
@@ -3250,6 +3250,17 @@ function App() {
               )
             })}
           </div>
+          {hideSpanish && status === 'idle' && (
+            <p className={`answer-reveal-hint ${revealAnswer ? 'revealing' : ''}`}>
+              <Eye size={13} />
+              <span>{revealAnswer
+                ? '正在显示答案，松开后继续作答'
+                : isTouchDevice
+                  ? '长按上方字母区查看答案'
+                  : <>按住 <kbd>Tab</kbd> 或鼠标长按上方字母区查看答案</>}</span>
+              <small>查看后本项不计独立答对</small>
+            </p>
+          )}
           <input
             key={`${lesson.id}-${index}`}
             ref={inputRef}
@@ -3368,9 +3379,7 @@ function App() {
                 ? '本轮切换过模式，只计练习'
                 : roundUsedHint && mode !== 'copy'
                   ? '本轮已使用提示，只计练习'
-                  : hideSpanish
-                    ? isTouchDevice ? '长按查看拼写 · 使用提示不计通过' : '按住 Tab 查看拼写 · 使用提示不计通过'
-                    : '错一个字母，当前词从头重来'}</span>}
+                  : '错一个字母，当前词从头重来'}</span>}
           </div>
         </section>
       </main>
