@@ -70,29 +70,29 @@ export const FREQUENCY_SOURCE = {
 } as const
 
 export const PHRASE_SOURCE = {
-  name: 'Teclea Español 生活表达教学编辑',
-  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/WORDLIST_SOURCES.md',
+  name: 'HolaDone 生活表达教学编辑',
+  url: 'https://github.com/YoYo1248/holadone/blob/main/docs/WORDLIST_SOURCES.md',
   license: 'GPL-3.0（原创教学内容）',
   checkedAt: '2026-08-14',
 } as const
 
 export const INTERMEDIATE_SOURCE = {
-  name: 'Teclea Español B1–B2 教学选词 · 参考 Instituto Cervantes PCIC',
+  name: 'HolaDone B1–B2 教学选词 · 参考 Instituto Cervantes PCIC',
   url: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_b1-b2.htm',
   license: 'PCIC 课程框架参考；中文释义与教学编组 GPL-3.0',
   checkedAt: '2026-08-17',
 } as const
 
 export const ADVANCED_SOURCE = {
-  name: 'Teclea Español C1–C2 候选教学选词 · 参考 Instituto Cervantes PCIC',
+  name: 'HolaDone C1–C2 候选教学选词 · 参考 Instituto Cervantes PCIC',
   url: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_c1-c2.htm',
   license: 'PCIC 课程框架参考；中文释义与教学编组 GPL-3.0',
   checkedAt: '2026-08-19',
 } as const
 
 export const EXPANSION_SOURCE = {
-  name: 'Teclea Español 扩库批次 · wordfreq + PCIC 编辑映射',
-  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/PIPELINE.md',
+  name: 'HolaDone 扩库批次 · wordfreq + PCIC 编辑映射',
+  url: 'https://github.com/YoYo1248/holadone/blob/main/docs/lexicon/PIPELINE.md',
   license: '频率与词典数据依各来源许可；中文释义、例句与编组 GPL-3.0',
   checkedAt: '2026-08-20',
 } as const

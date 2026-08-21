@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://www.holadone.com/schemas/lexicon-candidate-v1.json",
-  "title": "Teclea Español lexicon candidate",
+  "title": "HolaDone lexicon candidate",
   "type": "object",
   "required": ["schemaVersion", "candidateId", "spanish", "normalizedTarget", "frequency", "lexical", "framework", "editorial", "sourceIds"],
   "properties": {

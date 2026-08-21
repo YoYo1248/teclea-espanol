@@ -40,7 +40,7 @@ const B1_B2_PCIC = 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curri
 const checkedAt = '2026-08-21'
 const source = {
   name: 'Vida 超市任务词库 · 西班牙官方、零售与 PCIC 用语核对',
-  url: 'https://github.com/YoYo1248/teclea-espanol/blob/main/docs/lexicon/VIDA_SUPERMARKET.md',
+  url: 'https://github.com/YoYo1248/holadone/blob/main/docs/lexicon/VIDA_SUPERMARKET.md',
   license: '官方与零售页面仅用于真实任务用语核对；中文释义、例句与教学编组 GPL-3.0',
   checkedAt,
 }

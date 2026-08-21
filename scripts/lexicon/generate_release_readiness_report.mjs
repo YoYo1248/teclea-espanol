@@ -144,7 +144,7 @@ try {
   writeJson(jsonOutput, report)
   fs.mkdirSync(path.dirname(markdownOutput), { recursive: true })
   const statusLabel = (value) => value ? 'READY' : 'NOT READY'
-  const markdown = `# Teclea / Vida 词库发布就绪审计（${sourceManifest.checkedAt}）
+  const markdown = `# HolaDone / Vida 词库发布就绪审计（${sourceManifest.checkedAt}）
 
 ## 结论
 

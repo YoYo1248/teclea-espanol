@@ -15,7 +15,7 @@
     { "id": "society-world", "label": "社会世界", "scenes": ["社会", "科技", "环境", "行政"] }
   ],
   "notes": [
-    "The six categories are Teclea editorial browsing groups, not official PCIC headings.",
+    "The six categories are HolaDone editorial browsing groups, not official PCIC headings.",
     "PCIC is used to map candidate content to level bands and notion/function domains after editorial review.",
     "Default practice scope remains the whole selected CEFR level; categories are optional filters."
   ]

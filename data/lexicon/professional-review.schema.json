@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Teclea canonical-card professional review record",
+  "title": "HolaDone canonical-card professional review record",
   "type": "object",
   "required": ["schemaVersion", "reviewId", "reviewScope", "normalizedTarget", "catalogDigest", "reviewedContent", "checks", "decision", "suggestions", "notes", "reviewer", "reviewedAt"],
   "properties": {

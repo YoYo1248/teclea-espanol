@@ -35,6 +35,7 @@ import { masteryRecommendation, nextStageAfterSkippedReinforcement } from './mas
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
+import { initializeAnalytics, isAnalyticsConfigured, readAnalyticsConsent, trackAnalytics, updateAnalyticsConsent, type AnalyticsConsent } from './analytics'
 import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate, type PressHoldPending } from './pressHoldInput'
 import { practiceWordClassLabel } from './wordClass'
 import {
@@ -746,6 +747,8 @@ function speak(text: string, onDone?: () => void, rate: SpeechRate = 0.8) {
 }
 
 function App() {
+  const analyticsConfigured = isAnalyticsConfigured()
+  const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(readAnalyticsConsent)
   const [isFreshLearner] = useState(() => !hasLearningHistory())
   const [initialSyncInvite] = useState(readInitialSyncInvite)
   const initialPracticeStateRef = useRef<PracticeState | null>(null)
@@ -895,6 +898,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    void initializeAnalytics()
+  }, [])
+
+  useEffect(() => {
     const captureInstallPrompt = (event: Event) => {
       event.preventDefault()
       setInstallPrompt(event as InstallPromptEvent)
@@ -911,6 +918,15 @@ function App() {
       begin(ACCENT_QA_LESSON, 'copy', { orderedWords: ACCENT_QA_LESSON.words, skipIntroduction: true })
       return
     }
+    trackAnalytics('app_opened', {
+      has_learning_history: !isFreshLearner,
+      has_active_session: Boolean(activeSession),
+      domain_kind: window.location.hostname === LEGACY_HOST
+        ? 'legacy'
+        : window.location.origin === PRIMARY_ORIGIN
+          ? 'primary'
+          : 'other',
+    })
     if (activeSession) {
       resumePracticeSession(activeSession)
       return
@@ -1407,6 +1423,22 @@ function App() {
     void audio.play().catch(() => undefined)
   }
 
+  function analyticsPracticeContext(targetLesson = lesson, targetMode = mode, session = activeSession) {
+    return {
+      level: targetLesson.level,
+      mode: targetMode,
+      track: practiceTrackForLesson(targetLesson),
+      onboarding: session?.onboarding === true,
+      mistake_review: targetLesson.id === 'mistake-review',
+      queue_size: targetLesson.words.length,
+    }
+  }
+
+  function chooseAnalyticsConsent(nextConsent: Exclude<AnalyticsConsent, 'pending'>) {
+    setAnalyticsConsent(nextConsent)
+    void updateAnalyticsConsent(nextConsent)
+  }
+
   function scheduleSync() {
     localUpdatedAtRef.current = Math.max(Date.now(), localUpdatedAtRef.current + 1)
     localStorage.setItem(LOCAL_UPDATED_KEY, String(localUpdatedAtRef.current))
@@ -1538,7 +1570,9 @@ function App() {
     syncCodeRef.current = code
     localStorage.setItem(SYNC_CODE_KEY, code)
     setShowSyncCode(true)
-    void syncNow(code, true)
+    void syncNow(code, true).then((synced) => {
+      if (synced) trackAnalytics('sync_enabled', { method: 'created' })
+    })
   }
 
   function connectSyncSpace() {
@@ -1553,7 +1587,9 @@ function App() {
     localStorage.setItem(SYNC_CODE_KEY, code)
     setSyncInput('')
     setShowSyncCode(false)
-    void syncNow(code, true)
+    void syncNow(code, true).then((synced) => {
+      if (synced) trackAnalytics('sync_enabled', { method: 'connected' })
+    })
   }
 
   function stopSync() {
@@ -1607,7 +1643,7 @@ function App() {
     const url = createSyncLink(syncCode, isLegacyDomain ? `${PRIMARY_ORIGIN}/` : window.location.href)
     const canShare = typeof navigator.share === 'function'
     try {
-      if (canShare) await navigator.share({ title: 'Teclea Español 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
+      if (canShare) await navigator.share({ title: 'HolaDone 跨设备同步', text: '在另一台设备打开这个私密链接以同步学习进度。', url })
       else await navigator.clipboard.writeText(url)
       setSyncMessage(canShare ? '已完成系统分享，请只发送给自己的设备。' : '私密同步链接已复制。')
     } catch (error) {
@@ -1879,6 +1915,12 @@ function App() {
     }
     const nextChallenge = challengeWithExistingEvidence(challengeDraft, wordEvidence)
     saveChallenge(nextChallenge)
+    trackAnalytics('challenge_saved', {
+      level: challengeLevel,
+      duration_days: challengeDays,
+      dictation_repetitions: challengeRepetitions,
+      is_update: Boolean(challenge),
+    })
     setEditingChallenge(false)
   }
 
@@ -1998,10 +2040,12 @@ function App() {
     if (installPrompt) {
       await installPrompt.prompt()
       const choice = await installPrompt.userChoice
+      trackAnalytics('install_result', { outcome: choice.outcome })
       if (choice.outcome === 'accepted') setInstallHint('已添加，以后可以从主屏幕直接打开。')
       setInstallPrompt(null)
       return
     }
+    trackAnalytics('install_result', { outcome: 'manual_instructions' })
     setInstallHint('在浏览器的“分享”菜单中选择“添加到主屏幕”。')
   }
 
@@ -2066,7 +2110,7 @@ function App() {
     if (nextScene !== '全部') setCategoryFilter(categoryForScene(nextScene))
   }
 
-  function openPractice(nextLesson: Lesson, session: ActivePracticeSession) {
+  function openPractice(nextLesson: Lesson, session: ActivePracticeSession, startKind: 'new' | 'resume') {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
@@ -2105,6 +2149,12 @@ function App() {
     setWrongAt(null)
     setRevealAnswer(false)
     setInputFocused(false)
+    trackAnalytics('practice_started', {
+      ...analyticsPracticeContext(nextLesson, session.mode, session),
+      start_kind: startKind,
+      introduction: Boolean(session.followUpMode && session.followUpOrder?.length),
+      progress_index: session.index,
+    })
     setScreen('practice')
   }
 
@@ -2157,7 +2207,7 @@ function App() {
       ...nextLesson,
       ...(requiresIntroduction ? { eyebrow: `${nextLesson.level} · 新词预热`, description: '先跟打本轮首次出现的内容' } : {}),
       words: orderedWords,
-    }, session)
+    }, session, 'new')
   }
 
   function resumePracticeSession(session: ActivePracticeSession | null) {
@@ -2200,7 +2250,7 @@ function App() {
           usedHint: false,
         }
       : { ...session, index: validPriorCount }
-    openPractice({ ...baseLesson, words: orderedWords }, restoredSession)
+    openPractice({ ...baseLesson, words: orderedWords }, restoredSession, 'resume')
     return true
   }
 
@@ -2286,12 +2336,20 @@ function App() {
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
+    const elapsedMs = currentElapsedMs()
+    trackAnalytics('practice_exited', {
+      ...analyticsPracticeContext(),
+      completed_items: completedWords,
+      mistakes,
+      elapsed_seconds: Math.round(elapsedMs / 1000),
+      progress_percent: Math.round(completedWords / Math.max(1, lesson.words.length) * 100),
+    })
     if (activeSession) {
       persistActiveSession({
         ...activeSession,
         mode,
         index,
-        elapsedMs: currentElapsedMs(),
+        elapsedMs,
         correctKeystrokes,
         mistakes,
         completedWords,
@@ -2340,6 +2398,12 @@ function App() {
     const nextWordEvidence = recordWordEvidence(independentAnswer)
     recordChallengeSuccess(independentAnswer)
     if (isOnboardingRound && index === 2 && lesson.words.length > 3 && activeSession) {
+      trackAnalytics('onboarding_checkpoint_completed', {
+        ...analyticsPracticeContext(),
+        completed_items: nextCompletedWords,
+        mistakes,
+        elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
+      })
       localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
       persistActiveSession({
         ...activeSession,
@@ -2379,6 +2443,16 @@ function App() {
       }
       const followUpLesson = practiceLessonFromOrder(activeSession.lessonId, activeSession.followUpOrder)
       if (followUpLesson) {
+        trackAnalytics('practice_round_completed', {
+          ...analyticsPracticeContext(),
+          completion_kind: 'introduction',
+          completed_items: nextCompletedWords,
+          mistakes,
+          elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
+          used_hint: roundUsedHint,
+          independent_correct: nextIndependentCorrect,
+          independent_rate: nextIndependentRate,
+        })
         recordAdaptiveRound(elapsedMs)
         begin(followUpLesson, activeSession.followUpMode, {
           orderedWords: followUpLesson.words,
@@ -2398,6 +2472,16 @@ function App() {
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
+      trackAnalytics('practice_round_completed', {
+        ...analyticsPracticeContext(),
+        completion_kind: 'round',
+        completed_items: nextCompletedWords,
+        mistakes,
+        elapsed_seconds: seconds,
+        used_hint: roundUsedHint,
+        independent_correct: nextIndependentCorrect,
+        independent_rate: nextIndependentRate,
+      })
       recordAdaptiveRound(elapsedMs)
       const completedCatalogLesson = lessons.find((item) => item.id === lesson.id)
       if (completedCatalogLesson && (mode === 'recall' || mode === 'listen')) {
@@ -2565,6 +2649,10 @@ function App() {
     if (status !== 'idle') return
 
     if (sessionStartedAtRef.current === null) {
+      trackAnalytics('practice_input_started', {
+        ...analyticsPracticeContext(),
+        progress_index: index,
+      })
       sessionStartedAtRef.current = Date.now()
       setTimerNow(Date.now())
     }
@@ -2713,6 +2801,27 @@ function App() {
     setRevealAnswer(false)
   }
 
+  const analyticsConsentBanner = analyticsConfigured && analyticsConsent === 'pending' ? (
+    <div className="analytics-consent-backdrop">
+      <section
+        className="analytics-consent"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="analytics-consent-title"
+        aria-describedby="analytics-consent-description"
+      >
+        <div>
+          <strong id="analytics-consent-title">帮助改进练习</strong>
+          <p id="analytics-consent-description">只记录练习开始、完成、退出、模式和汇总表现；不记录输入内容、具体词条或同步码。<a href="/privacy.html">查看隐私说明</a></p>
+        </div>
+        <div className="analytics-consent-actions">
+          <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>仅必要功能</button>
+          <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>允许匿名统计</button>
+        </div>
+      </section>
+    </div>
+  ) : null
+
   function mistakeRows(entries: Array<[string, MistakeRecord]>) {
     if (!entries.length) return <p className="mistake-empty-row">这里暂时没有内容。</p>
     return (
@@ -2745,8 +2854,8 @@ function App() {
     return (
       <div className="app-shell">
         <header className="topbar">
-          <div className="brand-mark">T</div>
-          <div className="brand-copy"><strong>Teclea Español</strong><span>每天敲进一点西语</span></div>
+          <div className="brand-mark">H</div>
+          <div className="brand-copy"><strong>HolaDone</strong><span>每天敲进一点西语</span></div>
           <button ref={settingsButtonRef} className="icon-button" aria-label="设置" aria-haspopup="dialog" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}><Settings2 size={21} /></button>
         </header>
 
@@ -3013,6 +3122,12 @@ function App() {
                   ))}
                 </div>
               </div>
+              {analyticsConfigured && (
+                <button className="setting-row" aria-pressed={analyticsConsent === 'granted'} onClick={() => chooseAnalyticsConsent(analyticsConsent === 'granted' ? 'denied' : 'granted')}>
+                  <span><strong>匿名使用统计</strong><small>只记录行为事件与汇总表现，不记录输入内容</small></span>
+                  <b>{analyticsConsent === 'granted' ? '已允许' : '未启用'}</b>
+                </button>
+              )}
               <p className="settings-note">忽略重音时，输入 <b>camion</b> 可以通过 <b>camión</b>；但 <b>n</b> 不能代替 <b>ñ</b>。</p>
               <div className="sync-box">
                 <div className="sync-heading">
@@ -3061,9 +3176,9 @@ function App() {
                 <strong>开源与修改声明</strong>
                 <p>本项目是基于 Qwerty Learner 训练机制制作的手机西语修改版本，2026-08-14 起修改，并以 GPL-3.0 发布。无担保；源码入口放在这里，不占用首页。</p>
                 <div className="legal-links">
-                  <a href="https://github.com/YoYo1248/teclea-espanol" target="_blank" rel="noreferrer">本项目源代码</a>
+                  <a href="https://github.com/YoYo1248/holadone" target="_blank" rel="noreferrer">本项目源代码</a>
                   <a href="https://github.com/RealKai42/qwerty-learner" target="_blank" rel="noreferrer">上游项目</a>
-                  <a href="https://github.com/YoYo1248/teclea-espanol/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
+                  <a href="https://github.com/YoYo1248/holadone/blob/main/DATA_LICENSE.md" target="_blank" rel="noreferrer">词库许可</a>
                 </div>
               </div>
             </section>
@@ -3146,6 +3261,7 @@ function App() {
             </section>
           </div>
         )}
+        {analyticsConsentBanner}
       </div>
     )
   }
@@ -3301,6 +3417,7 @@ function App() {
           )}
           <p className="completion-enter-shortcut"><kbd>Enter</kbd><span>直接继续</span></p>
         </main>
+        {analyticsConsentBanner}
       </div>
     )
   }
@@ -3544,6 +3661,7 @@ function App() {
           <span>{status === 'wrong' ? '正在重置…' : status === 'correct' ? '正确，查看词义后进入下一个…' : inputFocused ? '键盘已就绪，直接输入' : '键盘未出现？点一下继续'}</span>
         </button>
       </footer>
+      {analyticsConsentBanner}
     </div>
   )
 }

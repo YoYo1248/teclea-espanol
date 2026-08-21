@@ -8,7 +8,7 @@ export type IntermediateDeck = {
   words: Array<[spanish: string, chinese: string]>
 }
 
-// Original teaching selection for Teclea Español. The topic boundaries and
+// Original teaching selection for HolaDone. The topic boundaries and
 // level candidates were checked against Instituto Cervantes PCIC B1–B2
 // inventories; ordering and Chinese glosses are editorial, not an official
 // Instituto Cervantes word list or certification.

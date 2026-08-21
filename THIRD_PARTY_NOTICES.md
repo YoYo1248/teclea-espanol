@@ -17,7 +17,7 @@ Qwerty Learner identifies its mechanical keyboard sound resources as originating
 - License: CC BY-SA 4.0 and GFDL for Wiktionary entry text
 - Use in this project: Spanish spelling, accents, articles and lexical-form checking for the bundled learning decks.
 
-Chinese glosses, example sentences, CEFR labels and scene groupings in this repository were written or editorially assigned for Teclea Español; they are not represented as Wiktionary or Kaikki classifications.
+Chinese glosses, example sentences, CEFR labels and scene groupings in this repository were written or editorially assigned for HolaDone; they are not represented as Wiktionary or Kaikki classifications.
 
 ## wordfreq
 

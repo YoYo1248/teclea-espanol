@@ -1,4 +1,4 @@
-# Teclea Español 可审计扩库管线
+# HolaDone 可审计扩库管线
 
 ## 目标与边界
 
@@ -9,7 +9,7 @@
 - RAE CORPES XXI 用于核对当代真实使用，不在许可未明确时再分发原始列表；
 - wordfreq 生成可复算的频率候选，数据快照约截至 2021 年；
 - Kaikki / English Wiktionary 核对重音、词性、lemma 和屈折关系；
-- 中文释义、例句、宽分类与最终等级仍是 Teclea 的教学编辑结果，必须保留复核记录。
+- 中文释义、例句、宽分类与最终等级仍是 HolaDone 的教学编辑结果，必须保留复核记录。
 - canonical 学习项只保存一次，再以 `life` 与 `exam` 路线标签生成不同产品视图；路线标签不复制卡片或掌握证据。
 - 学习卡身份固定为 canonical `lessonId::normalizedTarget`；`reviewKey` 只标识编辑／专业复核批次，不能作为用户进度 ID。动态轮次通过临时 `practiceId` 继续指向原 canonical 卡。
 
@@ -88,7 +88,7 @@ npm run lexicon:stage
 - 词典与框架证据由管线记录，明显噪声、变位、专名和重复项自动拒绝。
 - 中文释义、例句和等级按批次编辑，并对高歧义、地区性或来源冲突项单独挂起。
 - 产品用户只看批次统计、随机样本和异常项；不会收到逐词审批任务。
-- `approved` 表示通过 Teclea 当前编辑与自动规则，不表示 Instituto Cervantes、RAE 或专业考试机构认证。
+- `approved` 表示通过 HolaDone 当前编辑与自动规则，不表示 Instituto Cervantes、RAE 或专业考试机构认证。
 
 ## 去重原则
 

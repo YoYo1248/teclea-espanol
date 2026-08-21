@@ -489,6 +489,25 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .install-link { margin-top: 9px; padding: 0 14px; }
 .install-hint { margin: 7px 4px 0 !important; color: var(--muted); font-size: 11px !important; line-height: 1.5; }
 
+.analytics-consent-backdrop { position: fixed; z-index: 60; inset: 0; padding: 24px; background: rgba(28,27,24,.28); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; }
+.analytics-consent { width: min(100%, 456px); padding: 22px; border: 1px solid rgba(52,118,101,.23); border-radius: 22px; background: rgba(255,253,248,.99); box-shadow: 0 24px 70px rgba(32,32,29,.25); color: var(--ink); text-align: left; }
+.analytics-consent strong { font-size: 18px; }
+.analytics-consent p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.analytics-consent a { color: var(--green); font-weight: 750; text-decoration: underline; text-underline-offset: 2px; }
+.analytics-consent-actions { margin-top: 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.analytics-consent-actions button { min-height: 48px; border-radius: 14px; font-size: 13px; font-weight: 800; }
+.analytics-decline { border: 1px solid var(--line); background: var(--paper); color: #6d6962; }
+.analytics-accept { border: 1px solid var(--green); background: var(--green); color: white; }
+
+@media (max-width: 600px) {
+  .analytics-consent-backdrop { padding: 0; align-items: flex-end; background: rgba(28,27,24,.34); }
+  .analytics-consent { width: 100%; padding: 22px 18px max(18px, env(safe-area-inset-bottom)); border-right: 0; border-bottom: 0; border-left: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -18px 55px rgba(32,32,29,.2); }
+  .analytics-consent strong { font-size: 17px; }
+  .analytics-consent p { font-size: 12px; }
+  .analytics-consent-actions { margin-top: 16px; gap: 8px; }
+  .analytics-consent-actions button { min-height: 50px; font-size: 12px; }
+}
+
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; width: min(100%, 480px); margin: auto; background: rgba(28,27,24,.42); backdrop-filter: blur(5px); display: flex; align-items: end; }
 .settings-sheet { width: 100%; max-height: min(92svh, 760px); overflow-y: auto; border-radius: 28px 28px 0 0; background: var(--cream); padding: 10px 18px max(25px, env(safe-area-inset-bottom)); box-shadow: 0 -18px 55px rgba(32,32,29,.16); }
 .sheet-handle { width: 38px; height: 4px; margin: 0 auto 17px; border-radius: 99px; background: #c7c2b9; }

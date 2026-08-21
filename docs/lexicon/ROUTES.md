@@ -1,4 +1,4 @@
-# Teclea / Vida 双词库路线
+# HolaDone / Vida 双词库路线
 
 核对日期：2026-08-21。
 
@@ -11,7 +11,7 @@
 
 同一学习项可以同时属于两条路线。例如 `supermercado` 同时服务生活采购和 A1 主题学习；`pimienta de Sichuan` 对华人厨房有很高任务价值，但没有足够依据进入通用考试路线，因此当前只标记为 `life`。
 
-路线标签是 Teclea / Vida 的教学编辑结果，不是 Instituto Cervantes、DELE 或其他考试机构的逐词认证。
+路线标签是 HolaDone / Vida 的教学编辑结果，不是 Instituto Cervantes、DELE 或其他考试机构的逐词认证。
 
 ## 数据不变量
 
@@ -46,7 +46,7 @@
 
 ## 尚未实现
 
-- 当前 Teclea 首页尚未增加路线切换，也没有真正执行付费锁；`access` 只是内容层边界。
+- 当前 HolaDone 首页尚未增加路线切换，也没有真正执行付费锁；`access` 只是内容层边界。
 - 所有新增卡仍缺少具名西语教师逐条复核；内部编辑通过不能冒充专业审核。
 
 ## Vida V1 扩词停止条件
