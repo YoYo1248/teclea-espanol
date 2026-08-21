@@ -2645,16 +2645,24 @@ function App() {
   }
 
   const analyticsConsentBanner = analyticsConfigured && analyticsConsent === 'pending' ? (
-    <aside className="analytics-consent" aria-label="匿名使用统计选择">
-      <div>
-        <strong>帮助改进练习</strong>
-        <p>只记录练习开始、完成、退出、模式和汇总表现；不记录输入内容、具体词条或同步码。<a href="/privacy.html">查看隐私说明</a></p>
-      </div>
-      <div className="analytics-consent-actions">
-        <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>仅必要功能</button>
-        <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>允许匿名统计</button>
-      </div>
-    </aside>
+    <div className="analytics-consent-backdrop">
+      <section
+        className="analytics-consent"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="analytics-consent-title"
+        aria-describedby="analytics-consent-description"
+      >
+        <div>
+          <strong id="analytics-consent-title">帮助改进练习</strong>
+          <p id="analytics-consent-description">只记录练习开始、完成、退出、模式和汇总表现；不记录输入内容、具体词条或同步码。<a href="/privacy.html">查看隐私说明</a></p>
+        </div>
+        <div className="analytics-consent-actions">
+          <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>仅必要功能</button>
+          <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>允许匿名统计</button>
+        </div>
+      </section>
+    </div>
   ) : null
 
   function mistakeRows(entries: Array<[string, MistakeRecord]>) {
