@@ -24,6 +24,14 @@ import { ADVANCED_SOURCE, FREQUENCY_SOURCE, INTERMEDIATE_SOURCE, lessonLevels, l
 import { createSyncLink, createSyncQr, deleteSync, formatSyncCode, generateSyncCode, mergeSyncSnapshots, normalizeSyncCode, pullSync, pushSync, SYNC_CODE_KEY, type SyncSnapshot } from './sync'
 import { challengeDailyPlan, dailyChallengeTarget, remainingChallengeDays } from './challengeMath'
 import { masteryRecommendation } from './masteryRouting'
+import {
+  isNewcomerSession,
+  newcomerSessionCompletedItems,
+  readLearningStage,
+  readNewcomerCompletedItems,
+  shouldResumeActiveSession,
+  type NewcomerStageConfig,
+} from './learningStage'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
@@ -114,7 +122,8 @@ const MASTERY_PROGRESS_KEY = 'teclea-mastery-progress-v2'
 const MISTAKE_RESOLVED_KEY = 'teclea-mistake-resolved-at-v1'
 const LOCAL_UPDATED_KEY = 'teclea-local-updated-at-v2'
 const CHALLENGE_KEY = 'teclea-challenge-v1'
-const ONBOARDING_DONE_KEY = 'teclea-first-three-complete-v1'
+const LEGACY_ONBOARDING_DONE_KEY = 'teclea-first-three-complete-v1'
+const NEWCOMER_ROUND_DONE_KEY = 'teclea-first-round-complete-v1'
 const WORD_EVIDENCE_KEY = 'teclea-word-evidence-v2'
 const LEGACY_WORD_EVIDENCE_KEY = 'teclea-word-evidence-v1'
 const ROUND_HISTORY_KEY = 'teclea-round-history-v1'
@@ -123,6 +132,15 @@ const PRIMARY_ORIGIN = 'https://www.holadone.com'
 const LEGACY_HOST = 'teclea-espanol.vercel.app'
 const LESSON_PAGE_SIZE = 12
 const DEFAULT_LESSON = lessons[0]
+const NEWCOMER_WORDS = DEFAULT_LESSON.words
+const NEWCOMER_STAGE_CONFIG: NewcomerStageConfig = {
+  lessonId: DEFAULT_LESSON.id,
+  cardIds: NEWCOMER_WORDS.map((word) => sessionCardId(DEFAULT_LESSON.id, word)),
+  isKnownLessonId: (lessonId) => lessonId === 'mistake-review'
+    || /^adaptive-(A1|A2|B1|B2|C1|C2)-(main|verbs)$/.test(lessonId)
+    || lessonId in LEGACY_LESSON_REDIRECTS
+    || lessons.some((lesson) => lesson.id === lessonId),
+}
 const LEVEL_ORDER: LessonLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 const PRACTICE_TRACKS: Array<{ value: PracticeTrack; label: string; shortLabel: string }> = [
   { value: 'main', label: '词汇与短语', shortLabel: '词汇主线' },
@@ -259,11 +277,6 @@ function readChallenge(): ChallengeState | null {
   } catch {
     return null
   }
-}
-
-function hasLearningHistory() {
-  return [PRACTICE_STATE_KEY, ACTIVE_SESSION_KEY, MASTERY_PROGRESS_KEY, 'teclea-completed', ONBOARDING_DONE_KEY]
-    .some((key) => localStorage.getItem(key) !== null)
 }
 
 function readWordEvidence(): WordEvidence {
@@ -715,7 +728,8 @@ function speak(text: string, onDone?: () => void, rate: SpeechRate = 0.8) {
 function App() {
   const analyticsConfigured = isAnalyticsConfigured()
   const [analyticsConsent, setAnalyticsConsent] = useState<AnalyticsConsent>(readAnalyticsConsent)
-  const [isFreshLearner] = useState(() => !hasLearningHistory())
+  const [initialLearningStage] = useState(() => readLearningStage(localStorage, NEWCOMER_STAGE_CONFIG))
+  const [initialNewcomerCompletedItems] = useState(() => readNewcomerCompletedItems(localStorage, NEWCOMER_STAGE_CONFIG))
   const [initialSyncInvite] = useState(readInitialSyncInvite)
   const initialPracticeStateRef = useRef<PracticeState | null>(null)
   if (initialPracticeStateRef.current === null) {
@@ -872,7 +886,7 @@ function App() {
     if (bootHandledRef.current) return
     bootHandledRef.current = true
     trackAnalytics('app_opened', {
-      has_learning_history: !isFreshLearner,
+      has_learning_history: initialLearningStage === 'established',
       has_active_session: Boolean(activeSession),
       domain_kind: window.location.hostname === LEGACY_HOST
         ? 'legacy'
@@ -880,12 +894,15 @@ function App() {
           ? 'primary'
           : 'other',
     })
-    if (activeSession) {
-      resumePracticeSession(activeSession)
+    if (activeSession && shouldResumeActiveSession(initialLearningStage, activeSession, NEWCOMER_STAGE_CONFIG)) {
+      const sessionToResume = initialLearningStage === 'established'
+        ? activeSession
+        : normalizeNewcomerSession(activeSession)
+      resumePracticeSession(sessionToResume)
       return
     }
-    if (isFreshLearner) {
-      begin(DEFAULT_LESSON, 'copy', { orderedWords: DEFAULT_LESSON.words, onboarding: true })
+    if (initialLearningStage !== 'established') {
+      beginNewcomerRound()
     }
   }, [])
 
@@ -1860,15 +1877,7 @@ function App() {
   }
 
   function continueOnboardingRound() {
-    if (activeSession && resumeActivePractice()) return
-    // Backward compatibility for an unfinished three-word onboarding session
-    // saved by versions before the tutorial became part of the full first round.
-    const remainingWords = DEFAULT_LESSON.words.slice(3)
-    if (remainingWords.length) {
-      begin(DEFAULT_LESSON, 'copy', { orderedWords: remainingWords })
-      return
-    }
-    begin(DEFAULT_LESSON, 'copy')
+    beginAdaptiveRound('A1', 'main', 'recall')
   }
 
   function chooseLevelAfterOnboarding() {
@@ -2038,6 +2047,7 @@ function App() {
   function begin(nextLesson: Lesson, nextMode: Mode = mode, options: {
     orderedWords?: Lesson['words']
     onboarding?: boolean
+    startIndex?: number
     satisfiedModes?: LessonMastery
     skipIntroduction?: boolean
     followUpMode?: MasteryMode
@@ -2055,15 +2065,18 @@ function App() {
     const requiresIntroduction = introductionWords.length > 0
     const orderedWords = requiresIntroduction ? introductionWords : fullOrderedWords
     const sessionMode: Mode = requiresIntroduction ? 'copy' : nextMode
+    const startIndex = options.onboarding
+      ? Math.min(Math.max(0, options.startIndex ?? 0), Math.max(0, orderedWords.length - 1))
+      : 0
     const session: ActivePracticeSession = {
       lessonId: nextLesson.id,
       mode: sessionMode,
       order: orderedWords.map((word) => sessionCardId(nextLesson.id, word)),
-      index: 0,
+      index: startIndex,
       elapsedMs: 0,
       correctKeystrokes: 0,
       mistakes: 0,
-      completedWords: 0,
+      completedWords: startIndex,
       mistakeWords: {},
       reviewCorrectCount: 0,
       masteryMode: sessionMode === 'recall' || sessionMode === 'listen' ? sessionMode : null,
@@ -2085,6 +2098,34 @@ function App() {
       ...(requiresIntroduction ? { eyebrow: `${nextLesson.level} · 新词预热`, description: '先跟打本轮首次出现的内容' } : {}),
       words: orderedWords,
     }, session, 'new')
+  }
+
+  function beginNewcomerRound() {
+    begin(DEFAULT_LESSON, 'copy', {
+      orderedWords: NEWCOMER_WORDS,
+      onboarding: true,
+      startIndex: initialNewcomerCompletedItems,
+    })
+  }
+
+  function normalizeNewcomerSession(session: ActivePracticeSession): ActivePracticeSession {
+    if (!isNewcomerSession(session, NEWCOMER_STAGE_CONFIG)) return session
+    const { followUpMode: _followUpMode, followUpOrder: _followUpOrder, ...rest } = session
+    const completedCount = Math.min(
+      NEWCOMER_WORDS.length - 1,
+      Math.max(initialNewcomerCompletedItems, newcomerSessionCompletedItems(session, NEWCOMER_STAGE_CONFIG)),
+    )
+    return {
+      ...rest,
+      lessonId: DEFAULT_LESSON.id,
+      mode: 'copy',
+      order: [...NEWCOMER_STAGE_CONFIG.cardIds],
+      index: completedCount,
+      completedWords: completedCount,
+      masteryMode: null,
+      onboarding: true,
+      satisfiedModes: {},
+    }
   }
 
   function resumePracticeSession(session: ActivePracticeSession | null) {
@@ -2249,35 +2290,6 @@ function App() {
     recordCompletedWord()
     const nextWordEvidence = recordWordEvidence(independentAnswer)
     recordChallengeSuccess(independentAnswer)
-    if (isOnboardingRound && index === 2 && lesson.words.length > 3 && activeSession) {
-      trackAnalytics('onboarding_checkpoint_completed', {
-        ...analyticsPracticeContext(),
-        completed_items: nextCompletedWords,
-        mistakes,
-        elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
-      })
-      localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
-      persistActiveSession({
-        ...activeSession,
-        mode,
-        index: index + 1,
-        elapsedMs,
-        correctKeystrokes,
-        mistakes,
-        completedWords: nextCompletedWords,
-        mistakeWords,
-        reviewCorrectCount: nextReviewCorrectCount,
-        masteryMode: roundMasteryMode,
-        usedHint: roundUsedHint,
-        onboarding: false,
-        independentCorrect: nextIndependentCorrect,
-        weakWordIds: nextWeakWordIds,
-        satisfiedModes: roundSatisfiedModes,
-      })
-      setFinalElapsedSeconds(Math.max(1, Math.round(elapsedMs / 1000)))
-      setScreen('complete')
-      return
-    }
     if (completingRound
       && mode === 'copy'
       && activeSession?.followUpMode
@@ -2315,7 +2327,16 @@ function App() {
       }
     }
     if (index === lesson.words.length - 1) {
-      if (isOnboardingRound) localStorage.setItem(ONBOARDING_DONE_KEY, 'true')
+      if (isOnboardingRound) {
+        localStorage.setItem(NEWCOMER_ROUND_DONE_KEY, 'true')
+        localStorage.setItem(LEGACY_ONBOARDING_DONE_KEY, 'true')
+        trackAnalytics('onboarding_checkpoint_completed', {
+          ...analyticsPracticeContext(),
+          completed_items: nextCompletedWords,
+          mistakes,
+          elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
+        })
+      }
       if (lesson.id === 'mistake-review' && pausedMainSession) {
         persistActiveSession(pausedMainSession)
         persistPausedMainSession(null)
@@ -2651,16 +2672,17 @@ function App() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="analytics-consent-title"
-        aria-describedby="analytics-consent-description"
+        aria-describedby="analytics-consent-description analytics-consent-availability"
       >
         <div>
           <strong id="analytics-consent-title">帮助改进练习</strong>
           <p id="analytics-consent-description">只记录练习开始、完成、退出、模式和汇总表现；不记录输入内容、具体词条或同步码。<a href="/privacy.html">查看隐私说明</a></p>
         </div>
         <div className="analytics-consent-actions">
-          <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>仅必要功能</button>
-          <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>允许匿名统计</button>
+          <button className="analytics-decline" onClick={() => chooseAnalyticsConsent('denied')}>不提供使用数据</button>
+          <button className="analytics-accept" onClick={() => chooseAnalyticsConsent('granted')}>同意匿名统计</button>
         </div>
+        <p id="analytics-consent-availability" className="analytics-consent-availability">无论选择哪项，都可以正常使用网站。</p>
       </section>
     </div>
   ) : null
@@ -3085,11 +3107,11 @@ function App() {
         <main ref={completionMainRef}>
           <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}>
             <Check size={28} strokeWidth={2.7} />
-            <span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}<b>{isOnboardingRound ? '前三词已完成' : lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</b></span>
+            <span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}<b>{isOnboardingRound ? '首轮 8 词已完成' : lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</b></span>
           </div>
           <h1>{lesson.title}</h1>
           <p>你完成了 {isOnboardingRound ? completedWords : lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
-          {lesson.id !== 'mistake-review' && (
+          {lesson.id !== 'mistake-review' && !isOnboardingRound && (
             <>
               <div className="mastery-steps" aria-label="本轮掌握进度">
                 <span className={masteryAfterRound.recall ? 'passed' : ''}><Check size={15} /><b>看义拼写</b><small>{masteryAfterRound.recall ? '已通过' : recallEvidenceCount ? `${recallEvidenceCount}/${masteryScopeWords.length} 项` : '待完成'}</small></span>
@@ -3118,8 +3140,7 @@ function App() {
           )}
           {isOnboardingRound ? (
             <div className="onboarding-next">
-              <div className="mode-intro"><span><Keyboard size={17} /><b>跟打</b><small>先熟悉词形，不计掌握</small></span><span><BookOpen size={17} /><b>看义拼写</b><small>确认你懂中文意思</small></span><span><Headphones size={17} /><b>听音拼写</b><small>挑战的核心证据</small></span></div>
-              <button className="primary-button" onClick={continueOnboardingRound}>继续 A1 · 完成本轮 <ArrowRight size={19} /></button>
+              <button className="primary-button" onClick={continueOnboardingRound}>继续 A1 · 开始精准练习 <ArrowRight size={19} /></button>
               <div className="onboarding-secondary"><button onClick={chooseLevelAfterOnboarding}>选择其他等级</button><button onClick={openChallengeCreator}>创建挑战</button></div>
               <button className="install-link" onClick={() => void promptInstall()}>添加到主屏幕</button>
               {installHint && <p className="install-hint" aria-live="polite">{installHint}</p>}
@@ -3225,7 +3246,7 @@ function App() {
 
         <section className={`typing-stage ${status} ${targetLetters.length > 18 ? 'long-target' : ''}`} onClick={() => inputRef.current?.focus()}>
           <span className="word-label">{isOnboardingRound
-            ? `边打边懂 · 第 ${index + 1}/3 个词`
+            ? `边打边懂 · 第 ${index + 1}/${lesson.words.length} 个词`
             : isIntroductionPractice
               ? `新词预热 · ${index + 1}/${lesson.words.length}`
               : mode === 'copy'

@@ -46,5 +46,11 @@ for (const forbidden of ['spanish:', 'chinese:', 'typed:', 'sync_code:', 'lesson
 if (!analytics.includes("readAnalyticsConsent() !== 'granted'")) throw new Error('Analytics must remain consent-gated')
 if (!privacy.includes('PostHog Cloud EU')) throw new Error('Privacy page must disclose PostHog Cloud EU')
 if (!privacy.includes('不发送用户输入的文字')) throw new Error('Privacy page must disclose excluded input content')
+for (const consentCopy of ['不提供使用数据', '同意匿名统计', '无论选择哪项，都可以正常使用网站。']) {
+  if (!app.includes(consentCopy)) throw new Error(`Consent dialog is missing clear choice copy: ${consentCopy}`)
+}
+if (!privacy.includes('选择“不提供使用数据”后不会发送使用事件，且网站仍可正常使用')) {
+  throw new Error('Privacy page must match the declined consent choice')
+}
 
 console.log(`Analytics validation passed (${requiredEvents.length} events, explicit consent, privacy controls).`)

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { masteryRecommendation } from '../src/masteryRouting.ts'
+import { readLearningStage, readNewcomerCompletedItems, shouldResumeActiveSession } from '../src/learningStage.ts'
 import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from '../src/roundQueue.ts'
@@ -20,6 +21,111 @@ const failures = []
 const assert = (condition, message) => {
   if (!condition) failures.push(message)
 }
+
+const newcomerConfig = {
+  lessonId: 'primeros-pasos',
+  cardIds: [
+    'primeros-pasos::hola',
+    'primeros-pasos::gracias',
+    'primeros-pasos::por favor',
+    'primeros-pasos::perdón',
+    'primeros-pasos::encantado',
+    'primeros-pasos::adiós',
+    'primeros-pasos::bienvenido',
+    'primeros-pasos::hasta luego',
+  ],
+  isKnownLessonId: (lessonId) => lessonId === 'primeros-pasos' || lessonId === 'cada-dia' || lessonId === 'legacy-cada-dia' || /^adaptive-A1-main$/.test(lessonId),
+}
+const storage = (entries = {}) => ({ getItem: (key) => Object.prototype.hasOwnProperty.call(entries, key) ? entries[key] : null })
+const session = (overrides = {}) => ({
+  lessonId: 'primeros-pasos',
+  mode: 'copy',
+  order: [...newcomerConfig.cardIds],
+  index: 0,
+  completedWords: 0,
+  correctKeystrokes: 0,
+  mistakes: 0,
+  ...overrides,
+})
+
+assert(readLearningStage(storage(), newcomerConfig) === 'not-started', '完全空白的本地状态应判定为未开始')
+assert(readLearningStage(storage({
+  'teclea-practice-state': JSON.stringify({ lastMode: 'copy', lastLessonId: 'primeros-pasos', dailyWords: {} }),
+  'teclea-mistake-bank': '{}',
+  'teclea-mastery-progress-v2': '{}',
+  'teclea-completed': '[]',
+  'teclea-word-evidence-v2': '{}',
+}), newcomerConfig) === 'not-started', '空对象、空数组和默认练习状态不能冒充学习历史')
+
+const openedOnlySession = session({ onboarding: true })
+assert(readLearningStage(storage({ 'teclea-active-session-v2': JSON.stringify(openedOnlySession) }), newcomerConfig) === 'not-started', '仅打开自动创建的新手会话仍应判定为未开始')
+assert(shouldResumeActiveSession('not-started', openedOnlySession, newcomerConfig), '仅打开后刷新应安全恢复固定八词会话')
+const typedOnlySession = session({ onboarding: true, correctKeystrokes: 2 })
+assert(readLearningStage(storage({ 'teclea-active-session-v2': JSON.stringify(typedOnlySession) }), newcomerConfig) === 'not-started', '只输入部分字符但未完成词条不构成有效进度')
+
+const partialNewcomerSession = session({ onboarding: true, index: 1, completedWords: 1 })
+const oneWordProgress = storage({
+  'teclea-active-session-v2': JSON.stringify(partialNewcomerSession),
+  'teclea-practice-state': JSON.stringify({ lastMode: 'copy', lastLessonId: 'primeros-pasos', dailyWords: { '2026-08-21': 1 } }),
+  'teclea-word-evidence-v2': JSON.stringify({ 'primeros-pasos::hola': { copyCompletedAt: 123 } }),
+})
+assert(readLearningStage(oneWordProgress, newcomerConfig) === 'newcomer-in-progress', '完成一至七个固定词时应判定为新手首轮未完成')
+assert(readNewcomerCompletedItems(oneWordProgress, newcomerConfig) === 1, '新手首轮应读取已完成的连续前缀')
+assert(shouldResumeActiveSession('newcomer-in-progress', partialNewcomerSession, newcomerConfig), '刷新时应恢复固定八词的原位置')
+
+const sevenWordProgress = storage({
+  'teclea-active-session-v2': JSON.stringify(session({ onboarding: true, index: 7, completedWords: 7 })),
+  'teclea-practice-state': JSON.stringify({ lastMode: 'copy', lastLessonId: 'primeros-pasos', dailyWords: { '2026-08-21': 7 } }),
+  'teclea-word-evidence-v2': JSON.stringify(Object.fromEntries(newcomerConfig.cardIds.slice(0, 7).map((cardId) => [cardId, { copyCompletedAt: 123 }]))),
+})
+assert(readLearningStage(sevenWordProgress, newcomerConfig) === 'newcomer-in-progress', '完成七词后仍应留在未完成首轮阶段')
+assert(readNewcomerCompletedItems(sevenWordProgress, newcomerConfig) === 7, '完成七词后刷新应从第八词恢复')
+
+const legacyThreeWordSession = session({ order: newcomerConfig.cardIds.slice(0, 3), index: 2, completedWords: 2, onboarding: true })
+assert(shouldResumeActiveSession('newcomer-in-progress', legacyThreeWordSession, newcomerConfig), '旧版三词前缀会话应可扩展并继续首轮')
+
+const unrelatedUntouchedSession = session({ lessonId: 'adaptive-A1-main', order: ['cada-dia::en casa'], correctKeystrokes: 3 })
+assert(readLearningStage(storage({ 'teclea-active-session-v2': JSON.stringify(unrelatedUntouchedSession) }), newcomerConfig) === 'not-started', '普通会话只输入未完成时仍没有有效学习进度')
+assert(!shouldResumeActiveSession('not-started', unrelatedUntouchedSession, newcomerConfig), '未形成进度的普通会话不能绕过固定三词')
+const completedActiveSession = session({ lessonId: 'adaptive-A1-main', order: ['cada-dia::en casa', 'cada-dia::al trabajo'], index: 1, completedWords: 1 })
+assert(readLearningStage(storage({ 'teclea-active-session-v2': JSON.stringify(completedActiveSession) }), newcomerConfig) === 'established', '已完成学习项的有效普通会话应构成真实进度')
+assert(shouldResumeActiveSession('established', completedActiveSession, newcomerConfig), '已形成进度的有效普通会话应安全恢复')
+const removedLessonSession = session({ lessonId: 'removed-lesson', order: ['removed-lesson::残留'], index: 0, completedWords: 1 })
+assert(readLearningStage(storage({ 'teclea-active-session-v2': JSON.stringify(removedLessonSession) }), newcomerConfig) === 'not-started', '已移除课程留下的孤立会话不能冒充有效进度')
+assert(!shouldResumeActiveSession('established', removedLessonSession, newcomerConfig), '已移除课程会话不能被恢复')
+
+const legacyDailyProgress = storage({
+  'teclea-practice-state': JSON.stringify({ lastMode: 'recall', lastLessonId: 'cada-dia', dailyWords: { '2026-08-18': 4 } }),
+  'teclea-active-session-v2': JSON.stringify(session({ lessonId: 'cada-dia', mode: 'recall', order: ['cada-dia::en casa'] })),
+})
+assert(readLearningStage(legacyDailyProgress, newcomerConfig) === 'established', '旧版正数 dailyWords 应保留为有效学习进度')
+assert(shouldResumeActiveSession('established', JSON.parse(legacyDailyProgress.getItem('teclea-active-session-v2')), newcomerConfig), '有旧进度时当前有效会话应继续恢复')
+
+assert(readLearningStage(storage({
+  'teclea-practice-state': JSON.stringify({ lastMode: 'copy', lastLessonId: 'primeros-pasos', dailyWords: { '2026-08-21': 3 } }),
+  'teclea-word-evidence-v2': JSON.stringify(Object.fromEntries(newcomerConfig.cardIds.slice(0, 3).map((cardId) => [cardId, { copyCompletedAt: 123 }]))),
+}), newcomerConfig) === 'newcomer-in-progress', '只有固定前三词证据时应继续首轮而非提前进入普通学习')
+const legacyCheckpoint = storage({ 'teclea-first-three-complete-v1': 'true' })
+assert(readLearningStage(legacyCheckpoint, newcomerConfig) === 'newcomer-in-progress', '旧版三词完成标记只能表示首轮已到第 4 词')
+assert(readNewcomerCompletedItems(legacyCheckpoint, newcomerConfig) === 3, '旧版三词完成标记应恢复为三个已完成项')
+assert(readLearningStage(storage({
+  'teclea-word-evidence-v2': JSON.stringify(Object.fromEntries(newcomerConfig.cardIds.map((cardId) => [cardId, { copyCompletedAt: 123 }]))),
+}), newcomerConfig) === 'established', '固定八词都有完整跟打证据时才完成新手首轮')
+assert(readLearningStage(storage({ 'teclea-first-round-complete-v1': 'true' }), newcomerConfig) === 'established', '明确的八词首轮完成标记应进入普通学习阶段')
+assert(readLearningStage(storage({
+  'teclea-first-three-complete-v1': 'true',
+  'teclea-word-evidence-v2': JSON.stringify({ 'primeros-pasos::perdón': { copyCompletedAt: 123 } }),
+}), newcomerConfig) === 'established', '旧三词后已有额外真实词条证据时应保留为旧用户')
+assert(readLearningStage(storage({ 'teclea-first-three-complete-v1': 'false' }), newcomerConfig) === 'not-started', '仅存在 false 完成标记不能判定为老用户')
+assert(readLearningStage(storage({
+  'teclea-completed': JSON.stringify(['cada-dia']),
+  'teclea-mastery-progress-v2': '{}',
+}), newcomerConfig) === 'established', '旧版已完成课程应保持普通学习阶段')
+assert(readLearningStage(storage({ 'teclea-completed': JSON.stringify(['legacy-cada-dia']) }), newcomerConfig) === 'established', '仍可迁移的旧课程 ID 应保持普通学习阶段')
+assert(readLearningStage(storage({
+  'teclea-completed': JSON.stringify(['removed-lesson']),
+  'teclea-mastery-progress-v2': JSON.stringify({ 'removed-lesson': { recall: true } }),
+}), newcomerConfig) === 'not-started', '已移除且无法迁移的课程残留不能冒充有效进度')
 
 assert(!hasCompletedIntroduction(undefined), '缺少证据时不应视为已完成首次跟打')
 assert(!hasCompletedIntroduction({ copyCompletedAt: 0 }), '无效时间戳不应视为已完成首次跟打')
@@ -143,11 +249,17 @@ assert(inProgressChallengePlan.dailyMasteryActions === 7, '已有进度时每日
 assert(inProgressChallengePlan.remainingMasteryActions === 60, '已有进度时应显示准确剩余动作数')
 
 const recommendationDoc = readFileSync(new URL('../docs/PRACTICE_RECOMMENDATION.md', import.meta.url), 'utf8')
-for (const requiredSection of ['首次跟打完成', '近期重复层', '新内容预热', '模式推进阈值', '队列持久化', '跨学习日错题恢复']) {
+for (const requiredSection of ['学习阶段判定', '首次跟打完成', '近期重复层', '新内容预热', '模式推进阈值', '队列持久化', '跨学习日错题恢复']) {
   assert(recommendationDoc.includes(requiredSection), `抽取规则文档缺少章节：${requiredSection}`)
 }
-
 const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+assert(appSource.includes('const NEWCOMER_WORDS = DEFAULT_LESSON.words'), '新手首轮应使用完整的默认八词课程')
+assert(appSource.includes("localStorage.setItem(NEWCOMER_ROUND_DONE_KEY, 'true')"), '只有完整首轮结束后才应写入新完成标记')
+assert(appSource.includes("localStorage.setItem(LEGACY_ONBOARDING_DONE_KEY, 'true')"), '完整首轮结束后应保留旧三词标记兼容性')
+assert(appSource.includes("'首轮 8 词已完成'"), '首轮结果页应明确显示八词完成')
+assert(!appSource.includes('/3 个词'), '新手进度标签不能再硬编码为三词')
+assert(!appSource.includes('className="mode-intro"'), '首轮完成后不应再插入额外模式教学卡片')
+
 assert(appSource.includes('const PRESS_HOLD_REPLACEMENT_MS = 3000'), '长按重音替换窗口应为 3 秒')
 assert(
   /onBlur=\{\(\) => \{\s*cancelPressHoldReplacement\(\)/.test(appSource),

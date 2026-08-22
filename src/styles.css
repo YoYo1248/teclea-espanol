@@ -445,6 +445,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .analytics-consent-actions button { min-height: 48px; border-radius: 14px; font-size: 13px; font-weight: 800; }
 .analytics-decline { border: 1px solid var(--line); background: var(--paper); color: #6d6962; }
 .analytics-accept { border: 1px solid var(--green); background: var(--green); color: white; }
+.analytics-consent .analytics-consent-availability { margin-top: 11px; text-align: center; font-size: 12px; }
 
 @media (max-width: 600px) {
   .analytics-consent-backdrop { padding: 0; align-items: flex-end; background: rgba(28,27,24,.34); }
@@ -453,6 +454,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .analytics-consent p { font-size: 12px; }
   .analytics-consent-actions { margin-top: 16px; gap: 8px; }
   .analytics-consent-actions button { min-height: 50px; font-size: 12px; }
+  .analytics-consent .analytics-consent-availability { margin-top: 10px; font-size: 11px; }
 }
 
 .modal-backdrop { position: fixed; z-index: 20; inset: 0; width: min(100%, 480px); margin: auto; background: rgba(28,27,24,.42); backdrop-filter: blur(5px); display: flex; align-items: end; }
