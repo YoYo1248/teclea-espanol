@@ -3,7 +3,7 @@ import { masteryRecommendation, nextStageAfterSkippedReinforcement } from '../sr
 import { readLearningStage, readNewcomerCompletedItems, shouldResumeActiveSession } from '../src/learningStage.ts'
 import { challengeDailyPlan, challengePendingCardIds, challengeRoundSize, challengeTodayTarget } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
+import { bucketByRecentQueues, firstModeAfterIntroduction, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, safePracticeResumeIndex, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { decodeWordEvidence, encodeWordEvidence, mergeWordEvidence, normalizeWordEvidence } from '../src/wordEvidence.ts'
 import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate } from '../src/pressHoldInput.ts'
 import { practiceWordClassLabel } from '../src/wordClass.ts'
@@ -368,6 +368,9 @@ assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 8).filter((item) 
 assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 12).filter((item) => item.startsWith('new-')).length === 8, '12 项普通轮次应至少安排 8 个新词')
 assert(mixAdaptiveRound(['new-only'], abundantReviewWords, 8).length === 8, '新词不足时应使用复习词补满轮次')
 assert(mixAdaptiveRound(abundantNewWords, [], 8).length === 8, '没有复习词时应继续使用新词补满轮次')
+assert(firstModeAfterIntroduction('listen') === 'recall' && firstModeAfterIntroduction('recall') === 'recall', '新词预热后必须先进入看义拼写，不能直接跳到听音')
+assert(safePracticeResumeIndex(1, 0) === 0, '未完成任何词的异常 session 不能从第二词恢复')
+assert(safePracticeResumeIndex(1, 1) === 1, '已经完成第一词的 session 应从第二词恢复')
 
 assert(masteryRecommendation(69, true) === 'repeat', '69% 应继续当前模式')
 assert(masteryRecommendation(70, true) === 'reinforce', '70% 应进入薄弱项巩固')
@@ -428,6 +431,10 @@ for (const requiredSection of ['学习阶段判定', '首次跟打完成', '近�
 }
 const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 assert(appSource.includes('const NEWCOMER_WORDS = DEFAULT_LESSON.words'), '新手首轮应使用完整的默认八词课程')
+assert(appSource.includes('const storedMatch = catalogWordById(storedKey)'), '历史错题必须优先按保存的 canonical 卡片 ID 恢复')
+assert(appSource.includes('followUpMode: firstModeAfterIntroduction'), '预热会话必须把后续模式固定路由到看义拼写')
+assert(appSource.includes('aria-label="正在恢复练习"'), '恢复 session 时应先稳定 lesson 和 index，避免首词闪烁后跳转')
+assert(appSource.includes('本轮 ${activeSession?.followUpOrder?.length ?? lesson.words.length} 项'), '新词预热应同时显示完整轮次项目数')
 assert(appSource.includes("localStorage.setItem(NEWCOMER_ROUND_DONE_KEY, 'true')"), '只有完整首轮结束后才应写入新完成标记')
 assert(appSource.includes("localStorage.setItem(LEGACY_ONBOARDING_DONE_KEY, 'true')"), '完整首轮结束后应保留旧三词标记兼容性')
 assert(appSource.includes("'首轮 8 词已完成'"), '首轮结果页应明确显示八词完成')

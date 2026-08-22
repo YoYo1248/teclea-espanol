@@ -20,6 +20,14 @@ export function itemsNeedingIntroduction<T>(items: readonly T[], getEvidence: (i
   return items.filter((item) => !hasCompletedIntroduction(getEvidence(item)))
 }
 
+export function firstModeAfterIntroduction(_requestedMode: 'recall' | 'listen') {
+  return 'recall' as const
+}
+
+export function safePracticeResumeIndex(index: number, completedWords: number) {
+  return Math.max(0, Math.min(Math.floor(index), Math.floor(completedWords)))
+}
+
 export const NEW_WORD_SHARE = 2 / 3
 
 export function mixAdaptiveRound<T>(newItems: readonly T[], reviewItems: readonly T[], roundSize: number) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   BookOpen,
@@ -40,7 +40,7 @@ import {
   shouldResumeActiveSession,
   type NewcomerStageConfig,
 } from './learningStage'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from './roundQueue'
+import { bucketByRecentQueues, firstModeAfterIntroduction, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, safePracticeResumeIndex, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
 import { decodeWordEvidence, encodeWordEvidence, mergeWordEvidence, normalizeWordEvidence, type WordEvidence } from './wordEvidence'
 import { initializeAnalytics, isAnalyticsConfigured, readAnalyticsConsent, trackAnalytics, updateAnalyticsConsent, type AnalyticsConsent } from './analytics'
@@ -545,12 +545,15 @@ function readMistakeBank(): Record<string, MistakeRecord> {
   try {
     const stored = JSON.parse(localStorage.getItem(MISTAKE_BANK_KEY) || '{}') as Record<string, unknown>
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {}
-    const validBank = Object.values(stored).reduce<Record<string, MistakeRecord>>((bank, rawItem) => {
+    const validBank = Object.entries(stored).reduce<Record<string, MistakeRecord>>((bank, [storedKey, rawItem]) => {
       const item = normalizeMistakeRecord(rawItem)
       if (!item) return bank
       if (typeof item.lessonId === 'string' && item.lessonId.startsWith('conjugation-')) return bank
       const target = canonicalPracticeTarget(item.spanish)
-      const currentMatch = lessons.flatMap((lesson) => lesson.words.map((word) => ({ lesson, word }))).find(({ word }) => getTypingTarget(word.spanish) === target)
+      const storedMatch = catalogWordById(storedKey)
+      const currentMatch = storedMatch ?? lessons
+        .flatMap((lesson) => lesson.words.map((word) => ({ lesson, word })))
+        .find(({ word }) => getTypingTarget(word.spanish) === target)
       if (!currentMatch) return bank
       const key = sessionCardId(currentMatch.lesson.id, currentMatch.word)
       const remapped = normalizeMistakeRecord({
@@ -777,6 +780,7 @@ function App() {
   }
   const initialPracticeState = initialPracticeStateRef.current
   const [screen, setScreen] = useState<Screen>('home')
+  const [practiceOpening, setPracticeOpening] = useState(false)
   const [practiceState, setPracticeState] = useState<PracticeState>(initialPracticeState)
   const [lesson, setLesson] = useState<Lesson>(() => lessons.find((item) => item.id === initialPracticeState.lastLessonId) ?? DEFAULT_LESSON)
   const [mode, setMode] = useState<Mode>(initialPracticeState.lastMode)
@@ -1009,6 +1013,10 @@ function App() {
     window.clearTimeout(pressHoldTimerRef.current)
     pressHoldPendingRef.current = null
   }, [screen, mode, index, lesson.id, accentMode])
+
+  useLayoutEffect(() => {
+    if (screen === 'practice' && practiceOpening) setPracticeOpening(false)
+  }, [screen, practiceOpening, lesson.id, index, mode])
 
   useEffect(() => {
     if (!syncCodeRef.current) return
@@ -2155,6 +2163,7 @@ function App() {
   }
 
   function openPractice(nextLesson: Lesson, session: ActivePracticeSession, startKind: 'new' | 'resume') {
+    setPracticeOpening(true)
     flowTokenRef.current += 1
     window.clearTimeout(resetTimerRef.current)
     window.speechSynthesis?.cancel()
@@ -2244,7 +2253,7 @@ function App() {
       weakWordIds: [],
       satisfiedModes: options.satisfiedModes ?? {},
       ...(requiresIntroduction ? {
-        followUpMode: nextMode as MasteryMode,
+        followUpMode: firstModeAfterIntroduction(nextMode as MasteryMode),
         followUpOrder: fullOrderedWords.map((word) => sessionCardId(nextLesson.id, word)),
       } : options.followUpMode && options.followUpOrder?.length ? {
         followUpMode: options.followUpMode,
@@ -2297,7 +2306,8 @@ function App() {
     }
 
     const availableWords = new Map(baseLesson.words.map((word) => [sessionCardId(baseLesson.id, word), word]))
-    const validPriorCount = session.order.slice(0, session.index).filter((cardId) => availableWords.has(cardId)).length
+    const resumeIndex = safePracticeResumeIndex(session.index, session.completedWords)
+    const validPriorCount = session.order.slice(0, resumeIndex).filter((cardId) => availableWords.has(cardId)).length
     const orderedWords = session.order.flatMap((cardId) => {
       const matchedWord = availableWords.get(cardId)
       return matchedWord ? [matchedWord] : []
@@ -2325,7 +2335,7 @@ function App() {
           masteryMode: session.mode === 'recall' || session.mode === 'listen' ? session.mode : null,
           usedHint: false,
         }
-      : { ...session, index: validPriorCount }
+      : { ...session, index: validPriorCount, completedWords: Math.min(session.completedWords, validPriorCount) }
     openPractice({ ...baseLesson, words: orderedWords }, restoredSession, 'resume')
     return true
   }
@@ -2915,6 +2925,10 @@ function App() {
         })}
       </div>
     )
+  }
+
+  if (screen === 'practice' && practiceOpening) {
+    return <div className="app-shell practice-screen" aria-busy="true" aria-label="正在恢复练习" />
   }
 
   if (screen === 'home') {
@@ -3562,8 +3576,10 @@ function App() {
           <div className="word-heading">
             <span className="word-label">{isOnboardingRound
               ? `边打边懂 · 第 ${index + 1}/${lesson.words.length} 个词`
+              : lesson.id === 'mistake-review'
+                ? `${maintenanceReviewRound ? '巩固复查' : '错题复习'} · ${index + 1}/${lesson.words.length}`
               : isIntroductionPractice
-                ? `新词预热 · ${index + 1}/${lesson.words.length}`
+                ? `新词预热 ${index + 1}/${lesson.words.length} · 本轮 ${activeSession?.followUpOrder?.length ?? lesson.words.length} 项`
                 : mode === 'copy'
                   ? '逐字母输入'
                   : mode === 'recall'
