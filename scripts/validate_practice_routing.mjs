@@ -7,13 +7,21 @@ import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroductio
 import { normalizeWordEvidence } from '../src/wordEvidence.ts'
 import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
 import {
+  addReviewDays,
   hasActiveReview,
+  isMaintenanceDue,
+  isMaintenanceModeDue,
   isReviewDue,
+  isReviewModeDue,
+  mistakeReviewBucket,
   mistakeSamplingWeight,
+  maintenanceAnswerMode,
+  MAINTENANCE_INTERVAL_DAYS,
   normalizeMistakeRecord,
   recordIndependentCorrect,
   recordWrongAttempt,
   recoveryTarget,
+  reviewAnswerMode,
   weightedReviewOrder,
 } from '../src/mistakeReview.ts'
 
@@ -165,10 +173,34 @@ assert(!sameDayCorrect.progressed && hasActiveReview(sameDayCorrect.record), '�
 const nextDayCorrect = recordIndependentCorrect(sameDayCorrect.record, 'recall', Date.parse('2026-08-21T10:00:00'), '2026-08-21')
 assert(nextDayCorrect.progressed && nextDayCorrect.resolved, '累计错一次应在下一学习日独立答对后离开错题本')
 assert(nextDayCorrect.record.count === 1 && nextDayCorrect.record.independentCorrectCounts.recall === 2, '离开错题本后应保留永久错误与答对统计')
+assert(nextDayCorrect.record.maintenance.recall?.active && nextDayCorrect.record.maintenance.recall.dueOn === '2026-08-24', '看义错误恢复后应建立三天维护节点')
+assert(!isMaintenanceDue(nextDayCorrect.record, '2026-08-23') && isMaintenanceModeDue(nextDayCorrect.record, 'recall', '2026-08-24'), '维护抽查只能在对应节点到期后推进')
+assert(maintenanceAnswerMode(nextDayCorrect.record, '2026-08-24') === 'recall', '维护队列应选择真正到期的能力模式')
+
+const earlyMaintenanceCorrect = recordIndependentCorrect(nextDayCorrect.record, 'recall', Date.parse('2026-08-22T10:00:00'), '2026-08-22')
+assert(!earlyMaintenanceCorrect.maintenanceProgressed && earlyMaintenanceCorrect.record.maintenance.recall?.stage === 0, '提前在普通轮次答对不能推进维护节点')
+const maintenanceThree = recordIndependentCorrect(earlyMaintenanceCorrect.record, 'recall', Date.parse('2026-08-24T10:00:00'), '2026-08-24')
+assert(maintenanceThree.maintenanceProgressed && maintenanceThree.record.maintenance.recall?.stage === 1, '三天节点独立答对后应进入七天节点')
+assert(maintenanceThree.record.maintenance.recall?.dueOn === addReviewDays('2026-08-24', MAINTENANCE_INTERVAL_DAYS[1]), '七天节点应从实际完成日计算')
+const duplicateMaintenanceDay = recordIndependentCorrect(maintenanceThree.record, 'recall', Date.parse('2026-08-24T15:00:00'), '2026-08-24')
+assert(!duplicateMaintenanceDay.maintenanceProgressed && duplicateMaintenanceDay.record.maintenance.recall?.stage === 1, '同一学习日不能重复推进维护节点')
+const maintenanceSeven = recordIndependentCorrect(maintenanceThree.record, 'recall', Date.parse('2026-08-31T10:00:00'), '2026-08-31')
+const maintenanceTwentyOneDay = maintenanceSeven.record.maintenance.recall?.dueOn
+assert(maintenanceSeven.record.maintenance.recall?.stage === 2 && maintenanceTwentyOneDay === addReviewDays('2026-08-31', 21), '七天节点后应进入二十一天节点')
+const maintenanceTwentyOne = recordIndependentCorrect(maintenanceSeven.record, 'recall', Date.parse(`${maintenanceTwentyOneDay}T10:00:00`), maintenanceTwentyOneDay)
+const maintenanceSixtyDay = maintenanceTwentyOne.record.maintenance.recall?.dueOn
+assert(maintenanceTwentyOne.record.maintenance.recall?.stage === 3 && maintenanceSixtyDay === addReviewDays(maintenanceTwentyOneDay, 60), '二十一天节点后应进入六十天节点')
+const maintenanceSixty = recordIndependentCorrect(maintenanceTwentyOne.record, 'recall', Date.parse(`${maintenanceSixtyDay}T10:00:00`), maintenanceSixtyDay)
+assert(maintenanceSixty.maintenanceCompleted && maintenanceSixty.record.maintenance.recall?.stage === 4 && !maintenanceSixty.record.maintenance.recall.active, '六十天节点完成后应进入稳定历史')
+assert(!isMaintenanceDue(maintenanceSixty.record, addReviewDays(maintenanceSixtyDay, 365)), '稳定历史不能继续生成强制维护任务')
+assert(!nextDayCorrect.record.maintenance.listen, '看义错误恢复不能误建听音维护节点')
+assert(mistakeSamplingWeight(maintenanceThree.record, maintenanceThree.record.maintenance.recall.dueOn) > mistakeSamplingWeight(maintenanceSixty.record, maintenanceSixtyDay), '到期维护词在普通抽词中应获得额外权重')
 
 const copyWrong = recordWrongAttempt(undefined, reviewWord, 'copy', Date.parse('2026-08-20T10:00:00'), '2026-08-20')
 assert(!recordIndependentCorrect(copyWrong, 'copy', Date.parse('2026-08-21T09:00:00'), '2026-08-21').progressed, '跟打答对不能作为独立恢复证据')
-assert(recordIndependentCorrect(copyWrong, 'recall', Date.parse('2026-08-21T09:00:00'), '2026-08-21').resolved, '看义独立答对应能恢复跟打错误')
+const recoveredCopyWrong = recordIndependentCorrect(copyWrong, 'recall', Date.parse('2026-08-21T09:00:00'), '2026-08-21')
+assert(recoveredCopyWrong.resolved, '看义独立答对应能恢复跟打错误')
+assert(!recoveredCopyWrong.record.maintenance.recall, '单纯跟打错误恢复后不应生成长期维护任务')
 assert(!recordIndependentCorrect(firstWrong, 'listen', Date.parse('2026-08-21T09:00:00'), '2026-08-21').progressed, '听音答对不能替代看义错误的模式确认')
 
 const secondWrong = recordWrongAttempt(firstWrong, reviewWord, 'recall', Date.parse('2026-08-21T12:00:00'), '2026-08-21')
@@ -182,8 +214,32 @@ assert(recoveryTarget(10) === 3, '反复错误的恢复次数应封顶三次')
 assert(mistakeSamplingWeight(secondWrong, '2026-08-22') > mistakeSamplingWeight(firstWrong, '2026-08-20'), '错误更多且已到期的词应获得更高抽取权重')
 assert(weightedReviewOrder([firstWrong, secondWrong], (item) => mistakeSamplingWeight(item, '2026-08-22'), () => .5)[0] === secondWrong, '加权排序应让高权重错词更容易排在前面')
 
+const mixedModeReview = {
+  ...secondWrong,
+  lastWrongAt: Date.parse('2026-08-22T12:00:00'),
+  review: {
+    recall: { active: true, recoveryCount: 1, lastRecoveryDay: '2026-08-22', dueOn: '2026-08-23', lastWrongAt: secondWrong.lastWrongAt },
+    listen: { active: true, recoveryCount: 0, dueOn: '2026-08-22', lastWrongAt: Date.parse('2026-08-22T12:00:00') },
+  },
+}
+assert(isReviewModeDue(mixedModeReview, 'listen', '2026-08-22'), '应能识别词内具体到期的能力通道')
+assert(!isReviewModeDue(mixedModeReview, 'recall', '2026-08-22'), '尚未到期的看义通道不应被当作今日任务')
+assert(reviewAnswerMode(mixedModeReview, '2026-08-22') === 'listen', '看义尚未到期但听音已到期时应进入听音拼写')
+assert(mistakeReviewBucket(mixedModeReview, '2026-08-22') === 'due', '同时符合今日错题与到期条件时只能进入优先级更高的待复习组')
+assert(mistakeReviewBucket(firstWrong, '2026-08-20') === 'today', '尚未到期的当日错题应只进入今日错题组')
+assert(mistakeReviewBucket(recoveryOne.record, '2026-08-22') === 'later', '今日已推进且等待明日确认的错题应只进入稍后复查组')
+
 const legacyMistake = normalizeMistakeRecord({ ...reviewWord, count: 4, lastWrongAt: Date.parse('2026-08-19T10:00:00'), lastMode: 'listen' })
 assert(legacyMistake?.wrongCounts.listen === 4 && legacyMistake.review.listen?.active, '旧错题数据应迁移为永久统计与活跃复习状态')
+const migratedResolvedMistake = normalizeMistakeRecord({
+  ...nextDayCorrect.record,
+  maintenance: undefined,
+})
+assert(migratedResolvedMistake?.maintenance.recall?.dueOn === '2026-08-24', '已有恢复历史但缺少维护字段时应兼容生成三天节点')
+
+const failedMaintenance = recordWrongAttempt(maintenanceThree.record, reviewWord, 'recall', Date.parse('2026-08-25T10:00:00'), '2026-08-25')
+assert(failedMaintenance.review.recall?.active && failedMaintenance.review.recall.dueOn === '2026-08-26', '维护期间再次输错应重新激活次日错误恢复')
+assert(!failedMaintenance.maintenance.recall, '维护期间再次输错应清除该能力通道的旧维护阶段')
 
 const mixedQueue = [
   { id: 'weak-old', evidence: { copyCompletedAt: 10 } },
@@ -259,6 +315,16 @@ assert(appSource.includes("localStorage.setItem(LEGACY_ONBOARDING_DONE_KEY, 'tru
 assert(appSource.includes("'首轮 8 词已完成'"), '首轮结果页应明确显示八词完成')
 assert(!appSource.includes('/3 个词'), '新手进度标签不能再硬编码为三词')
 assert(!appSource.includes('className="mode-intro"'), '首轮完成后不应再插入额外模式教学卡片')
+assert(appSource.includes('continueRemainingMistakeReview') && appSource.includes("mistakeReviewMode === mode ? '继续完成' : '继续'"), '错题本应先完成同模式遗留项或继续下一到期通道')
+assert(appSource.includes('const resumableMainSession = activeSession ?? pausedMainSession'), '错题复习后返回首页时应仍可恢复此前暂停的普通练习')
+assert(appSource.includes('words: entries.map(([reviewKey, record]) =>'), '专门错题轮应保留当前能力通道内的完整错词集合')
+assert(appSource.includes('const dueMaintenanceEntries =') && appSource.includes('开始历史巩固复查'), '恢复后的历史错词应进入独立的到期巩固队列')
+assert(appSource.includes("hasActiveReview(mistake) || isMaintenanceDue(mistake, reviewToday)"), '普通自适应练习也应提高到期维护词的抽取优先级')
+assert(recommendationDoc.includes('不按普通轮次的固定项数拆分'), '错题规则应记录保持完整连续轮次的产品决定')
+const mistakePlanDoc = readFileSync(new URL('../docs/MISTAKE_REVIEW_PLAN.md', import.meta.url), 'utf8')
+for (const requiredPlanSection of ['错误恢复（recovery）', '恢复后维护（maintenance）', '3／7／21／60', '历史数据兼容', '隐私与测量']) {
+  assert(mistakePlanDoc.includes(requiredPlanSection), `错词双层复习方案缺少：${requiredPlanSection}`)
+}
 
 assert(appSource.includes('const PRESS_HOLD_REPLACEMENT_MS = 3000'), '长按重音替换窗口应为 3 秒')
 assert(

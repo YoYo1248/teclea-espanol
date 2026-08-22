@@ -8,6 +8,7 @@ type PracticeBase = {
   track: 'main' | 'verbs'
   onboarding: boolean
   mistake_review: boolean
+  review_kind: 'none' | 'recovery' | 'maintenance'
   queue_size: number
 }
 

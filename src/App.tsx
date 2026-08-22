@@ -41,8 +41,13 @@ import {
   activeReviewModes,
   answerCanRecover,
   hasActiveReview,
+  hasActiveMaintenance,
+  isMaintenanceDue,
+  isMaintenanceModeDue,
   isReviewDue,
-  isTodayReview,
+  isReviewModeDue,
+  maintenanceAnswerMode,
+  mistakeReviewBucket,
   normalizeMistakeRecord,
   mistakeSamplingWeight,
   recordIndependentCorrect,
@@ -51,6 +56,7 @@ import {
   reviewAnswerMode,
   weightedReviewOrder,
   type MistakeRecord,
+  type MemoryReviewMode,
 } from './mistakeReview'
 
 type Screen = 'home' | 'practice' | 'complete'
@@ -794,7 +800,7 @@ function App() {
   const [mistakeResolvedAt, setMistakeResolvedAt] = useState<Record<string, number>>(readMistakeResolvedAt)
   const [activeSession, setActiveSession] = useState<ActivePracticeSession | null>(() => {
     const session = readActiveSession()
-    if (session?.lessonId === 'mistake-review' && !Object.values(mistakeBank).some(hasActiveReview)) {
+    if (session?.lessonId === 'mistake-review' && !Object.values(mistakeBank).some((record) => hasActiveReview(record) || hasActiveMaintenance(record))) {
       return null
     }
     return session
@@ -1248,16 +1254,32 @@ function App() {
     [mistakeBank],
   )
   const activeMistakeEntries = mistakeEntries.filter(([, record]) => hasActiveReview(record))
-  const dueMistakeEntries = activeMistakeEntries.filter(([, record]) => isReviewDue(record, reviewToday))
-  const todayMistakeEntries = activeMistakeEntries.filter(([, record]) => isTodayReview(record, reviewToday))
-  const laterMistakeEntries = activeMistakeEntries.filter(([, record]) => !isReviewDue(record, reviewToday) && !isTodayReview(record, reviewToday))
-  const reviewPool = dueMistakeEntries.length ? dueMistakeEntries : activeMistakeEntries
-  const plannedMistakeReviewMode: MasteryMode = reviewPool.some(([, record]) => reviewAnswerMode(record) === 'recall') ? 'recall' : 'listen'
+  const dueMistakeEntries = activeMistakeEntries.filter(([, record]) => mistakeReviewBucket(record, reviewToday) === 'due')
+  const todayMistakeEntries = activeMistakeEntries.filter(([, record]) => mistakeReviewBucket(record, reviewToday) === 'today')
+  const laterMistakeEntries = activeMistakeEntries.filter(([, record]) => mistakeReviewBucket(record, reviewToday) === 'later')
+  const dueMaintenanceEntries = mistakeEntries.filter(([, record]) => !hasActiveReview(record) && isMaintenanceDue(record, reviewToday))
+  const reviewingDueMistakes = dueMistakeEntries.length > 0
+  const reviewingMaintenance = !reviewingDueMistakes && dueMaintenanceEntries.length > 0
+  const reviewPool = reviewingDueMistakes
+    ? dueMistakeEntries
+    : reviewingMaintenance
+      ? dueMaintenanceEntries
+      : activeMistakeEntries
+  const plannedMistakeReviewMode: MasteryMode = reviewPool.some(([, record]) => (
+    reviewingMaintenance
+      ? maintenanceAnswerMode(record, reviewToday)
+      : reviewAnswerMode(record, reviewingDueMistakes ? reviewToday : undefined)
+  ) === 'recall') ? 'recall' : 'listen'
   const mistakeReviewMode: MasteryMode = activeSession?.lessonId === 'mistake-review' && activeSession.mode !== 'copy'
     ? activeSession.mode
     : plannedMistakeReviewMode
   const mistakeLesson = useMemo<Lesson | null>(() => {
-    const entries = reviewPool.filter(([, record]) => activeReviewModes(record).some((weakMode) => answerCanRecover(weakMode, mistakeReviewMode)))
+    const entries = reviewPool.filter(([, record]) => reviewingMaintenance
+      ? isMaintenanceModeDue(record, mistakeReviewMode, reviewToday)
+      : activeReviewModes(record).some((weakMode) => (
+          answerCanRecover(weakMode, mistakeReviewMode)
+          && (!reviewingDueMistakes || isReviewModeDue(record, weakMode, reviewToday))
+        )))
     if (!entries.length) return null
     const reviewingDueItems = dueMistakeEntries.length > 0
     const reviewingTodayItems = !reviewingDueItems && todayMistakeEntries.length > 0
@@ -1266,9 +1288,9 @@ function App() {
       level: 'A1',
       scene: '基础',
       kind: '短语',
-      eyebrow: `${reviewingDueItems ? '到期错题' : reviewingTodayItems ? '今日错题' : '稍后复查'} · ${mistakeReviewMode === 'recall' ? '看义拼写' : '听音拼写'}`,
-      title: reviewingDueItems ? '待复习错题' : reviewingTodayItems ? '今日错题巩固' : '稍后复查词巩固',
-      description: reviewingDueItems ? '跨学习日独立答对，推进恢复进度' : reviewingTodayItems ? '今天可以继续练，明日再独立复查' : '已经完成今天的确认，继续练习不会重复累计',
+      eyebrow: `${reviewingMaintenance ? '历史巩固' : reviewingDueItems ? '到期错题' : reviewingTodayItems ? '今日错题' : '稍后复查'} · ${mistakeReviewMode === 'recall' ? '看义拼写' : '听音拼写'}`,
+      title: reviewingMaintenance ? '恢复后巩固复查' : reviewingDueItems ? '待复习错题' : reviewingTodayItems ? '今日错题巩固' : '稍后复查词巩固',
+      description: reviewingMaintenance ? '完成到期的间隔抽查，维持长期记忆' : reviewingDueItems ? '跨学习日独立答对，推进恢复进度' : reviewingTodayItems ? '今天可以继续练，明日再独立复查' : '已经完成今天的确认，继续练习不会重复累计',
       color: '#b9674f',
       words: entries.map(([reviewKey, record]) => {
         const originalLesson = lessons.find((item) => item.id === record.lessonId)
@@ -1278,11 +1300,12 @@ function App() {
           : { spanish: record.spanish, chinese: record.chinese, reviewKey, source: { ...PHRASE_SOURCE } }
       }),
     }
-  }, [dueMistakeEntries.length, mistakeReviewMode, reviewPool, todayMistakeEntries.length])
+  }, [mistakeReviewMode, reviewPool, reviewToday, reviewingDueMistakes, reviewingMaintenance, todayMistakeEntries.length])
   const mistakeAttempts = useMemo(() => Object.values(mistakeBank).reduce((total, item) => total + item.count, 0), [mistakeBank])
   const activeReviewWasTrimmed = activeSession?.lessonId === 'mistake-review' && Boolean(mistakeLesson) && activeSession.order.length !== mistakeLesson!.words.length
-  const continueLabel = activeSession
-    ? `${activeSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : activeSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : activeSession.order.length}`
+  const resumableMainSession = activeSession ?? pausedMainSession
+  const continueLabel = resumableMainSession
+    ? `${resumableMainSession.lessonId === 'mistake-review' ? '继续错题复习' : '继续上次练习'} · ${activeReviewWasTrimmed ? 1 : resumableMainSession.index + 1}/${activeReviewWasTrimmed ? mistakeLesson!.words.length : resumableMainSession.order.length}`
     : (recommendedMainMastery.recall || recommendedMainMastery.listen) && recommendedPendingMode
       ? `继续${masteryModeLabel(recommendedPendingMode)} · ${recommendedMainLesson.title}`
       : completed.includes(practiceState.lastLessonId)
@@ -1297,6 +1320,7 @@ function App() {
   const independentRate = completedWords && mode !== 'copy' ? Math.round(independentCorrect / completedWords * 100) : null
   const wpm = elapsedSeconds ? Math.round((correctKeystrokes / 5) / (elapsedSeconds / 60)) : 0
   const adaptiveRound = Boolean(adaptiveLevelFromLessonId(lesson.id))
+  const maintenanceReviewRound = lesson.id === 'mistake-review' && lesson.title === '恢复后巩固复查'
   const catalogLesson = adaptiveRound ? null : lessons.find((item) => item.id === lesson.id) ?? null
   const masteryScopeWords = catalogLesson?.words ?? lesson.words
   const itemEvidence: LessonMastery = lesson.id === 'mistake-review' ? {} : {
@@ -1355,6 +1379,11 @@ function App() {
       track: practiceTrackForLesson(targetLesson),
       onboarding: session?.onboarding === true,
       mistake_review: targetLesson.id === 'mistake-review',
+      review_kind: targetLesson.id !== 'mistake-review'
+        ? 'none' as const
+        : targetLesson.title === '恢复后巩固复查'
+          ? 'maintenance' as const
+          : 'recovery' as const,
       queue_size: targetLesson.words.length,
     }
   }
@@ -1393,7 +1422,7 @@ function App() {
     const nextCompleted = readCompletedLessons()
     const nextMasteryProgress = readMasteryProgress()
     const storedActiveSession = readActiveSession()
-    const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.values(nextMistakeBank).some(hasActiveReview) ? null : storedActiveSession
+    const nextActiveSession = storedActiveSession?.lessonId === 'mistake-review' && !Object.values(nextMistakeBank).some((record) => hasActiveReview(record) || hasActiveMaintenance(record)) ? null : storedActiveSession
     const nextPausedMainSession = readActiveSession(PAUSED_MAIN_SESSION_KEY)
     if (!nextActiveSession) localStorage.removeItem(ACTIVE_SESSION_KEY)
 
@@ -1731,7 +1760,10 @@ function App() {
     const recentHistory = recentRoundQueues[queueKey] ?? []
     const recentSets = recentHistory.map((queue) => new Set(queue))
     const priorityOrder = (pool: typeof candidates) => {
-      const isWeak = (item: (typeof candidates)[number]) => Boolean(mistakeBank[item.word.reviewKey!] && hasActiveReview(mistakeBank[item.word.reviewKey!]))
+      const isWeak = (item: (typeof candidates)[number]) => {
+        const mistake = mistakeBank[item.word.reviewKey!]
+        return Boolean(mistake && (hasActiveReview(mistake) || isMaintenanceDue(mistake, reviewToday)))
+      }
       const weakOrdered = weightedReviewOrder(pool.filter(isWeak), (item) => mistakeSamplingWeight(mistakeBank[item.word.reviewKey!], reviewToday))
       const unmasteredOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && !(wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen)))
       const stableOrdered = balancedLengthOrder(pool.filter((item) => !isWeak(item) && wordEvidence[item.word.reviewKey!]?.recall && wordEvidence[item.word.reviewKey!]?.listen))
@@ -2188,8 +2220,16 @@ function App() {
     if (mistakeLesson) begin(mistakeLesson, mistakeReviewMode, { skipIntroduction: true })
   }
 
+  function continueRemainingMistakeReview() {
+    if (mistakeLesson) begin(mistakeLesson, mistakeReviewMode, { skipIntroduction: true })
+  }
+
   function continuePractice() {
     if (resumeActivePractice()) return
+    if (pausedMainSession) {
+      resumePausedMainPractice()
+      return
+    }
     beginAdaptiveRound(recommendedMainLesson.level, practiceTrackForLesson(recommendedMainLesson), recommendedPracticeMode)
   }
 
@@ -2337,12 +2377,11 @@ function App() {
           elapsed_seconds: Math.max(1, Math.round(elapsedMs / 1000)),
         })
       }
-      if (lesson.id === 'mistake-review' && pausedMainSession) {
-        persistActiveSession(pausedMainSession)
-        persistPausedMainSession(null)
+      if (lesson.id === 'mistake-review') {
+        persistActiveSession(null)
       } else {
         persistActiveSession(null)
-        if (lesson.id !== 'mistake-review') persistPausedMainSession(null)
+        persistPausedMainSession(null)
       }
       const seconds = Math.max(1, Math.round(elapsedMs / 1000))
       setFinalElapsedSeconds(seconds)
@@ -2693,6 +2732,7 @@ function App() {
       <div className="mistake-record-list">
         {entries.map(([reviewKey, record]) => {
           const activeModes = activeReviewModes(record)
+          const maintenanceModes = (['recall', 'listen'] as const).filter((reviewMode) => record.maintenance[reviewMode])
           const target = recoveryTarget(record.count)
           const modeName = (reviewMode: Mode) => reviewMode === 'copy' ? '跟打' : reviewMode === 'recall' ? '看义' : '听音'
           return (
@@ -2700,14 +2740,23 @@ function App() {
               <div><strong>{record.spanish}</strong><span>{record.chinese}</span></div>
               <p>累计错 {record.count} 次 · 跟打 {record.wrongCounts.copy} · 看义 {record.wrongCounts.recall} · 听音 {record.wrongCounts.listen}</p>
               <p>独立答对 · 看义 {record.independentCorrectCounts.recall} · 听音 {record.independentCorrectCounts.listen}</p>
-              {activeModes.length ? (
+              {activeModes.length > 0 && (
                 <div className="mistake-recovery-lines">
                   {activeModes.map((reviewMode) => {
                     const progress = record.review[reviewMode]!
                     return <span key={reviewMode}>{modeName(reviewMode)}恢复 {progress.recoveryCount}/{target}<small>{progress.dueOn <= reviewToday ? '现在可确认' : `${progress.dueOn} 后确认`}</small></span>
                   })}
                 </div>
-              ) : <b className="mistake-resolved">已完成当前短期复查 · 历史保留</b>}
+              )}
+              {maintenanceModes.length > 0 && (
+                <div className="mistake-recovery-lines">
+                  {maintenanceModes.map((reviewMode: MemoryReviewMode) => {
+                    const progress = record.maintenance[reviewMode]!
+                    return <span key={`maintenance-${reviewMode}`}>{modeName(reviewMode)}巩固 {Math.min(progress.stage, 4)}/4<small>{progress.active ? progress.dueOn <= reviewToday ? '现在可抽查' : `${progress.dueOn} 后抽查` : '长期节点已完成'}</small></span>
+                  })}
+                </div>
+              )}
+              {!activeModes.length && !maintenanceModes.length && <b className="mistake-resolved">已完成当前短期复查 · 历史保留</b>}
             </article>
           )
         })}
@@ -2767,33 +2816,35 @@ function App() {
           </div>
 
           <div className="home-actions">
-            <section className={`mistake-card ${activeMistakeEntries.length ? '' : 'empty'}`}>
+            <section className={`mistake-card ${activeMistakeEntries.length || dueMaintenanceEntries.length ? '' : 'empty'}`}>
               <div className="mistake-icon"><RotateCcw size={22} /></div>
               <div>
                 <span className="section-kicker">错题本</span>
                 <h3>{dueMistakeEntries.length
                   ? `${dueMistakeEntries.length} 个到期错题`
+                  : dueMaintenanceEntries.length
+                    ? `${dueMaintenanceEntries.length} 个巩固复查`
                   : activeMistakeEntries.length
                     ? `${activeMistakeEntries.length} 个待后续复查`
                     : mistakeEntries.length
                       ? '当前待复习已完成'
                       : '目前没有错题'}</h3>
                 <p>{mistakeEntries.length
-                  ? `今日错题 ${todayMistakeEntries.length} 个 · 全部记录 ${mistakeEntries.length} 个 · 累计错 ${mistakeAttempts} 次`
+                  ? `今日错题 ${todayMistakeEntries.length} 个 · 到期巩固 ${dueMaintenanceEntries.length} 个 · 全部记录 ${mistakeEntries.length} 个`
                   : '练习中输错的内容会自动出现在这里，并永久保留记录。'}</p>
-                {activeMistakeEntries.length > 0 && (
+                {(activeMistakeEntries.length > 0 || dueMaintenanceEntries.length > 0) && (
                   <div className="mistake-statuses" aria-label="错题复习状态">
-                    <span className={dueMistakeEntries.length ? 'due' : ''}>现在复习 {dueMistakeEntries.length}</span>
+                    <span className={dueMistakeEntries.length ? 'due' : ''}>错题到期 {dueMistakeEntries.length}</span>
+                    <span className={!dueMistakeEntries.length && dueMaintenanceEntries.length ? 'due' : ''}>巩固到期 {dueMaintenanceEntries.length}</span>
                     <span>今日／稍后 {activeMistakeEntries.length - dueMistakeEntries.length}</span>
-                    <span>历史记录 {mistakeEntries.length}</span>
                   </div>
                 )}
-                {mistakeEntries.length > 0 && <button ref={mistakeLogButtonRef} className="mistake-record-link" onClick={() => setMistakeLogOpen(true)}>查看今日、待复习与全部记录</button>}
+                {mistakeEntries.length > 0 && <button ref={mistakeLogButtonRef} className="mistake-record-link" onClick={() => setMistakeLogOpen(true)}>查看待复习、巩固与全部记录</button>}
                 {activeSession?.lessonId === 'mistake-review' && pausedMainSession && (
                   <button className="resume-main-link" onClick={resumePausedMainPractice}>返回普通练习 · {pausedMainSession.index + 1}/{pausedMainSession.order.length}</button>
                 )}
               </div>
-              <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : dueMistakeEntries.length ? '开始到期错题复习' : todayMistakeEntries.length ? '巩固今日错题' : '巩固稍后复查词'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
+              <button disabled={!mistakeLesson} aria-label={activeSession?.lessonId === 'mistake-review' ? '继续错题复习' : dueMistakeEntries.length ? '开始到期错题复习' : dueMaintenanceEntries.length ? '开始历史巩固复查' : todayMistakeEntries.length ? '巩固今日错题' : '巩固稍后复查词'} onClick={continueMistakeReview}><ArrowRight size={19} /></button>
             </section>
           </div>
 
@@ -2901,8 +2952,8 @@ function App() {
           <div className="modal-backdrop mistake-log-backdrop" role="presentation" onClick={() => setMistakeLogOpen(false)}>
             <section ref={mistakeLogDialogRef} className="settings-sheet mistake-log-sheet" role="dialog" aria-modal="true" aria-labelledby="mistake-log-title" onClick={(event) => event.stopPropagation()}>
               <div className="sheet-handle" />
-              <div className="sheet-heading"><div><span className="section-kicker">错题本 + 永久错题库</span><h2 id="mistake-log-title">错题与恢复进度</h2></div><button className="icon-button" onClick={() => setMistakeLogOpen(false)} aria-label="关闭错题记录"><X size={20} /></button></div>
-              <p className="mistake-log-note">今天答对只用于即时巩固；到下一个学习日再独立答对，才会推进恢复。离开错题本后，累计历史仍保留。</p>
+              <div className="sheet-heading"><div><span className="section-kicker">错题本 + 巩固复查 + 永久库</span><h2 id="mistake-log-title">错题与恢复进度</h2></div><button className="icon-button" onClick={() => setMistakeLogOpen(false)} aria-label="关闭错题记录"><X size={20} /></button></div>
+              <p className="mistake-log-note">错误最早下一学习日确认；恢复后再按 3／7／21／60 天巩固抽查。使用提示不会推进，累计历史始终保留。</p>
 
               <section className="mistake-log-group due">
                 <div><span>待复习</span><b>{dueMistakeEntries.length}</b></div>
@@ -2914,6 +2965,13 @@ function App() {
                 <small>今天可以反复巩固，但不会靠短时记忆直接清除</small>
                 {mistakeRows(todayMistakeEntries)}
               </section>
+              {dueMaintenanceEntries.length > 0 && (
+                <section className="mistake-log-group maintenance">
+                  <div><span>巩固复查</span><b>{dueMaintenanceEntries.length}</b></div>
+                  <small>已经恢复的历史错词，按 3／7／21／60 天节点再次独立抽查</small>
+                  {mistakeRows(dueMaintenanceEntries)}
+                </section>
+              )}
               {laterMistakeEntries.length > 0 && (
                 <section className="mistake-log-group later">
                   <div><span>稍后复查</span><b>{laterMistakeEntries.length}</b></div>
@@ -2925,7 +2983,7 @@ function App() {
                 <summary><span>全部错题库</span><b>{mistakeEntries.length} 个词 · 累计错 {mistakeAttempts} 次</b></summary>
                 {mistakeRows(mistakeEntries)}
               </details>
-              {mistakeLesson && <button className="primary-button" onClick={() => { setMistakeLogOpen(false); continueMistakeReview() }}>{dueMistakeEntries.length ? '开始到期错题复习' : todayMistakeEntries.length ? '继续巩固今日错题' : '继续巩固稍后复查词'} <ArrowRight size={18} /></button>}
+              {mistakeLesson && <button className="primary-button" onClick={() => { setMistakeLogOpen(false); continueMistakeReview() }}>{dueMistakeEntries.length ? '开始到期错题复习' : dueMaintenanceEntries.length ? '开始历史巩固复查' : todayMistakeEntries.length ? '继续巩固今日错题' : '继续巩固稍后复查词'} <ArrowRight size={18} /></button>}
             </section>
           </div>
         )}
@@ -3107,7 +3165,7 @@ function App() {
         <main ref={completionMainRef}>
           <div className={`completion-burst ${lessonMasteredAfterRound ? 'mastered' : ''}`}>
             <Check size={28} strokeWidth={2.7} />
-            <span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}<b>{isOnboardingRound ? '首轮 8 词已完成' : lesson.id === 'mistake-review' ? '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</b></span>
+            <span>{lessonMasteredAfterRound ? '¡Dominado!' : '¡Muy bien!'}<b>{isOnboardingRound ? '首轮 8 词已完成' : lesson.id === 'mistake-review' ? maintenanceReviewRound ? '巩固复查完成' : '错题复习完成' : lessonMasteredAfterRound ? '本轮内容已掌握' : '本轮完成'}</b></span>
           </div>
           <h1>{lesson.title}</h1>
           <p>你完成了 {isOnboardingRound ? completedWords : lesson.words.length} 个表达，出现 {mistakes} 次重试。</p>
@@ -3122,8 +3180,12 @@ function App() {
           {lesson.id === 'mistake-review' && (
             <p className={`review-result ${reviewCorrectCount === lesson.words.length ? 'clean' : ''}`}>
               {reviewCorrectCount > 0
-                ? `本轮有 ${reviewCorrectCount} 个获得一次跨日确认；达到各自恢复次数后才会离开错题本。`
-                : '本轮完成了当天巩固；同日答对不会清除，下一学习日再独立复查。'}
+                ? maintenanceReviewRound
+                  ? `本轮有 ${reviewCorrectCount} 个完成了一个长期巩固节点；下一次会按新的间隔到期。`
+                  : `本轮有 ${reviewCorrectCount} 个获得一次跨日确认；达到各自恢复次数后才会离开错题本。`
+                : maintenanceReviewRound
+                  ? '本轮尚未获得有效巩固确认；使用提示不会推进，下次继续从到期节点复查。'
+                  : '本轮完成了当天巩固；同日答对不会清除，下一学习日再独立复查。'}
             </p>
           )}
           <div className="result-grid">
@@ -3146,7 +3208,21 @@ function App() {
               {installHint && <p className="install-hint" aria-live="polite">{installHint}</p>}
             </div>
           ) : lesson.id === 'mistake-review' ? (
-            <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>
+            <>
+              {(reviewingDueMistakes || reviewingMaintenance) && mistakeLesson
+                ? <button className="primary-button" onClick={continueRemainingMistakeReview}>{mistakeReviewMode === mode ? '继续完成' : '继续'}{masteryModeLabel(mistakeReviewMode)}{reviewingMaintenance ? '巩固' : '错题'} · {mistakeLesson.words.length} 项 <ArrowRight size={19} /></button>
+                : pausedMainSession
+                  ? <button className="primary-button" onClick={resumePausedMainPractice}>继续之前的练习 <ArrowRight size={19} /></button>
+                  : <button className="primary-button" onClick={() => setScreen('home')}>回到今天 <Home size={19} /></button>}
+              {(reviewingDueMistakes || reviewingMaintenance) && mistakeLesson && (
+                <p className="enter-hint">{mistakeReviewMode === mode
+                  ? `本轮仍有 ${mistakeLesson.words.length} 个未获得${reviewingMaintenance ? '巩固' : '跨日'}确认，完成后再返回普通练习。`
+                  : `当前通道已完成，先处理仍到期的${masteryModeLabel(mistakeReviewMode)}${reviewingMaintenance ? '巩固' : '错题'}，再返回普通练习。`}</p>
+              )}
+              {(reviewingDueMistakes || reviewingMaintenance) && mistakeLesson && pausedMainSession && (
+                <button className="text-button" onClick={resumePausedMainPractice}>暂时返回之前的练习</button>
+              )}
+            </>
           ) : copyWeakRoundWords.length ? (
             <>
               <button className="primary-button" onClick={reinforceCopyWeakWords}>先巩固跟打错词 · {copyWeakRoundWords.length} 项 <RotateCcw size={18} /></button>

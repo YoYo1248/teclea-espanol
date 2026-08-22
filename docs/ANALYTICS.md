@@ -42,14 +42,14 @@ VITE_POSTHOG_HOST=https://eu.i.posthog.com
 | `app_opened` | 每次启动 | 访问、回访基数 |
 | `practice_started` | 新开或恢复一轮 | 启动转化 |
 | `practice_input_started` | 进入本次练习后首次输入 | 排除只打开未开始 |
-| `onboarding_checkpoint_completed` | 新用户完成前 3 项 | 首次体验转化 |
+| `onboarding_checkpoint_completed` | 新用户完成首轮 8 项 | 首次体验转化 |
 | `practice_round_completed` | 完成预热或完整轮次 | 激活、表现、留存 |
 | `practice_exited` | 中途回首页 | 放弃位置和轮次长度 |
 | `challenge_saved` | 创建或调整挑战 | 目标功能使用 |
 | `install_result` | 触发添加主屏幕 | PWA 安装意愿 |
 | `sync_enabled` | 成功创建或连接同步 | 跨设备需求 |
 
-事件只有等级、模式、轮次项目数、耗时和错误数等枚举或数值属性。代码明确关闭自动点击、页面自动采集、录屏、热力图、性能和异常采集，并移除完整 URL、来源页和营销参数。
+练习事件使用 `review_kind = none | recovery | maintenance` 区分普通练习、错误恢复和恢复后巩固。事件只有等级、模式、复习类型、轮次项目数、耗时和错误数等枚举或数值属性，不包含具体词条、卡片 ID 或用户输入。代码明确关闭自动点击、页面自动采集、录屏、热力图、性能和异常采集，并移除完整 URL、来源页和营销参数。
 
 ## 为什么不用 Firebase
 

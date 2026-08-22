@@ -39,6 +39,9 @@ for (const control of requiredPrivacyControls) {
   if (!analytics.includes(control)) throw new Error(`Missing analytics privacy control: ${control}`)
 }
 
+if (!analytics.includes("review_kind: 'none' | 'recovery' | 'maintenance'")) throw new Error('Analytics must distinguish recovery from maintenance without card identity')
+if (!docs.includes('review_kind = none | recovery | maintenance')) throw new Error('Analytics documentation must describe anonymous review-kind aggregation')
+
 for (const forbidden of ['spanish:', 'chinese:', 'typed:', 'sync_code:', 'lesson_id:', 'word:']) {
   if (analytics.includes(forbidden)) throw new Error(`Sensitive analytics property is forbidden: ${forbidden}`)
 }

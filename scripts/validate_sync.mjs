@@ -84,6 +84,7 @@ try {
   assert.deepEqual(merged.masteryProgress['a1-one'], { recall: true, listen: true })
   assert.equal(merged.mistakeBank.active.count, 2)
   assert.equal(merged.mistakeBank.resolved.review.listen.active, false)
+  assert.equal(merged.mistakeBank.resolved.maintenance.listen.active, true)
   assert.equal(merged.mistakeBank.resolved.count, 1)
   assert.equal(merged.activeSession.lessonId, 'a1-two')
   assert.equal(merged.pausedMainSession.lessonId, 'a1-one')
