@@ -15,6 +15,8 @@ try {
     pullSync,
     pushSync,
   } = await vite.ssrLoadModule('/src/sync.ts')
+  const { lessons } = await vite.ssrLoadModule('/src/data.ts')
+  const { encodeWordEvidence } = await vite.ssrLoadModule('/src/wordEvidence.ts')
 
   const session = (lessonId, index) => ({
     lessonId,
@@ -44,7 +46,7 @@ try {
   })
 
   const local = {
-    version: 3,
+    version: 4,
     updatedAt: 100,
     practiceState: { lastMode: 'copy', lastLessonId: 'a1-one', dailyWords: { '2026-08-19': 2 } },
     mistakeBank: {
@@ -53,6 +55,8 @@ try {
     mistakeResolvedAt: { resolved: 150 },
     completed: ['a1-zero'],
     masteryProgress: { 'a1-one': { recall: true } },
+    wordEvidence: { 'a1-one::uno': 3 },
+    recentRoundQueues: { 'A1:main:全部:全部': [['a1-one::uno']] },
     activeSession: session('a1-one', 0),
     pausedMainSession: null,
     accentMode: 'strict',
@@ -60,7 +64,7 @@ try {
     speechRate: 0.8,
   }
   const remote = {
-    version: 3,
+    version: 4,
     updatedAt: 200,
     practiceState: { lastMode: 'listen', lastLessonId: 'a1-two', dailyWords: { '2026-08-19': 3, '2026-08-18': 5 } },
     mistakeBank: {
@@ -70,6 +74,8 @@ try {
     mistakeResolvedAt: {},
     completed: ['a1-two'],
     masteryProgress: { 'a1-one': { listen: true } },
+    wordEvidence: { 'a1-one::uno': 5, 'a1-two::dos': 7 },
+    recentRoundQueues: { 'A1:main:全部:全部': [['a1-two::dos'], ['a1-one::uno']] },
     activeSession: session('a1-two', 1),
     pausedMainSession: session('a1-one', 0),
     accentMode: 'lenient',
@@ -82,6 +88,15 @@ try {
   assert.deepEqual(merged.practiceState.dailyWords, { '2026-08-19': 3, '2026-08-18': 5 })
   assert.deepEqual(merged.completed.sort(), ['a1-two', 'a1-zero'])
   assert.deepEqual(merged.masteryProgress['a1-one'], { recall: true, listen: true })
+  assert.deepEqual(merged.wordEvidence, { 'a1-one::uno': 7, 'a1-two::dos': 7 })
+  assert.deepEqual(merged.recentRoundQueues, remote.recentRoundQueues)
+  const desktopThirtyPercent = Object.fromEntries(Array.from({ length: 10 }, (_, index) => [`a1::word-${index}`, index < 3 ? 7 : 1]))
+  const phoneEmpty = { ...local, wordEvidence: {} }
+  const desktopWithProgress = { ...remote, wordEvidence: desktopThirtyPercent }
+  const phoneAfterScan = mergeSyncSnapshots(phoneEmpty, desktopWithProgress)
+  const syncedMastered = Object.values(phoneAfterScan.wordEvidence).filter((flags) => (flags & 6) === 6).length
+  assert.equal(syncedMastered / Object.keys(phoneAfterScan.wordEvidence).length, .3)
+  assert.deepEqual(mergeSyncSnapshots(desktopWithProgress, phoneEmpty).wordEvidence, desktopThirtyPercent)
   assert.equal(merged.mistakeBank.active.count, 2)
   assert.equal(merged.mistakeBank.resolved.review.listen.active, false)
   assert.equal(merged.mistakeBank.resolved.maintenance.listen.active, true)
@@ -100,6 +115,8 @@ try {
     },
   }
   delete legacyRemote.masteryProgress
+  delete legacyRemote.wordEvidence
+  delete legacyRemote.recentRoundQueues
   delete legacyRemote.mistakeResolvedAt
   delete legacyRemote.activeSession
   delete legacyRemote.pausedMainSession
@@ -107,8 +124,15 @@ try {
   const legacyMerged = mergeSyncSnapshots(local, legacyRemote)
   assert.equal(legacyMerged.activeSession.lessonId, 'a1-one')
   assert.equal(legacyMerged.speechRate, 0.8)
+  assert.deepEqual(legacyMerged.wordEvidence, local.wordEvidence)
   assert.equal(legacyMerged.mistakeBank.legacy.wrongCounts.listen, 3)
   assert.equal(legacyMerged.mistakeBank.legacy.review.listen.active, true)
+
+  const v3Remote = { ...remote, version: 3 }
+  delete v3Remote.wordEvidence
+  delete v3Remote.recentRoundQueues
+  assert.deepEqual(mergeSyncSnapshots(local, v3Remote).wordEvidence, local.wordEvidence)
+  assert.deepEqual(mergeSyncSnapshots(local, v3Remote).recentRoundQueues, local.recentRoundQueues)
 
   const code = generateSyncCode()
   assert.equal(code.length, 20)
@@ -136,6 +160,15 @@ try {
   assert.ok(encryptedRecord.blob)
   assert.equal(JSON.stringify(encryptedRecord).includes('a1-one'), false)
   assert.deepEqual(await pullSync(code), local)
+
+  const normalizeTarget = (value) => value.toLocaleLowerCase('es-ES').normalize('NFC').replace(/[¿?¡!.,;:]/g, '').replace(/\s+/g, ' ').trim()
+  const fullWordEvidence = encodeWordEvidence(Object.fromEntries(lessons.flatMap((lesson) => lesson.words.map((word) => [
+    word.reviewKey ?? `${lesson.id}::${normalizeTarget(word.spanish)}`,
+    { copyCompletedAt: 1, recall: true, listen: true },
+  ]))))
+  const fullSnapshot = { ...local, wordEvidence: fullWordEvidence }
+  await pushSync(code, fullSnapshot)
+  assert.ok(encryptedRecord.blob.length < 200_000, `Full 2,200-card evidence payload is too large: ${encryptedRecord.blob.length}`)
   globalThis.fetch = originalFetch
 
   process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.test'
@@ -175,6 +208,7 @@ try {
   const space = 'a'.repeat(64)
   const auth = 'b'.repeat(64)
   assert.equal((await invokeApi({ method: 'GET', auth: '', space })).status, 401)
+  assert.equal((await invokeApi({ method: 'PUT', auth, body: { space, blob: 'x'.repeat(500_001), updatedAt: 122 } })).status, 400)
   assert.equal((await invokeApi({ method: 'PUT', auth, body: { space, blob: 'ciphertext', updatedAt: 123 } })).status, 200)
   assert.deepEqual(redisCommands.at(-1).slice(0, 4), ['SET', `teclea:sync:${space}`, JSON.stringify({ auth, blob: 'ciphertext', updatedAt: 123 }), 'EX'])
   const read = await invokeApi({ method: 'GET', auth, space })

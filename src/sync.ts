@@ -1,8 +1,10 @@
 import QRCode from 'qrcode'
 import { deactivateReview, normalizeMistakeRecord, type MistakeRecord } from './mistakeReview'
+import { mergeSyncWordEvidence, type SyncWordEvidence } from './wordEvidence'
 
 export type SyncMode = 'copy' | 'recall' | 'listen'
 export type SyncSpeechRate = 0.55 | 0.8 | 1
+export type SyncRecentRoundQueues = Record<string, string[][]>
 
 export type SyncPracticeState = {
   lastMode: SyncMode
@@ -30,13 +32,15 @@ export type SyncActivePracticeSession = {
 }
 
 export type SyncSnapshot = {
-  version: 3
+  version: 4
   updatedAt: number
   practiceState: SyncPracticeState
   mistakeBank: Record<string, SyncMistakeRecord>
   mistakeResolvedAt: Record<string, number>
   completed: string[]
   masteryProgress: Record<string, Partial<Record<'recall' | 'listen', true>>>
+  wordEvidence: SyncWordEvidence
+  recentRoundQueues: SyncRecentRoundQueues
   activeSession: SyncActivePracticeSession | null
   pausedMainSession: SyncActivePracticeSession | null
   accentMode: 'strict' | 'lenient'
@@ -44,10 +48,12 @@ export type SyncSnapshot = {
   speechRate: SyncSpeechRate
 }
 
-type CompatibleSyncSnapshot = Omit<SyncSnapshot, 'version' | 'mistakeResolvedAt' | 'masteryProgress' | 'activeSession' | 'pausedMainSession' | 'speechRate'> & {
-  version: 1 | 2 | 3
+type CompatibleSyncSnapshot = Omit<SyncSnapshot, 'version' | 'mistakeResolvedAt' | 'masteryProgress' | 'wordEvidence' | 'recentRoundQueues' | 'activeSession' | 'pausedMainSession' | 'speechRate'> & {
+  version: 1 | 2 | 3 | 4
   mistakeResolvedAt?: SyncSnapshot['mistakeResolvedAt']
   masteryProgress?: SyncSnapshot['masteryProgress']
+  wordEvidence?: SyncSnapshot['wordEvidence']
+  recentRoundQueues?: SyncSnapshot['recentRoundQueues']
   activeSession?: SyncSnapshot['activeSession']
   pausedMainSession?: SyncSnapshot['pausedMainSession']
   speechRate?: SyncSnapshot['speechRate']
@@ -103,7 +109,7 @@ async function encryptSnapshot(snapshot: SyncSnapshot, key: CryptoKey) {
 }
 
 function validateSnapshot(value: unknown): CompatibleSyncSnapshot {
-  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== 3) || typeof value.updatedAt !== 'number') {
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2 && value.version !== 3 && value.version !== 4) || typeof value.updatedAt !== 'number') {
     throw new Error('同步数据版本不兼容')
   }
   if (!isRecord(value.practiceState)
@@ -119,7 +125,7 @@ function validateSnapshot(value: unknown): CompatibleSyncSnapshot {
       && typeof record.count === 'number'
       && typeof record.lastWrongAt === 'number'
       && (record.lastMode === 'copy' || record.lastMode === 'recall' || record.lastMode === 'listen')
-      && (value.version !== 3 || normalizeMistakeRecord(record) !== null))
+      && ((value.version !== 3 && value.version !== 4) || normalizeMistakeRecord(record) !== null))
     || !Array.isArray(value.completed)
     || !value.completed.every((id) => typeof id === 'string')
     || (value.accentMode !== 'strict' && value.accentMode !== 'lenient')
@@ -128,6 +134,11 @@ function validateSnapshot(value: unknown): CompatibleSyncSnapshot {
   }
   if (value.mistakeResolvedAt !== undefined && (!isRecord(value.mistakeResolvedAt) || !Object.values(value.mistakeResolvedAt).every((timestamp) => typeof timestamp === 'number'))) throw new Error('同步数据已损坏')
   if (value.masteryProgress !== undefined && !isRecord(value.masteryProgress)) throw new Error('同步数据已损坏')
+  if (value.version === 4 && (!isRecord(value.wordEvidence)
+    || !Object.values(value.wordEvidence).every((flags) => Number.isInteger(flags) && (flags as number) >= 1 && (flags as number) <= 7))) throw new Error('同步数据已损坏')
+  if (value.version === 4 && (!isRecord(value.recentRoundQueues)
+    || !Object.values(value.recentRoundQueues).every((queues) => Array.isArray(queues)
+      && queues.every((queue) => Array.isArray(queue) && queue.every((cardId) => typeof cardId === 'string'))))) throw new Error('同步数据已损坏')
   if (value.speechRate !== undefined && value.speechRate !== 0.55 && value.speechRate !== 0.8 && value.speechRate !== 1) throw new Error('同步数据已损坏')
   return value as CompatibleSyncSnapshot
 }
@@ -191,9 +202,9 @@ function mergeMistakeState(local: SyncSnapshot, remote: CompatibleSyncSnapshot) 
 export function mergeSyncSnapshots(local: SyncSnapshot, remote: CompatibleSyncSnapshot): SyncSnapshot {
   const remoteIsNewer = remote.updatedAt > local.updatedAt
   const mistakeState = mergeMistakeState(local, remote)
-  const remoteHasSessionState = remote.version === 2 || remote.version === 3
+  const remoteHasSessionState = remote.version === 2 || remote.version === 3 || remote.version === 4
   return {
-    version: 3,
+    version: 4,
     updatedAt: Math.max(local.updatedAt, remote.updatedAt),
     practiceState: {
       ...(remoteIsNewer ? remote.practiceState : local.practiceState),
@@ -202,6 +213,8 @@ export function mergeSyncSnapshots(local: SyncSnapshot, remote: CompatibleSyncSn
     ...mistakeState,
     completed: Array.from(new Set([...local.completed, ...remote.completed.filter((id): id is string => typeof id === 'string')])),
     masteryProgress: mergeMasteryProgress(local.masteryProgress, remote.masteryProgress),
+    wordEvidence: mergeSyncWordEvidence(local.wordEvidence, remote.wordEvidence),
+    recentRoundQueues: remoteIsNewer && remote.recentRoundQueues ? remote.recentRoundQueues : local.recentRoundQueues,
     activeSession: remoteIsNewer && remoteHasSessionState ? (remote.activeSession ?? null) : local.activeSession,
     pausedMainSession: remoteIsNewer && remoteHasSessionState ? (remote.pausedMainSession ?? null) : local.pausedMainSession,
     accentMode: remoteIsNewer && (remote.accentMode === 'strict' || remote.accentMode === 'lenient') ? remote.accentMode : local.accentMode,

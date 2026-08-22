@@ -3,6 +3,7 @@ const RESPONSE_HEADERS = {
   'cache-control': 'no-store',
 }
 const SYNC_TTL_SECONDS = 400 * 24 * 60 * 60
+const MAX_SYNC_BLOB_LENGTH = 500_000
 
 function send(response, status, body) {
   Object.entries(RESPONSE_HEADERS).forEach(([name, value]) => response.setHeader(name, value))
@@ -62,7 +63,7 @@ export default async function handler(request, response) {
 
     if (request.method === 'PUT') {
       const body = parseBody(request)
-      if (!body || !validCredential(body.space) || typeof body.blob !== 'string' || body.blob.length > 200_000 || typeof body.updatedAt !== 'number') {
+      if (!body || !validCredential(body.space) || typeof body.blob !== 'string' || body.blob.length > MAX_SYNC_BLOB_LENGTH || typeof body.updatedAt !== 'number') {
         return send(response, 400, { error: '同步数据无效' })
       }
       const key = `teclea:sync:${body.space}`

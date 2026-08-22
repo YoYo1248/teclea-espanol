@@ -4,7 +4,7 @@ import { readLearningStage, readNewcomerCompletedItems, shouldResumeActiveSessio
 import { challengeDailyPlan } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from '../src/roundQueue.ts'
-import { normalizeWordEvidence } from '../src/wordEvidence.ts'
+import { decodeWordEvidence, encodeWordEvidence, mergeWordEvidence, normalizeWordEvidence } from '../src/wordEvidence.ts'
 import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
 import {
   addReviewDays,
@@ -148,6 +148,19 @@ assert(migratedEvidence.newRecall.copyCompletedAt === 1, '旧版无时间戳证�
 assert(migratedEvidence.legacyCompleted.copyCompletedAt === 1, '旧版已完成课程应保留首次跟打状态')
 const currentEvidence = normalizeWordEvidence({ recallOnly: { recall: true } }, { legacy: false })
 assert(!currentEvidence.recallOnly.copyCompletedAt, '新版看义证据不能替代首次跟打证据')
+const compactEvidence = encodeWordEvidence({
+  complete: { copyCompletedAt: 123, recall: true, listen: true, lastCorrectAt: 456 },
+  recallOnly: { recall: true },
+})
+assert(compactEvidence.complete === 7 && compactEvidence.recallOnly === 2, '同步应把逐词证据编码为紧凑位标记')
+const decodedEvidence = decodeWordEvidence(compactEvidence)
+assert(decodedEvidence.complete.copyCompletedAt === 1 && decodedEvidence.complete.recall && decodedEvidence.complete.listen, '手机应能从同步位标记恢复三种逐词证据')
+const mergedEvidence = mergeWordEvidence(
+  { complete: { copyCompletedAt: 123, recall: true, lastCorrectAt: 456 } },
+  { complete: { copyCompletedAt: 1, listen: true }, remoteOnly: { recall: true } },
+)
+assert(mergedEvidence.complete.copyCompletedAt === 123 && mergedEvidence.complete.lastCorrectAt === 456 && mergedEvidence.complete.listen, '同步应用时应保留本机详细时间并合并远端证据')
+assert(mergedEvidence.remoteOnly.recall, '远端独有的逐词证据必须写入本机')
 
 assert(!shouldMarkWordWeak('copy', false, false), '干净完成的跟打项不应进入薄弱集合')
 assert(shouldMarkWordWeak('copy', true, false), '跟打输错的项目应先留在跟打模式巩固')
@@ -320,6 +333,10 @@ assert(appSource.includes('const resumableMainSession = activeSession ?? pausedM
 assert(appSource.includes('words: entries.map(([reviewKey, record]) =>'), '专门错题轮应保留当前能力通道内的完整错词集合')
 assert(appSource.includes('const dueMaintenanceEntries =') && appSource.includes('开始历史巩固复查'), '恢复后的历史错词应进入独立的到期巩固队列')
 assert(appSource.includes("hasActiveReview(mistake) || isMaintenanceDue(mistake, reviewToday)"), '普通自适应练习也应提高到期维护词的抽取优先级')
+assert(appSource.includes('wordEvidence: encodeWordEvidence(wordEvidence)'), '同步快照必须包含电脑端逐词学习证据')
+assert(appSource.includes('recentRoundQueues,') && appSource.includes('setRecentRoundQueues(readRecentRoundQueues())'), '同步快照必须携带并恢复最近两轮队列')
+assert(appSource.includes('setWordEvidence(nextWordEvidence)'), '手机应用同步快照后必须立即刷新逐词学习证据')
+assert(/function saveWordEvidence\(nextEvidence: WordEvidence\) \{\s*scheduleSync\(\)/.test(appSource), '逐词学习证据变化必须主动安排跨设备同步')
 assert(recommendationDoc.includes('不按普通轮次的固定项数拆分'), '错题规则应记录保持完整连续轮次的产品决定')
 const mistakePlanDoc = readFileSync(new URL('../docs/MISTAKE_REVIEW_PLAN.md', import.meta.url), 'utf8')
 for (const requiredPlanSection of ['错误恢复（recovery）', '恢复后维护（maintenance）', '3／7／21／60', '历史数据兼容', '隐私与测量']) {

@@ -34,7 +34,7 @@ import {
 } from './learningStage'
 import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from './roundQueue'
 import { adaptiveRoundSize, medianItemLength, type RoundTimingRecord } from './roundSizing'
-import { normalizeWordEvidence, type WordEvidence } from './wordEvidence'
+import { decodeWordEvidence, encodeWordEvidence, mergeWordEvidence, normalizeWordEvidence, type WordEvidence } from './wordEvidence'
 import { initializeAnalytics, isAnalyticsConfigured, readAnalyticsConsent, trackAnalytics, updateAnalyticsConsent, type AnalyticsConsent } from './analytics'
 import { pressHoldInputDecision, type PressHoldPending } from './pressHoldInput'
 import {
@@ -849,13 +849,15 @@ function App() {
 
   syncCodeRef.current = syncCode
   latestSnapshotRef.current = {
-    version: 3,
+    version: 4,
     updatedAt: localUpdatedAtRef.current,
     practiceState,
     mistakeBank,
     mistakeResolvedAt,
     completed,
     masteryProgress,
+    wordEvidence: encodeWordEvidence(wordEvidence),
+    recentRoundQueues,
     activeSession,
     pausedMainSession,
     accentMode,
@@ -1402,6 +1404,7 @@ function App() {
   }
 
   function applySyncSnapshot(snapshot: SyncSnapshot) {
+    const nextWordEvidence = mergeWordEvidence(readWordEvidence(), decodeWordEvidence(snapshot.wordEvidence))
     localUpdatedAtRef.current = snapshot.updatedAt
     localStorage.setItem(LOCAL_UPDATED_KEY, String(snapshot.updatedAt))
     localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(snapshot.practiceState))
@@ -1409,6 +1412,8 @@ function App() {
     localStorage.setItem(MISTAKE_RESOLVED_KEY, JSON.stringify(snapshot.mistakeResolvedAt))
     localStorage.setItem('teclea-completed', JSON.stringify(snapshot.completed))
     localStorage.setItem(MASTERY_PROGRESS_KEY, JSON.stringify(snapshot.masteryProgress))
+    localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(nextWordEvidence))
+    localStorage.setItem(RECENT_ROUND_QUEUES_KEY, JSON.stringify(snapshot.recentRoundQueues))
     if (snapshot.activeSession) localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(snapshot.activeSession))
     else localStorage.removeItem(ACTIVE_SESSION_KEY)
     if (snapshot.pausedMainSession) localStorage.setItem(PAUSED_MAIN_SESSION_KEY, JSON.stringify(snapshot.pausedMainSession))
@@ -1431,6 +1436,8 @@ function App() {
     setMistakeResolvedAt(snapshot.mistakeResolvedAt)
     setCompleted(nextCompleted)
     setMasteryProgress(nextMasteryProgress)
+    setWordEvidence(nextWordEvidence)
+    setRecentRoundQueues(readRecentRoundQueues())
     setActiveSession(nextActiveSession)
     setPausedMainSession(nextPausedMainSession)
     setAccentMode(snapshot.accentMode)
@@ -1688,6 +1695,7 @@ function App() {
   }
 
   function saveWordEvidence(nextEvidence: WordEvidence) {
+    scheduleSync()
     setWordEvidence(nextEvidence)
     localStorage.setItem(WORD_EVIDENCE_KEY, JSON.stringify(nextEvidence))
   }
@@ -1778,6 +1786,7 @@ function App() {
     const nextRecentQueues = { ...recentRoundQueues, [queueKey]: [currentQueue, ...recentHistory].slice(0, 2) }
     setRecentRoundQueues(nextRecentQueues)
     localStorage.setItem(RECENT_ROUND_QUEUES_KEY, JSON.stringify(nextRecentQueues))
+    scheduleSync()
     const adaptiveLesson: Lesson = {
       id: `adaptive-${nextLevel}-${nextTrack}`,
       level: nextLevel,
