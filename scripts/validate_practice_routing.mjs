@@ -1,11 +1,21 @@
 import { readFileSync } from 'node:fs'
-import { masteryRecommendation } from '../src/masteryRouting.ts'
+import { masteryRecommendation, nextStageAfterSkippedReinforcement } from '../src/masteryRouting.ts'
 import { readLearningStage, readNewcomerCompletedItems, shouldResumeActiveSession } from '../src/learningStage.ts'
-import { challengeDailyPlan } from '../src/challengeMath.ts'
+import { challengeDailyPlan, challengePendingCardIds, challengeRoundSize, challengeTodayTarget } from '../src/challengeMath.ts'
 import { adaptiveRoundSize } from '../src/roundSizing.ts'
-import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, shouldMarkWordWeak } from '../src/roundQueue.ts'
+import { bucketByRecentQueues, hasCompletedIntroduction, itemsNeedingIntroduction, mixAdaptiveRound, shouldMarkWordWeak } from '../src/roundQueue.ts'
 import { decodeWordEvidence, encodeWordEvidence, mergeWordEvidence, normalizeWordEvidence } from '../src/wordEvidence.ts'
-import { pressHoldInputDecision } from '../src/pressHoldInput.ts'
+import { isConfirmedPressHold, pressHoldInputDecision, pressHoldKeyCandidate } from '../src/pressHoldInput.ts'
+import { practiceWordClassLabel } from '../src/wordClass.ts'
+import {
+  canonicalPracticeTarget,
+  LEGACY_PRACTICE_CARD_ID_REDIRECTS,
+  migratePracticeCardId,
+  migratePracticeCardIds,
+  migratePracticeNumberRecord,
+  migratePracticeTrueRecord,
+  practiceCardId,
+} from '../src/cardIdentity.ts'
 import {
   addReviewDays,
   hasActiveReview,
@@ -29,6 +39,7 @@ const failures = []
 const assert = (condition, message) => {
   if (!condition) failures.push(message)
 }
+const catalogPolicy = JSON.parse(readFileSync(new URL('../data/lexicon/catalog-policy.json', import.meta.url), 'utf8'))
 
 const newcomerConfig = {
   lessonId: 'primeros-pasos',
@@ -162,19 +173,95 @@ const mergedEvidence = mergeWordEvidence(
 assert(mergedEvidence.complete.copyCompletedAt === 123 && mergedEvidence.complete.lastCorrectAt === 456 && mergedEvidence.complete.listen, '同步应用时应保留本机详细时间并合并远端证据')
 assert(mergedEvidence.remoteOnly.recall, '远端独有的逐词证据必须写入本机')
 
+const firstDialogueCardId = practiceCardId('common-dialogue-a1-1', { spanish: 'buenos días' })
+const secondDialogueCardId = practiceCardId('common-dialogue-a1-1', { spanish: 'buenas tardes' })
+assert(firstDialogueCardId !== secondDialogueCardId, '同一编辑批次中的不同词必须拥有不同学习卡 ID')
+assert(
+  practiceCardId('adaptive-A1-main', { spanish: 'buenos días', practiceId: firstDialogueCardId }) === firstDialogueCardId,
+  '动态轮次必须保留原 canonical 学习卡 ID',
+)
+assert(
+  practiceCardId('common-dialogue-a1-1', { spanish: 'buenos días', reviewKey: 'common-a1-dialogue-editorial-009' }) === firstDialogueCardId,
+  '专业复核批次键不得替代用户学习卡 ID',
+)
+assert(
+  Object.keys(LEGACY_PRACTICE_CARD_ID_REDIRECTS).length === catalogPolicy.expectedLegacyPracticeCardRedirects,
+  `带冠词旧卡应有 ${catalogPolicy.expectedLegacyPracticeCardRedirects} 条显式学习证据重定向`,
+)
+assert(canonicalPracticeTarget('El menú') === 'menú', '带冠词旧目标应解析为裸词形 canonical 目标')
+assert(canonicalPracticeTarget('el ascensor') === 'ascensor', '酒店旧电梯目标应解析为裸词形 canonical 目标')
+assert(migratePracticeCardId('de-viaje::la estación') === 'common-travel-a1-1::estación', '旧出行卡 ID 应迁移到 canonical 车站卡')
+assert(migratePracticeCardId('en-el-hotel::el ascensor') === 'en-el-hotel::ascensor', '旧酒店电梯卡 ID 应迁移到规范化卡')
+assert(
+  practiceCardId('en-el-restaurante', { spanish: 'el agua' }) === 'common-food-a1-1::agua',
+  '运行时遇到旧场景卡时也必须沿重定向复用 canonical 学习证据',
+)
+const mergedCanonicalEvidence = normalizeWordEvidence({
+  'en-el-restaurante::el menú': { recall: true, copyCompletedAt: 20, lastCorrectAt: 100 },
+  'common-food-a1-2::menú': { listen: true, copyCompletedAt: 10, lastCorrectAt: 200 },
+}, { legacy: false, migrateCardId: migratePracticeCardId })
+assert(Object.keys(mergedCanonicalEvidence).length === 1, '旧卡和 canonical 卡的证据应合并为一条')
+assert(
+  mergedCanonicalEvidence['common-food-a1-2::menú']?.recall
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.listen
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.copyCompletedAt === 10
+    && mergedCanonicalEvidence['common-food-a1-2::menú']?.lastCorrectAt === 200,
+  '证据合并应保留两个能力通道、最早首次跟打和最新独立答对时间',
+)
+assert(
+  Object.keys(migratePracticeTrueRecord({ 'de-viaje::la estación': true, 'common-travel-a1-1::estación': true })).join(',') === 'common-travel-a1-1::estación',
+  '挑战看义完成记录应合并旧卡与 canonical 卡',
+)
+assert(
+  migratePracticeNumberRecord({ 'de-viaje::la estación': 2, 'common-travel-a1-1::estación': 1 })['common-travel-a1-1::estación'] === 2,
+  '挑战听写次数迁移应取较大值，避免重复卡被相加后虚假达标',
+)
+assert(
+  migratePracticeNumberRecord({ 'de-viaje::la estación': 2, 'common-travel-a1-1::estación': 1 }, 'sum')['common-travel-a1-1::estación'] === 3,
+  '错题次数迁移应能合并旧卡与 canonical 卡的累计次数',
+)
+assert(
+  migratePracticeCardIds(['de-viaje::la estación', 'common-travel-a1-1::estación'], true).length === 1,
+  '近期轮次和薄弱队列迁移后应能去除同一卡的旧 ID 重复',
+)
+
 assert(!shouldMarkWordWeak('copy', false, false), '干净完成的跟打项不应进入薄弱集合')
 assert(shouldMarkWordWeak('copy', true, false), '跟打输错的项目应先留在跟打模式巩固')
 assert(shouldMarkWordWeak('recall', false, true), '看义使用提示的项目应进入薄弱集合')
+assert(practiceWordClassLabel({ spanish: 'gente', chinese: '人', partOfSpeech: 'noun', source: {} }, '单词') === '名词', '已有词性应显示中文名称')
+assert(practiceWordClassLabel({ spanish: 'hablar', chinese: '说', source: {} }, '动词原形') === '动词', '动词专项应可靠标为动词')
+assert(practiceWordClassLabel({ spanish: 'por favor', chinese: '请', source: {} }, '短语') === '固定表达', '短语课程应显示为固定表达')
+assert(practiceWordClassLabel({ spanish: 'mesa', chinese: '桌子', article: 'la', source: {} }, '单词') === '名词', '带冠词的旧词应可靠标为名词')
+assert(practiceWordClassLabel({ spanish: 'mañana', chinese: '明天', source: {} }, '单词') === '单词', '未校验的旧词不应猜测具体词性')
 assert(shouldMarkWordWeak('listen', true, false), '听音输错的项目应进入薄弱集合')
 
 const mananaBase = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: null })
 assert(mananaBase.kind === 'wait' && mananaBase.pending.value === 'man', 'mañana 输入基础 n 时应进入等待而不是立即判错')
+const mananaKeyCandidate = pressHoldKeyCandidate({ key: 'n', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true })
+assert(mananaKeyCandidate?.value === 'man', 'macOS 长按应从 keydown 阶段预先记录 ñ 替换候选')
+assert(pressHoldKeyCandidate({ key: 'x', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true }) === null, '普通错误按键不应进入长按等待')
+assert(!isConfirmedPressHold(80, false), '短按并松开基础字母应立即判错')
+assert(isConfirmedPressHold(450, false), '持续按住超过阈值应确认长按')
+assert(isConfirmedPressHold(80, true), '系统重复键或组合输入信号应确认长按')
+const mananaFromKeydown = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaKeyCandidate })
+assert(mananaFromKeydown.kind === 'keep-waiting', 'keydown 预登记后收到基础 n 输入事件应继续等待')
+const mananaCompositionCommit = pressHoldInputDecision({ rawValue: 'man\u0303', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaKeyCandidate })
+assert(mananaCompositionCommit.kind === 'commit' && mananaCompositionCommit.value === 'mañ', '组合输入的分解 ñ 应规范化并正确提交')
 const mananaRepeat = pressHoldInputDecision({ rawValue: 'mannn', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
 assert(mananaRepeat.kind === 'keep-waiting', '长按 n 产生的重复基础字母事件应继续等待')
 const mananaReplacement = pressHoldInputDecision({ rawValue: 'mañ', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
 assert(mananaReplacement.kind === 'commit' && mananaReplacement.value === 'mañ', 'n 替换为 ñ 后应立即提交正确输入')
 const mananaContinued = pressHoldInputDecision({ rawValue: 'mana', acceptedValue: 'ma', targetValue: 'mañana', strict: true, idle: true, pending: mananaBase.kind === 'wait' ? mananaBase.pending : null })
 assert(mananaContinued.kind === 'commit', '等待期间继续输入其他字符应立即交回正常判定')
+
+const lenientMananaBase = pressHoldInputDecision({ rawValue: 'man', acceptedValue: 'ma', targetValue: 'mañana', strict: false, idle: true, pending: null })
+assert(lenientMananaBase.kind === 'wait', '忽略元音重音时 n→ñ 仍应进入长按替换等待')
+assert(pressHoldKeyCandidate({ key: 'n', acceptedValue: 'ma', targetValue: 'mañana', strict: false, idle: true })?.base === 'n', '宽松模式应从 keydown 识别 ñ 长按候选')
+const lenientUmlautBase = pressHoldInputDecision({ rawValue: 'pingu', acceptedValue: 'ping', targetValue: 'pingüino', strict: false, idle: true, pending: null })
+assert(lenientUmlautBase.kind === 'wait', '忽略元音重音时 u→ü 仍应进入长按替换等待')
+assert(pressHoldKeyCandidate({ key: 'u', acceptedValue: 'ping', targetValue: 'pingüino', strict: false, idle: true })?.base === 'u', '宽松模式应从 keydown 识别 ü 长按候选')
+assert(pressHoldInputDecision({ rawValue: 'cafe', acceptedValue: 'caf', targetValue: 'café', strict: false, idle: true, pending: null }).kind === 'commit', '宽松模式下 e→é 应直接提交，不进入长按等待')
+assert(pressHoldKeyCandidate({ key: 'e', acceptedValue: 'caf', targetValue: 'café', strict: false, idle: true }) === null, '宽松模式不应拦截可忽略的元音重音')
 
 const reviewWord = { lessonId: 'a1-basics', spanish: 'hola', chinese: '你好' }
 const firstWrong = recordWrongAttempt(undefined, reviewWord, 'recall', Date.parse('2026-08-20T10:00:00'), '2026-08-20')
@@ -274,11 +361,22 @@ assert(recentBuckets.fresh.map((item) => item.id).join(',') === 'fresh', '新鲜
 assert(recentBuckets.earlier.map((item) => item.id).join(',') === 'earlier', '上上轮候选分桶错误')
 assert(recentBuckets.immediate.map((item) => item.id).join(',') === 'immediate', '上一轮候选分桶错误')
 
+const abundantNewWords = Array.from({ length: 12 }, (_, index) => `new-${index + 1}`)
+const abundantReviewWords = Array.from({ length: 12 }, (_, index) => `review-${index + 1}`)
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 6).filter((item) => item.startsWith('new-')).length === 4, '6 项普通轮次应至少安排 4 个新词')
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 8).filter((item) => item.startsWith('new-')).length === 6, '8 项普通轮次应至少安排 6 个新词')
+assert(mixAdaptiveRound(abundantNewWords, abundantReviewWords, 12).filter((item) => item.startsWith('new-')).length === 8, '12 项普通轮次应至少安排 8 个新词')
+assert(mixAdaptiveRound(['new-only'], abundantReviewWords, 8).length === 8, '新词不足时应使用复习词补满轮次')
+assert(mixAdaptiveRound(abundantNewWords, [], 8).length === 8, '没有复习词时应继续使用新词补满轮次')
+
 assert(masteryRecommendation(69, true) === 'repeat', '69% 应继续当前模式')
 assert(masteryRecommendation(70, true) === 'reinforce', '70% 应进入薄弱项巩固')
 assert(masteryRecommendation(89, true) === 'reinforce', '89% 应进入薄弱项巩固')
 assert(masteryRecommendation(90, true) === 'advance', '90% 应推进到下一阶段')
 assert(masteryRecommendation(100, false) === 'repeat', '切换模式或使用提示后不应获得推进')
+assert(nextStageAfterSkippedReinforcement('copy').mode === 'recall' && !nextStageAfterSkippedReinforcement('copy').startNewRound, '跳过跟打巩固应进入同组看义拼写')
+assert(nextStageAfterSkippedReinforcement('recall').mode === 'listen' && !nextStageAfterSkippedReinforcement('recall').startNewRound, '跳过看义巩固应进入同组听音拼写')
+assert(nextStageAfterSkippedReinforcement('listen').mode === 'recall' && nextStageAfterSkippedReinforcement('listen').startNewRound, '跳过听音巩固应开始下一组')
 
 assert(adaptiveRoundSize('recall', []) === 8, '无计时历史时应使用 8 项初始轮次')
 assert(adaptiveRoundSize('recall', [
@@ -317,6 +415,13 @@ assert(inProgressChallengePlan.dailyItems === 4, '已有进度时每天学习项
 assert(inProgressChallengePlan.dailyMasteryActions === 7, '已有进度时每日拼写应只按剩余动作和缓冲计算')
 assert(inProgressChallengePlan.remainingMasteryActions === 60, '已有进度时应显示准确剩余动作数')
 
+const challengeCards = ['one', 'two', 'three', 'four']
+assert(challengePendingCardIds(challengeCards, 'recall', { one: true }, {}, 2).join(',') === 'two,three,four', '挑战看义轮只能抽尚未完成看义证据的词')
+assert(challengePendingCardIds(challengeCards, 'listen', {}, { one: 1, two: 0, three: 2, four: 1 }, 2).join(',') === 'two,one,four', '挑战听写应排除已达次数的词并优先练完成次数更少的词')
+assert(challengeRoundSize(8, 3, 20) === 3, '挑战轮不应超过今日剩余目标')
+assert(challengeRoundSize(8, 10, 4) === 4, '挑战轮不应超过当前待完成词数')
+assert(challengeTodayTarget(90, 10, 10, 0) === 11, '今日挑战目标不应因当天刚完成的次数被重复扣减而缩水')
+
 const recommendationDoc = readFileSync(new URL('../docs/PRACTICE_RECOMMENDATION.md', import.meta.url), 'utf8')
 for (const requiredSection of ['学习阶段判定', '首次跟打完成', '近期重复层', '新内容预热', '模式推进阈值', '队列持久化', '跨学习日错题恢复']) {
   assert(recommendationDoc.includes(requiredSection), `抽取规则文档缺少章节：${requiredSection}`)
@@ -330,7 +435,7 @@ assert(!appSource.includes('/3 个词'), '新手进度标签不能再硬编码�
 assert(!appSource.includes('className="mode-intro"'), '首轮完成后不应再插入额外模式教学卡片')
 assert(appSource.includes('continueRemainingMistakeReview') && appSource.includes("mistakeReviewMode === mode ? '继续完成' : '继续'"), '错题本应先完成同模式遗留项或继续下一到期通道')
 assert(appSource.includes('const resumableMainSession = activeSession ?? pausedMainSession'), '错题复习后返回首页时应仍可恢复此前暂停的普通练习')
-assert(appSource.includes('words: entries.map(([reviewKey, record]) =>'), '专门错题轮应保留当前能力通道内的完整错词集合')
+assert(appSource.includes('words: entries.map(([cardId, record]) =>'), '专门错题轮应保留当前能力通道内的完整错词集合')
 assert(appSource.includes('const dueMaintenanceEntries =') && appSource.includes('开始历史巩固复查'), '恢复后的历史错词应进入独立的到期巩固队列')
 assert(appSource.includes("hasActiveReview(mistake) || isMaintenanceDue(mistake, reviewToday)"), '普通自适应练习也应提高到期维护词的抽取优先级')
 assert(appSource.includes('wordEvidence: encodeWordEvidence(wordEvidence)'), '同步快照必须包含电脑端逐词学习证据')
@@ -352,7 +457,29 @@ assert(
   /onCompositionEnd=\{\(event\) => \{[\s\S]*?handleCommittedInput\(event\.currentTarget\.value\)/.test(appSource),
   '组合输入提交也必须经过长按重音等待判断',
 )
+assert(
+  !/onCompositionStart=\{\(\) => \{\s*cancelPressHoldReplacement\(\)/.test(appSource),
+  '系统开始组合输入时不应清除已登记的长按候选',
+)
 assert(/function cancelPressHoldReplacement\(\)[\s\S]*?pressHoldPendingRef\.current = null/.test(appSource), '取消长按等待时应同时清理待替换状态')
+assert(appSource.includes('按住 <kbd>Tab</kbd> 或鼠标长按上方字母区查看答案'), '桌面练习页应明确提示 Tab 和鼠标长按查看答案')
+assert(appSource.includes('长按上方字母区查看答案'), '触屏练习页应明确提示长按查看答案')
+assert(/className="letter-word"[\s\S]*?onPointerDown=\{startTouchReveal\}[\s\S]*?onPointerUp=\{stopTouchReveal\}/.test(appSource), '字母区应保留按住显示、松开隐藏答案的交互')
+assert(appSource.includes('暂不巩固，进入看义拼写') && appSource.includes('暂不巩固，进入听音拼写') && appSource.includes('暂不巩固，开始下一组'), '完成页应清楚标出跳过巩固后的下一阶段')
+assert(appSource.includes("word.article ? ` · ${word.article}` : ''"), '名词冠词元数据应显示在练习页，但不进入拼写目标')
+assert(appSource.includes('const normalizedMerged = applySyncSnapshot(merged)') && appSource.includes('pushSync(normalized, normalizedMerged)'), '云同步必须上传完成旧卡 ID 迁移后的快照')
+assert(/function openLevelPath\(nextLevel: LessonLevel\) \{\s*setLevelFilter\(nextLevel\)\s*beginAdaptiveRound/.test(appSource), '首页等级卡应按当前选择开新一组，而不是自动恢复旧练习')
+assert(appSource.includes("'challenge-active-home'") && appSource.includes('challenge-home-card'), '进行中的挑战应切换为挑战优先首页')
+assert(appSource.includes('今天还需 <strong>{challengeTodayRemaining}</strong> 次') && appSource.includes('challengeMinutesRemaining'), '挑战首页应突出今日剩余次数与预计时间')
+assert(appSource.includes('onClick={openChallengeSummary}>计划与明细</button>'), '挑战首页应保留计划与每日明细入口')
+assert(appSource.includes('制定学习挑战') && appSource.includes('继续自由练习'), '未创建挑战时应同时保留自由练习与挑战入口')
+assert(appSource.includes('每天打开，就知道今天该练什么') && appSource.includes('challenge-invite-card'), '未创建挑战时首页应提供清晰的计划型挑战入口')
+assert(appSource.includes('hero-lexicon-meta') && appSource.includes('考试路线 {examRouteCardCount}') && appSource.includes('Vida 生活 {lifeRouteCardCount}') && appSource.includes('超市专题 {supermarketCardCount}'), '首页应显示动态双词库与 Vida 超市规模')
+assert(appSource.includes('考试 {examRouteCardCount} · Vida {lifeRouteCardCount} · 超市 {supermarketCardCount}'), '挑战用户的首页词库栏也应显示 Vida 超市规模')
+assert(appSource.includes('rightRemainingShare - leftRemainingShare'), '挑战入口应按主线与动词专项的相对欠账调度，不继承首页临时筛选')
+assert(appSource.includes("lesson.id.startsWith('challenge-') && challengeTodayRemaining > 0"), '挑战完成页继续操作应回到挑战欠账调度，而不是退回普通抽词')
+assert(appSource.includes("? '今日复习'") && appSource.includes('个错题已经到期'), '到期错题应在首页获得更明确的复习提醒')
+assert(appSource.includes('<p className="completion-enter-shortcut"><kbd>Enter</kbd><span>直接继续</span></p>'), '所有完成页都应提示桌面用户可按 Enter 执行主操作')
 
 if (failures.length) {
   console.error(failures.join('\n'))

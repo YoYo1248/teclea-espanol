@@ -7,6 +7,7 @@ const sources = readJson('data/lexicon/sources.json')
 const framework = readJson('data/lexicon/framework.json')
 const policy = readJson('data/lexicon/catalog-policy.json')
 const schema = readJson('data/lexicon/candidate.schema.json')
+const professionalReviewSchema = readJson('data/lexicon/professional-review.schema.json')
 const examples = readJsonLines('data/lexicon/candidates.example.jsonl')
 const sourceIds = new Set(sources.sources.map((source) => source.id))
 const reviewBatchDirectory = 'data/lexicon/review-batches'
@@ -15,7 +16,7 @@ const reviewBatchFiles = fs.existsSync(reviewBatchDirectory)
   : []
 const reviewBatchRows = reviewBatchFiles.flatMap((file) => readJsonLines(`${reviewBatchDirectory}/${file}`))
 
-for (const required of ['cefr-coe', 'pcic-cervantes', 'corpes-rae-1.5', 'wordfreq-es-3.1.1', 'kaikki-es-2026-08-16']) {
+for (const required of ['cefr-coe', 'pcic-cervantes', 'corpes-rae-1.5', 'wordfreq-es-3.1.1', 'kaikki-es-2026-08-16', 'aesan-food-labels-2025', 'aesan-label-control-2026', 'alcampo-oriental-recipe-2024', 'rae-dle-tique-2026', 'rae-dle-datafono-2026', 'aena-passenger-controls-2026', 'aena-departures-bcn-2026', 'renfe-passenger-conditions-2026', 'dgt-infractions-2026', 'transportes-mobility-2026', 'boe-urban-leases-2026', 'cec-consumer-guarantees-2026', 'sanidad-primary-care-2026', 'carrefour-spices-2026', 'carrefour-household-2026', 'carrefour-personal-care-2026', 'carrefour-wheat-noodles-2026', 'oriental-market-pantry-2026', 'eci-fish-sauce-2026', 'ecoasia-rice-wine-2026']) {
   if (!sourceIds.has(required)) errors.push(`缺少来源定义: ${required}`)
 }
 if (sources.sources.some((source) => source.redistributeRawData && !source.license)) errors.push('允许再分发的来源必须记录许可')
@@ -27,6 +28,10 @@ if (policy.maximumWordsPerTarget !== 3) errors.push('当前产品约束应保持
 if (JSON.stringify(Object.keys(policy.minimumCardsByLevel)) !== JSON.stringify(LEVELS)) errors.push('目录最低等级基线不完整')
 if (JSON.stringify(Object.keys(policy.minimumCardsByKind)) !== JSON.stringify(KINDS)) errors.push('目录最低类型基线不完整')
 if (schema.properties?.frequency?.properties?.sourceId?.const !== 'wordfreq-es-3.1.1') errors.push('候选 schema 的频率来源漂移')
+if (professionalReviewSchema.properties?.catalogDigest?.pattern !== '^[a-f0-9]{64}$') errors.push('专业复核 schema 缺少内容摘要约束')
+if (JSON.stringify(schema.properties?.routeCandidates?.items?.enum) !== JSON.stringify(['life', 'exam'])) errors.push('候选 schema 缺少双词库路线')
+if (JSON.stringify(schema.properties?.lifeCandidates?.items?.properties?.module?.enum) !== JSON.stringify(['supermarket', 'mobility', 'settling', 'daily'])) errors.push('候选 schema 缺少多生活模块 placement')
+if (!policy.minimumCardsByRoute?.life || !policy.minimumCardsByRoute?.exam) errors.push('目录策略缺少生活／考试路线基线')
 if (!examples.length) errors.push('候选示例不能为空')
 for (const example of examples) {
   for (const key of schema.required ?? []) if (!(key in example)) errors.push(`候选示例缺少字段: ${key}`)
@@ -49,6 +54,10 @@ for (const candidate of reviewBatchRows) {
 if (!fs.existsSync('scripts/lexicon/export_wordfreq_candidates.py')) errors.push('缺少 wordfreq 导出脚本')
 if (!fs.existsSync('scripts/lexicon/audit_candidates.mjs')) errors.push('缺少候选审计脚本')
 if (!fs.existsSync('scripts/lexicon/prepare_review_queue.mjs')) errors.push('缺少人工复核队列脚本')
+if (!fs.existsSync('scripts/lexicon/generate_professional_review_sample.mjs')) errors.push('缺少专业复核样本脚本')
+if (!fs.existsSync('scripts/lexicon/import_professional_review_csv.mjs')) errors.push('缺少专业复核导入脚本')
+if (!fs.existsSync('scripts/validate_professional_reviews.mjs')) errors.push('缺少专业复核记录验证脚本')
+if (!fs.existsSync('scripts/lexicon/generate_release_readiness_report.mjs')) errors.push('缺少词库发布就绪审计脚本')
 if (!fs.existsSync('scripts/lexicon/stage_approved_candidates.mjs')) errors.push('缺少批准候选暂存脚本')
 
 const validCandidate = {

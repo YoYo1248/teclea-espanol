@@ -12,6 +12,36 @@
     "lemma": { "type": ["string", "null"] },
     "partOfSpeech": { "type": ["string", "null"] },
     "kindCandidate": { "enum": ["单词", "短语", "动词原形", null] },
+    "routeCandidates": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["life", "exam"] }
+    },
+    "lifeCandidate": {
+      "type": ["object", "null"],
+      "properties": {
+        "module": { "enum": ["supermarket", "mobility", "settling", "daily"] },
+        "tier": { "enum": ["L1", "L2", "L3"] },
+        "access": { "enum": ["free", "paid"] }
+      },
+      "required": ["module", "tier", "access"],
+      "additionalProperties": false
+    },
+    "lifeCandidates": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "module": { "enum": ["supermarket", "mobility", "settling", "daily"] },
+          "tier": { "enum": ["L1", "L2", "L3"] },
+          "access": { "enum": ["free", "paid"] }
+        },
+        "required": ["module", "tier", "access"],
+        "additionalProperties": false
+      }
+    },
     "frequency": {
       "type": "object",
       "required": ["sourceId", "rank", "zipf"],

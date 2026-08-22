@@ -68,9 +68,31 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .hero-card .eyebrow { margin: 37px 0 13px; color: #b6bdb5; }
 .hero-card h1 { margin: 0; font-size: clamp(39px, 11vw, 52px); line-height: 1.06; letter-spacing: -.045em; }
 .hero-card h1 em { font-family: Georgia, 'Times New Roman', serif; color: #ff8266; font-weight: 600; }
-.hero-subtitle { width: 92%; color: #b8bbb5; font-size: 15px; line-height: 1.7; margin: 18px 0 24px; }
+.hero-subtitle { width: 92%; color: #b8bbb5; font-size: 15px; line-height: 1.7; margin: 18px 0 7px; }
+.hero-lexicon-meta { position: relative; z-index: 1; margin: 0 0 20px; color: #ffae9b; font-size: 11px; font-weight: 750; line-height: 1.5; letter-spacing: .01em; }
 .primary-button { width: 100%; min-height: 54px; border: 0; border-radius: 17px; padding: 0 19px; display: flex; align-items: center; justify-content: center; gap: 9px; background: var(--red); color: white; font-size: 15px; font-weight: 700; box-shadow: 0 9px 24px rgba(239, 106, 76, .22); }
 .hero-card .primary-button { width: auto; min-width: 174px; position: relative; z-index: 1; }
+.challenge-home-card { min-height: 440px; border-radius: 30px; padding: 22px 22px 24px; color: #fffaf4; background: #242823; position: relative; overflow: hidden; }
+.challenge-home-card::after { content: 'ñ'; position: absolute; right: -22px; bottom: -75px; font: italic 220px/1 'Playfair Display', serif; color: rgba(255,255,255,.035); transform: rotate(-10deg); pointer-events: none; }
+.challenge-home-card > *:not(.hero-glow) { position: relative; z-index: 1; }
+.challenge-home-topline, .challenge-dayline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.challenge-plan-link { min-height: 34px; padding: 0 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(255,255,255,.055); color: #d5d7d1; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.challenge-brand-line { margin: 25px 0 14px; color: #b8bbb5; font-size: 14px; font-weight: 650; }
+.challenge-brand-line em { color: #ff927a; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; font-weight: 700; }
+.challenge-dayline { color: #ff9b84; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.challenge-dayline b { color: #b6bbb4; font-size: 11px; letter-spacing: 0; }
+.challenge-home-card h1 { margin: 12px 0 5px; font-size: clamp(34px, 9vw, 48px); line-height: 1.08; letter-spacing: -.045em; }
+.challenge-home-card h1 strong { color: #ff8266; font-size: 1.16em; }
+.challenge-home-summary { margin: 0; color: #b9bdb7; font-size: 12px; line-height: 1.55; }
+.challenge-today-progress { height: 9px; margin: 20px 0 17px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.1); }
+.challenge-today-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff7558, #ff9a80); box-shadow: 0 0 18px rgba(255,130,102,.28); transition: width .25s ease; }
+.challenge-home-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 20px; }
+.challenge-home-meta span { min-width: 0; padding: 11px 7px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); display: flex; flex-direction: column; gap: 3px; text-align: center; }
+.challenge-home-meta strong { color: #fffaf4; font-size: 18px; }
+.challenge-home-meta small { color: #aeb3ad; font-size: 9px; line-height: 1.25; }
+.challenge-home-card .primary-button { position: relative; z-index: 1; }
+.challenge-home-card.today-complete .challenge-today-progress span { background: #73ac98; }
+.challenge-home-card.today-complete h1 { color: #c7e3d8; }
 .primary-button:disabled { background: #d8d3ca; color: #9c9992; box-shadow: none; }
 
 .daily-row { width: calc(100% - 4px); margin: 17px 2px 28px; border: 0; border-bottom: 1px solid var(--line); padding: 8px 4px 22px; background: transparent; color: inherit; display: flex; align-items: center; justify-content: space-between; text-align: left; }
@@ -78,6 +100,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .daily-row strong { font-size: 29px; letter-spacing: -.04em; }
 .daily-row small { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
 .daily-hint { color: var(--muted); font-size: 11px; font-weight: 600; }
+.challenge-invite-card { width: calc(100% - 4px); margin: 17px 2px 28px; padding: 18px; border: 1px solid #f3b3a3; border-radius: 22px; background: linear-gradient(145deg, #fff7f2, #ffe8df); color: #282622; display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: left; box-shadow: 0 10px 26px rgba(203,83,55,.1); }
+.challenge-invite-copy { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.challenge-invite-copy strong { font-size: 17px; line-height: 1.35; letter-spacing: -.02em; }
+.challenge-invite-copy small { color: #716c64; font-size: 12px; line-height: 1.5; }
+.challenge-invite-steps { color: #bd513b; font-size: 10px; font-weight: 800; letter-spacing: .03em; }
+.challenge-invite-action { flex: 0 0 auto; min-height: 42px; padding: 0 13px; border-radius: 13px; background: var(--red); color: white; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 800; box-shadow: 0 7px 16px rgba(239,106,76,.2); }
 .mini-ring { --percent: 0deg; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--green) var(--percent), #ddd9d0 0); position: relative; }
 .mini-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--cream); }
 .mini-ring span { z-index: 1; font-size: 10px; font-weight: 700; }
@@ -168,6 +196,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .mode-card > button, .mistake-card > button { width: 38px; height: 38px; border: 0; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.6); color: var(--green); }
 .mistake-card > button { color: #a85d48; }
 .mistake-card > button:disabled { color: #a99d95; opacity: .55; }
+.mistake-card.due { border: 1px solid rgba(206,77,49,.24); background: #f6ddd2; box-shadow: 0 12px 30px rgba(184,82,57,.12); }
+.mistake-card.due .mistake-icon { background: #c9563e; box-shadow: 0 7px 18px rgba(169,64,42,.18); }
+.mistake-card.due .section-kicker { color: #bd4933; }
+.mistake-card.today { background: #eee2d8; }
+.mistake-card.scheduled { background: #ece7df; }
 .mistake-card.empty { background: #ebe7df; }
 .review-result { max-width: 520px; margin: 10px auto 18px; padding: 12px 15px; border-radius: 14px; background: #f2e4dd; color: #8b503f; font-size: 14px; font-weight: 700; }
 .review-result.clean { background: #deebe5; color: #34705f; }
@@ -228,6 +261,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .live-stats b { color: var(--ink); font-size: 15px; }
 .live-stats small { grid-column: 1 / -1; margin-top: 2px; font-size: 10px; color: #99968e; text-align: center; }
 .practice-options { display: flex; justify-content: center; gap: 7px; margin-top: 9px; }
+.accent-qa-banner { margin-bottom: 12px; padding: 12px 14px; border: 1px solid rgba(52,118,101,.24); border-radius: 16px; background: #e7f1ed; color: #315f53; display: flex; flex-direction: column; gap: 4px; line-height: 1.45; }
+.accent-qa-banner strong { font-size: 13px; }
+.accent-qa-banner span { font-size: 11px; }
+.accent-qa-banner small { color: #68877e; font-size: 10px; }
+.qa-exit-link { display: flex; justify-content: center; text-decoration: none; }
 .practice-options button { min-height: 31px; border: 1px solid var(--line); border-radius: 99px; background: rgba(255,255,255,.55); color: #74716a; padding: 0 11px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; }
 .practice-options button.lenient { border-color: rgba(79,111,174,.25); background: #e9edf5; color: #4f6797; }
 .spelling-rule { position: relative; margin-top: 8px; min-height: 40px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.5); display: grid; grid-template-columns: 35px 1fr; align-items: center; gap: 6px; }
@@ -241,7 +279,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .word-label { color: var(--muted); font-size: 12px; letter-spacing: .1em; }
 .word-stage h1 { margin: 18px 0 11px; font-size: clamp(42px, 13vw, 62px); line-height: 1.08; letter-spacing: -.045em; overflow-wrap: anywhere; }
 .word-stage h1.hidden-word { font-size: clamp(34px, 10vw, 48px); }
-.translation { color: var(--muted); font-size: 16px; margin: 12px 0 0; }
 .pronunciation-controls { width: min(252px, 100%); margin: 0 auto 11px; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(78px, .85fr); gap: 8px; }
 .pronunciation-controls button { min-width: 0; height: 38px; border: 1px solid var(--line); background: rgba(255,255,255,.72); border-radius: 99px; color: var(--green); display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; }
 .pronunciation-controls button:active { background: #e7f1ed; transform: translateY(1px); }
@@ -290,7 +327,18 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 .typing-stage.wrong { animation: word-shake .24s ease-in-out; border-color: rgba(210,73,53,.38); }
 .typing-stage.correct { border-color: rgba(52,118,101,.38); }
-.recall-prompt { margin: 13px 0 -2px; color: var(--ink); font-size: 23px; font-weight: 700; }
+.word-heading { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.word-class { padding: 3px 7px; border-radius: 99px; background: #eeeae2; color: #6f6b63; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+.meaning-slot {
+  min-height: 31px;
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.meaning-slot.waiting { color: #aaa69d; font-size: 13px; font-weight: 650; }
+.meaning-slot.confirmed { color: var(--green); animation: meaning-in .2s ease-out; }
 .letter-word {
   min-height: 94px;
   padding: 26px 0 17px;
@@ -330,6 +378,21 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   background: var(--red);
   animation: cursor-pulse 1s ease-in-out infinite;
 }
+.answer-reveal-hint {
+  margin: -5px 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  color: #817d75;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.answer-reveal-hint svg { flex: 0 0 auto; }
+.answer-reveal-hint kbd { min-width: 30px; padding: 2px 6px; border: 1px solid #d7d1c7; border-bottom-width: 2px; border-radius: 6px; background: #f5f1ea; color: #5f5b54; font: 800 9px/1.2 system-ui, sans-serif; }
+.answer-reveal-hint small { color: #a09b92; font-size: 9px; }
+.answer-reveal-hint.revealing { color: var(--green); }
 .keyboard-capture {
   position: absolute;
   left: 50%;
@@ -341,19 +404,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   opacity: .01;
   pointer-events: none;
 }
-.typing-stage .translation { margin: 0 0 13px; }
-.typing-stage .translation.revealed-meaning {
-  width: fit-content;
-  max-width: 100%;
-  margin: 0 auto 13px;
-  padding: 8px 13px;
-  border-radius: 11px;
-  background: #e7f1ed;
-  color: #2e6e5d;
-  font-weight: 700;
-  animation: meaning-in .2s ease-out;
-}
-.typing-stage .translation.revealed-meaning span { margin-right: 7px; color: #83a399; font-size: 11px; letter-spacing: .08em; }
 .typing-stage .accent-strip { justify-content: center; border-top: 1px solid var(--line); margin-top: 5px; padding-top: 14px; }
 .typing-feedback {
   min-height: 27px;
@@ -411,7 +461,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 .result-grid strong { font-size: 29px; }
 .result-grid span { color: var(--muted); font-size: 12px; margin-top: 3px; }
 .text-button { margin: 16px auto 0; border: 0; background: none; color: var(--muted); display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.completion-alternatives { margin-top: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; }
+.completion-alternatives .text-button { margin: 0; min-height: 32px; padding: 0 4px; }
 .enter-hint { margin: 9px 0 0 !important; color: var(--muted) !important; font-size: 12px !important; }
+.completion-enter-shortcut { display: none; }
 .mistake-summary { margin: -19px 0 28px; padding: 13px; border-radius: 17px; background: #f0e5df; display: flex; flex-wrap: wrap; gap: 7px; align-items: center; text-align: left; }
 .mistake-summary > span { width: 100%; color: #9b5b4d; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
 .mistake-summary b { padding: 6px 9px; border-radius: 9px; background: rgba(255,255,255,.58); font-size: 11px; }
@@ -582,7 +635,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .practice-main { padding: 4px 20px 104px; }
   .word-stage { padding: 13px 0 11px; }
   .word-stage h1 { margin: 7px 0 5px; font-size: 39px; }
-  .translation { margin-top: 5px; }
   .answer-panel { padding: 13px 14px 11px; }
   .answer-row input { height: 43px; }
   .accent-strip { padding-top: 8px; }
@@ -621,6 +673,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .hero-card h1 { max-width: 540px; font-size: clamp(48px, 5vw, 67px); }
   .hero-subtitle { max-width: 460px; font-size: 15px; }
   .hero-card .primary-button { min-width: 210px; min-height: 58px; }
+  .challenge-home-card { min-height: 520px; padding: 32px 30px; }
+  .challenge-home-card h1 { font-size: clamp(43px, 5vw, 58px); }
+  .challenge-home-card .primary-button { min-height: 58px; }
+  .challenge-active-home .challenge-home-overview { grid-column: 1; grid-row: 1 / span 3; }
   .daily-row {
     grid-column: 2;
     grid-row: 1;
@@ -644,6 +700,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .lesson-copy strong { font-size: 18px; }
   .lesson-copy > span { font-size: 11px; }
   .home-actions { grid-column: 2; grid-row: 3; margin-top: 0; grid-template-columns: minmax(0, 1fr); }
+  .challenge-active-home .home-actions { grid-row: 1; }
+  .challenge-active-home .course-section { grid-row: 2; }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 82px; padding: 17px 16px; }
   .mode-card h3, .mistake-card h3 { font-size: 16px; }
   .mode-card p, .mistake-card p { font-size: 11px; }
@@ -669,7 +727,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .rule-options button { height: 35px; font-size: 10px; }
   .typing-stage { grid-column: 1 / -1; margin-top: 8px; min-height: 430px; padding: 38px 36px 25px; }
   .word-label { font-size: 11px; }
-  .recall-prompt { font-size: 27px; }
+  .meaning-slot { font-size: 25px; }
+  .meaning-slot.waiting { font-size: 14px; }
   .letter-word { min-height: 130px; padding: 35px 0 22px; }
   .letter-slot { font-size: clamp(46px, 5vw, 66px); }
   .typing-stage .accent-strip { gap: 8px; }
@@ -683,6 +742,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   }
   .keyboard-prompt { max-width: 520px; margin: 0 auto; min-height: 56px; }
   .completion-screen main { max-width: 720px; }
+  .completion-enter-shortcut { margin: 13px 0 0 !important; color: #8a867e !important; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 11px !important; font-weight: 700; }
+  .completion-enter-shortcut kbd { min-width: 47px; padding: 4px 8px; border: 1px solid #d3cec4; border-bottom-width: 2px; border-radius: 7px; background: #f7f3ec; color: #555149; font: 800 10px/1.1 system-ui, sans-serif; box-shadow: 0 2px 5px rgba(45,42,36,.06); }
   .completion-home-button { left: max(39px, calc((100vw - 1180px) / 2 + 15px)); }
   .modal-backdrop { width: min(1180px, calc(100% - 48px)); }
   .domain-migration { width: min(720px, calc(100% - 64px)); padding: 17px 58px 17px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; }
@@ -700,7 +761,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .hero-card { min-height: 420px; padding: 26px 30px; }
   .hero-card .eyebrow { margin-top: 28px; }
   .hero-card h1 { font-size: clamp(43px, 4.5vw, 58px); }
-  .hero-subtitle { margin: 13px 0 18px; line-height: 1.55; }
+  .hero-subtitle { margin: 13px 0 6px; line-height: 1.55; }
+  .hero-lexicon-meta { margin-bottom: 15px; }
   .daily-row { min-height: 76px; padding: 11px 18px; }
   .mini-ring { width: 50px; height: 50px; }
   .section-heading { margin-bottom: 8px; }
@@ -748,6 +810,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     gap: 14px 28px;
     align-items: stretch;
   }
+  .challenge-active-home { grid-template-rows: auto minmax(0, 1fr) auto; }
   .home-overview {
     grid-column: 1;
     grid-row: 1 / -1;
@@ -758,6 +821,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     display: flex;
     flex-direction: column;
   }
+  .challenge-home-overview { background: transparent; }
   .hero-card {
     flex: 1;
     min-height: 0;
@@ -771,6 +835,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .hero-card h1 { font-size: clamp(42px, 3.35vw, 48px); }
   .hero-subtitle { width: 100%; max-width: 315px; margin: 17px 0 23px; font-size: 16px; line-height: 1.65; }
   .hero-card .primary-button { width: 100%; min-width: 0; }
+  .challenge-home-card { flex: 1; min-height: 0; border-radius: 28px; padding: clamp(25px, 3.6vh, 42px) 27px 26px; display: flex; flex-direction: column; }
+  .challenge-home-card::after { right: -36px; bottom: -74px; font-size: 250px; }
+  .challenge-home-card .challenge-brand-line { margin: clamp(24px, 5vh, 50px) 0 15px; }
+  .challenge-home-card h1 { font-size: clamp(40px, 3.15vw, 47px); }
+  .challenge-home-card .challenge-home-meta { margin-bottom: 18px; }
+  .challenge-home-card .primary-button { margin-top: auto; }
   .primary-button { font-size: 16px; }
   .home-overview .daily-row {
     flex: 0 0 auto;
@@ -782,6 +852,21 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     background: rgba(255,255,255,.055);
     color: white;
   }
+  .home-overview .challenge-invite-card {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 132px;
+    margin: 0 22px 22px;
+    padding: 17px 18px;
+    border-color: rgba(255,130,102,.32);
+    background: linear-gradient(145deg, rgba(239,106,76,.18), rgba(255,255,255,.055));
+    color: #fffaf4;
+    box-shadow: none;
+  }
+  .home-overview .challenge-invite-copy strong { font-size: 18px; }
+  .home-overview .challenge-invite-copy small { color: #c1c3bd; }
+  .home-overview .challenge-invite-steps { color: #ffad99; }
+  .home-overview .challenge-invite-action { padding: 0 12px; }
   .home-overview .daily-row .section-kicker { color: #ff9b84; }
   .home-overview .daily-row strong { font-size: 34px; }
   .home-overview .daily-row small { font-size: 14px; }
@@ -854,6 +939,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     margin: 0;
     grid-template-columns: minmax(0, 1fr);
   }
+  .challenge-active-home .home-actions { grid-row: 1; align-self: start; }
+  .challenge-active-home .course-section { grid-row: 2; }
   .home-actions .mode-card, .home-actions .mistake-card { min-height: 84px; padding: 13px 16px; border-radius: 19px; }
   .mode-card h3, .mistake-card h3 { font-size: 19px; }
   .mode-card p, .mistake-card p { display: block; font-size: 13px; }
@@ -874,10 +961,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .rule-heading small { font-size: 10px; }
   .rule-options button { font-size: 12px; }
   .word-label { font-size: 13px; }
-  .translation { font-size: 17px; }
   .pronunciation-button span { font-size: 12px; }
   .pronunciation-button kbd { display: inline-block; }
-  .typing-stage .translation.revealed-meaning span { font-size: 11px; }
   .typing-feedback { font-size: 14px; }
   .keyboard-prompt { font-size: 15px; }
 
@@ -921,6 +1006,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
 }
 
 @media (max-width: 819px) {
+  .challenge-invite-card { align-items: stretch; flex-direction: column; }
+  .challenge-invite-action { width: 100%; }
   .practice-screen.keyboard-open {
     height: var(--visible-viewport-height, 100svh);
     min-height: 0;
@@ -965,12 +1052,16 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
     border-radius: 22px;
   }
   .keyboard-open .word-label { font-size: 9px; }
-  .keyboard-open .recall-prompt { margin-top: 6px; font-size: 18px; }
+  .keyboard-open .word-heading { gap: 5px; }
+  .keyboard-open .word-class { padding: 2px 6px; font-size: 8px; }
+  .keyboard-open .meaning-slot { min-height: 24px; margin-top: 5px; font-size: 18px; }
+  .keyboard-open .meaning-slot.waiting { font-size: 11px; }
   .keyboard-open .letter-word { min-height: 59px; padding: 9px 0 8px; }
   .keyboard-open .letter-slot { font-size: clamp(30px, 9vw, 39px); }
+  .keyboard-open .answer-reveal-hint { margin: -2px 0 3px; gap: 3px 5px; font-size: 9px; }
+  .keyboard-open .answer-reveal-hint small { font-size: 8px; }
   .keyboard-open .pronunciation-controls { margin-bottom: 5px; gap: 6px; }
   .keyboard-open .pronunciation-controls button { height: 30px; }
-  .keyboard-open .typing-stage .translation { margin-bottom: 5px; font-size: 13px; }
   .keyboard-open .typing-stage .accent-strip { display: none; }
   .keyboard-open .typing-feedback { min-height: 21px; margin-top: 4px; font-size: 11px; }
 }
@@ -992,6 +1083,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid rgba(239, 106, 76, .3
   .completion-burst b { margin-top: 3px; font-size: 8px; }
   .completion-screen h1 { margin: 4px 0 6px; font-size: 28px; }
   .completion-screen > main > p:not(.eyebrow) { margin: 0; font-size: 12px; }
+  .completion-alternatives { margin-top: 8px; gap: 3px 12px; }
+  .completion-alternatives .text-button { min-height: 28px; font-size: 11px; }
   .mastery-steps { margin-top: 11px; gap: 6px; }
   .mastery-steps span { padding: 8px; border-radius: 12px; }
   .mastery-steps b { font-size: 11px; }

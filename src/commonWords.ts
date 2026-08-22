@@ -131,14 +131,14 @@ export const commonDecks: CommonDeck[] = [
   {
     id: 'common-actions-two', level: 'A2', scene: '日常', title: '核心动作 II', description: '对话里反复出现的实用动词',
     words: [
-      ['poner', '放置'], ['pasar', '经过 / 发生'], ['deber', '应该'], ['tomar', '拿 / 喝 / 乘坐'], ['llevar', '携带 / 穿着'],
+      ['poner', '放置'], ['pasar', '经过 / 发生'], ['deber', '应该 / 欠'], ['tomar', '拿 / 喝 / 乘坐'], ['llevar', '携带 / 穿着'],
       ['dejar', '留下 / 允许'], ['encontrar', '找到'], ['buscar', '寻找'], ['necesitar', '需要'], ['usar', '使用'],
       ['comprar', '购买'], ['pagar', '付款'], ['pedir', '请求 / 点餐'], ['abrir', '打开'], ['cerrar', '关闭'],
       ['leer', '阅读'], ['escribir', '书写'], ['escuchar', '听'], ['entender', '理解'], ['recordar', '记得'],
     ],
   },
   {
-    id: 'common-dialogue', level: 'A2', scene: '基础', title: '基本对话搭配', description: '能直接拿来开口的短表达',
+    id: 'common-dialogue', level: 'A1', scene: '基础', title: '基本对话搭配', description: '能直接拿来开口的短表达',
     words: [
       ['buenos días', '早上好'], ['buenas tardes', '下午好'], ['buenas noches', '晚上好'], ['hasta mañana', '明天见'], ['muchas gracias', '非常感谢'],
       ['de nada', '不客气'], ['por supuesto', '当然'], ['no sé', '我不知道'], ['no entiendo', '我不明白'], ['otra vez', '再来一次'],

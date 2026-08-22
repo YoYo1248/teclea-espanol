@@ -8,6 +8,64 @@ export type AdvancedDeck = {
   words: Array<[spanish: string, chinese: string]>
 }
 
+export type AdvancedWordMetadata = {
+  lemma: string
+  partOfSpeech: 'noun' | 'adverb' | 'preposition' | 'verb'
+  example: string
+  exampleChinese: string
+}
+
+export const advancedFrameworkReferences = {
+  C1: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_c1-c2.htm',
+  C2: 'https://cvc.cervantes.es/ensenanza/biblioteca_ele/plan_curricular/niveles/09_nociones_especificas_inventario_c1-c2.htm',
+} as const
+
+// First advanced editorial-completion batch. These examples and grammatical
+// labels are project-authored drafts prepared for named professional review;
+// they are not Instituto Cervantes examples or approvals.
+export const advancedWordMetadata: Record<string, AdvancedWordMetadata> = {
+  'a fin de': {
+    lemma: 'a fin de', partOfSpeech: 'preposition',
+    example: 'Reformaron el proceso a fin de reducir los plazos.',
+    exampleChinese: '他们改革了流程，以缩短期限。',
+  },
+  abolir: {
+    lemma: 'abolir', partOfSpeech: 'verb',
+    example: 'El parlamento decidió abolir aquella norma.',
+    exampleChinese: '议会决定废除那项规定。',
+  },
+  adaptación: {
+    lemma: 'adaptación', partOfSpeech: 'noun',
+    example: 'La adaptación al nuevo sistema llevó varios meses.',
+    exampleChinese: '适应新系统花了几个月。',
+  },
+  'a grandes rasgos': {
+    lemma: 'a grandes rasgos', partOfSpeech: 'adverb',
+    example: 'A grandes rasgos, el informe confirma la tendencia.',
+    exampleChinese: '总体而言，报告证实了这一趋势。',
+  },
+  'a decir verdad': {
+    lemma: 'a decir verdad', partOfSpeech: 'adverb',
+    example: 'A decir verdad, el resultado no me sorprendió.',
+    exampleChinese: '说实话，这个结果并没有让我意外。',
+  },
+  abastecer: {
+    lemma: 'abastecer', partOfSpeech: 'verb',
+    example: 'La red debe abastecer de agua a toda la comarca.',
+    exampleChinese: '该管网必须为整个地区供水。',
+  },
+  abastecimiento: {
+    lemma: 'abastecimiento', partOfSpeech: 'noun',
+    example: 'El temporal interrumpió el abastecimiento de alimentos.',
+    exampleChinese: '暴风雨中断了食品供应。',
+  },
+  'a la postre': {
+    lemma: 'a la postre', partOfSpeech: 'adverb',
+    example: 'La medida, a la postre, resultó contraproducente.',
+    exampleChinese: '这项措施最终适得其反。',
+  },
+}
+
 // Original candidate selection for HolaDone. Topic and level boundaries
 // were checked against the Instituto Cervantes PCIC C1-C2 inventories. The
 // selection, Chinese glosses and grouping are editorial and still require a
